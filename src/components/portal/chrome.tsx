@@ -3,6 +3,7 @@ import {
   ArrowLeft,
   BriefcaseBusiness,
   FileText,
+  Images,
   LayoutDashboard,
   LogOut,
   Settings,
@@ -124,6 +125,13 @@ export function PortalShell({
                 >
                   <Users className="h-3.5 w-3.5" />
                   Kunden
+                </Link>
+                <Link
+                  href={`/${locale}/portal/admin/blog`}
+                  className="inline-flex items-center gap-1.5 hover:text-ink"
+                >
+                  <Images className="h-3.5 w-3.5" />
+                  Blog
                 </Link>
               </>
             )}

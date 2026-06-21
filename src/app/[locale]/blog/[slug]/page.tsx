@@ -7,6 +7,7 @@ import { ArrowRight, Check } from "lucide-react";
 import { getDict, SITE_URL } from "@/content";
 import { getPost, posts } from "@/blog/posts";
 import { enrich } from "@/blog/enrich";
+import { getBlogHero } from "@/lib/blog-hero/store";
 import {
   extractSections,
   injectHeadingIds,
@@ -81,6 +82,7 @@ export default async function BlogArticle({
   if (!post) notFound();
 
   const t = getDict("de");
+  const generatedHero = await getBlogHero(post.slug);
 
   // Render body to HTML with heading ids, then inject enrichment figures after their target heading.
   const sections = extractSections(post.body);
@@ -238,7 +240,26 @@ export default async function BlogArticle({
 
           {/* Hero */}
           <div className="mt-8 max-w-[760px]">
-            {post.heroImage ? (
+            {generatedHero ? (
+              <figure className="overflow-hidden rounded-2xl border border-hairline">
+                <div className="relative aspect-[16/6] w-full">
+                  <Image
+                    src={`/api/blog/hero/${post.slug}`}
+                    alt={generatedHero.alt}
+                    fill
+                    sizes="(max-width: 768px) 100vw, 760px"
+                    className="object-cover"
+                    priority
+                    unoptimized
+                  />
+                </div>
+                {generatedHero.caption && (
+                  <figcaption className="mt-2 text-center text-[12px] text-muted">
+                    {generatedHero.caption}
+                  </figcaption>
+                )}
+              </figure>
+            ) : post.heroImage ? (
               <figure className="overflow-hidden rounded-2xl border border-hairline">
                 <Image
                   src={post.heroImage.src}
