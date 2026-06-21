@@ -1,7 +1,5 @@
 import type { Metadata } from "next";
 import Link from "next/link";
-import { redirect } from "next/navigation";
-import { getCurrentUser } from "@/lib/portal/auth";
 import { PortalLoginForm } from "@/components/portal/login-form";
 import { isLocale, type Locale } from "@/content";
 
@@ -27,9 +25,6 @@ export default async function LoginPage({
 }) {
   const { locale } = await params;
   const safe: Locale = isLocale(locale) ? locale : "de";
-  const current = await getCurrentUser();
-  if (current) redirect(`/${safe}/portal`);
-
   const query = await searchParams;
   const invalid = query.error === "invalid";
   const needsVerification = query.error === "verify";
