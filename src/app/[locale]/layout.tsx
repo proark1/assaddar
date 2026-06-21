@@ -12,7 +12,7 @@ const serif = Source_Serif_4({
   weight: ["400", "500", "600"],
 });
 
-const SITE_URL = "https://assaddar.com";
+const SITE_URL = "https://assad-dar.de";
 
 export const dynamicParams = false;
 

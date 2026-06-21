@@ -1,6 +1,6 @@
 import type { MetadataRoute } from "next";
 
-const SITE = "https://assaddar.com";
+const SITE = "https://assad-dar.de";
 const LAST_MODIFIED = new Date("2026-06-21");
 
 export default function sitemap(): MetadataRoute.Sitemap {

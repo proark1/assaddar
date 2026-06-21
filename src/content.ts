@@ -5,7 +5,7 @@ export function isLocale(value: string): value is Locale {
   return (locales as readonly string[]).includes(value);
 }
 
-export const SITE_URL = "https://assaddar.com";
+export const SITE_URL = "https://assad-dar.de";
 
 const MAILTO =
   "mailto:assad.dar@gmail.com?subject=ASDAR%20Analyse%20%E2%80%93%20Anfrage";
