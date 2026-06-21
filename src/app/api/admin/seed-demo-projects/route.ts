@@ -1,7 +1,6 @@
 import { NextResponse } from "next/server";
 import { hashPassword } from "@/lib/portal/password";
 import { mutateStore } from "@/lib/portal/store";
-import { savePortalFile } from "@/lib/portal/storage";
 import type {
   AiInsight,
   Invoice,
@@ -700,29 +699,6 @@ export async function GET(request: Request) {
   }
 
   const passwordHash = hashPassword(demoPassword);
-  const uploadedFiles = new Map<
-    string,
-    Pick<ProjectFile, "storagePath" | "mimeType" | "size">
-  >();
-
-  for (const demo of demos) {
-    for (const file of demo.files) {
-      const bytes = Buffer.from(file.content, "utf8");
-      const storagePath = await savePortalFile({
-        projectId: demo.project.id,
-        fileId: file.id,
-        filename: file.name,
-        bytes,
-        contentType: "text/markdown; charset=utf-8",
-      });
-      uploadedFiles.set(file.id, {
-        storagePath,
-        mimeType: "text/markdown; charset=utf-8",
-        size: bytes.length,
-      });
-    }
-  }
-
   const result = await mutateStore((store) => {
     const admin = store.users.find((entry) => entry.role === "admin");
     if (!admin) return { error: "No admin user found" };
@@ -781,22 +757,6 @@ export async function GET(request: Request) {
       for (const milestone of demo.milestones) {
         upsertById(store.milestones, milestone);
       }
-      for (const file of demo.files) {
-        const uploaded = uploadedFiles.get(file.id);
-        if (!uploaded) continue;
-        upsertById(store.files, {
-          id: file.id,
-          projectId: file.projectId,
-          name: file.name,
-          description: file.description,
-          storagePath: uploaded.storagePath,
-          mimeType: uploaded.mimeType,
-          size: uploaded.size,
-          visibility: file.visibility,
-          uploadedBy: admin.id,
-          uploadedAt: file.uploadedAt,
-        });
-      }
       for (const invoice of demo.invoices) upsertById(store.invoices, invoice);
       for (const insight of demo.insights) upsertById(store.aiInsights, insight);
     }
@@ -804,7 +764,7 @@ export async function GET(request: Request) {
     return {
       projects: demos.map((demo) => demo.project.id),
       customers: demos.map((demo) => demo.customer.email),
-      files: Array.from(uploadedFiles.keys()).length,
+      files: 0,
     };
   });
 
