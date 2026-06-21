@@ -354,6 +354,17 @@ export function Blog({ t }: { t: Dict["blog"] }) {
             </Reveal>
           ))}
         </div>
+        <Reveal delay={0.1}>
+          <div className="mt-10">
+            <Link
+              href="/de/blog"
+              className="group inline-flex items-center gap-1.5 text-sm font-medium text-copper"
+            >
+              {t.viewAll}
+              <ArrowRight className="h-4 w-4 transition-transform group-hover:translate-x-0.5" />
+            </Link>
+          </div>
+        </Reveal>
       </Container>
     </Section>
   );

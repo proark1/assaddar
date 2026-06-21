@@ -24,7 +24,7 @@ const de = {
       { label: "ASDAR Method", href: "#methode" },
       { label: "Angebote", href: "#angebote" },
       { label: "Branchen", href: "#branchen" },
-      { label: "Blog", href: "#blog" },
+      { label: "Blog", href: "/de/blog" },
       { label: "Über mich", href: "/de/ueber-mich" },
     ],
     cta: "Erstgespräch buchen",
@@ -396,6 +396,7 @@ const de = {
     intro:
       "Praktische Artikel zu KI, Automatisierung, digitaler Transformation und Prozessverbesserung. Keine Theorie, kein Tool-Hype — konkrete Beispiele, wie Unternehmen Zeit sparen und KI sinnvoll einsetzen.",
     readMore: "Artikel lesen",
+    viewAll: "Alle Artikel ansehen",
     posts: [
       {
         title: "KI im Unternehmen einführen: Wo fängt man sinnvoll an?",
@@ -937,6 +938,7 @@ const en: Dict = {
     intro:
       "Practical articles on AI, automation, digital transformation, and process improvement. No theory, no tool hype — concrete examples of how companies save time and use AI sensibly.",
     readMore: "Read article",
+    viewAll: "View all articles",
     posts: [
       {
         title: "Introducing AI in your company: where do you sensibly start?",

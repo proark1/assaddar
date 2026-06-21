@@ -1,5 +1,13 @@
 export type BlogFaq = { q: string; a: string };
 
+export type BlogHeroImage = {
+  src: string;
+  alt: string;
+  width: number;
+  height: number;
+  caption?: string;
+};
+
 export type BlogPost = {
   slug: string;
   title: string;
@@ -12,6 +20,11 @@ export type BlogPost = {
   keywords: string[];
   faq: BlogFaq[];
   body: string;
+
+  // Optional, additive — existing articles stay valid without these.
+  updatedAt?: string; // ISO date; drives dateModified + OG modifiedTime
+  relatedSlugs?: string[]; // manual override for "Weiterlesen"
+  heroImage?: BlogHeroImage; // raster hero; falls back to a branded SVG hero
 };
 
 // Articles are German-only (the blog targets the DACH / German SEO market).
