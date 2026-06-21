@@ -97,7 +97,7 @@ export default async function Home({
         <Angebote t={t.angebote} />
         <Branchen t={t.branchen} />
         <Proof t={t.proof} />
-        <About t={t.about} />
+        <About t={t.about} locale={safe} />
         <Blog t={t.blog} />
         <Faq t={t.faq} />
         <FinalCta t={t.finalCta} />

@@ -21,15 +21,25 @@ export function Nav({ t, locale }: { t: Dict["nav"]; locale: Locale }) {
         </Link>
 
         <nav className="hidden items-center gap-8 md:flex">
-          {t.links.map((l) => (
-            <a
-              key={l.href}
-              href={l.href}
-              className="text-[13px] text-ink2 transition-colors hover:text-ink"
-            >
-              {l.label}
-            </a>
-          ))}
+          {t.links.map((l) =>
+            l.href.startsWith("#") ? (
+              <a
+                key={l.href}
+                href={l.href}
+                className="text-[13px] text-ink2 transition-colors hover:text-ink"
+              >
+                {l.label}
+              </a>
+            ) : (
+              <Link
+                key={l.href}
+                href={l.href}
+                className="text-[13px] text-ink2 transition-colors hover:text-ink"
+              >
+                {l.label}
+              </Link>
+            ),
+          )}
         </nav>
 
         <div className="flex items-center gap-4">
@@ -71,16 +81,27 @@ export function Nav({ t, locale }: { t: Dict["nav"]; locale: Locale }) {
       {open && (
         <div className="border-t border-hairline bg-bg md:hidden">
           <div className="mx-auto flex w-full max-w-[1120px] flex-col gap-1 px-6 py-4">
-            {t.links.map((l) => (
-              <a
-                key={l.href}
-                href={l.href}
-                onClick={() => setOpen(false)}
-                className="rounded-md px-2 py-2.5 text-sm text-ink2 transition-colors hover:bg-surface hover:text-ink"
-              >
-                {l.label}
-              </a>
-            ))}
+            {t.links.map((l) =>
+              l.href.startsWith("#") ? (
+                <a
+                  key={l.href}
+                  href={l.href}
+                  onClick={() => setOpen(false)}
+                  className="rounded-md px-2 py-2.5 text-sm text-ink2 transition-colors hover:bg-surface hover:text-ink"
+                >
+                  {l.label}
+                </a>
+              ) : (
+                <Link
+                  key={l.href}
+                  href={l.href}
+                  onClick={() => setOpen(false)}
+                  className="rounded-md px-2 py-2.5 text-sm text-ink2 transition-colors hover:bg-surface hover:text-ink"
+                >
+                  {l.label}
+                </Link>
+              ),
+            )}
             <Link
               href={`/${locale}/termin`}
               onClick={() => setOpen(false)}

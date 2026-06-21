@@ -13,7 +13,7 @@ import {
   type LucideIcon,
 } from "lucide-react";
 import Link from "next/link";
-import type { Dict } from "@/content";
+import type { Dict, Locale } from "@/content";
 import { posts as blogPosts } from "@/blog/posts";
 import { Button, Container, Kicker, Section } from "./ui";
 import { Reveal } from "./motion";
@@ -271,7 +271,7 @@ export function Proof({ t }: { t: Dict["proof"] }) {
   );
 }
 
-export function About({ t }: { t: Dict["about"] }) {
+export function About({ t, locale }: { t: Dict["about"]; locale: Locale }) {
   return (
     <Section id="ueber-mich" className="border-t border-hairline">
       <Container>
@@ -304,6 +304,13 @@ export function About({ t }: { t: Dict["about"] }) {
                   {p}
                 </p>
               ))}
+              <Link
+                href={`/${locale}/ueber-mich`}
+                className="group inline-flex items-center gap-1.5 text-sm font-medium text-copper"
+              >
+                {t.more}
+                <ArrowRight className="h-3.5 w-3.5 transition-transform group-hover:translate-x-0.5" />
+              </Link>
             </div>
           </Reveal>
         </div>

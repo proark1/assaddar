@@ -25,7 +25,7 @@ const de = {
       { label: "Angebote", href: "#angebote" },
       { label: "Branchen", href: "#branchen" },
       { label: "Blog", href: "#blog" },
-      { label: "Über mich", href: "#ueber-mich" },
+      { label: "Über mich", href: "/de/ueber-mich" },
     ],
     cta: "Erstgespräch buchen",
     menu: "Menü",
@@ -379,6 +379,7 @@ const de = {
   },
   about: {
     kicker: "Über mich",
+    more: "Mehr über mich",
     heading: "Von Bayers globalen Marken zu Ihren Abläufen.",
     paragraphs: [
       "19 Jahre lang habe ich Transformation dort geführt, wo Prozesse heilig und reguliert sind: als Digital Lead bei Bayer für globale Marken wie Aspirin und Bepanthen, danach als Director Global Digital Transformation bei Bionorica.",
@@ -567,7 +568,7 @@ const en: Dict = {
       { label: "Services", href: "#angebote" },
       { label: "Industries", href: "#branchen" },
       { label: "Blog", href: "#blog" },
-      { label: "About", href: "#ueber-mich" },
+      { label: "About", href: "/en/ueber-mich" },
     ],
     cta: "Book a call",
     menu: "Menu",
@@ -918,6 +919,7 @@ const en: Dict = {
   },
   about: {
     kicker: "About",
+    more: "More about me",
     heading: "From Bayer's global brands to your operations.",
     paragraphs: [
       "For 19 years I led transformation where processes are sacred and regulated: as Digital Lead at Bayer for global brands like Aspirin and Bepanthen, then as Director Global Digital Transformation at Bionorica.",
