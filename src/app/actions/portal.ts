@@ -12,6 +12,7 @@ import {
 import { appUrl } from "@/lib/portal/config";
 import { sendPortalEmail } from "@/lib/portal/email";
 import {
+  createProjectForAdmin,
   findUserByEmail,
   getProjectAccess,
   getProjectBundle,
@@ -220,104 +221,14 @@ export async function createProjectAction(formData: FormData) {
 
   if (!company) redirect(`/${locale}/portal/admin?error=company`);
 
-  const projectId = await mutateStore((store) => {
-    const createdAt = new Date().toISOString();
-    const orgId = id("org");
-    const nextProjectId = id("project");
-
-    store.organizations.push({
-      id: orgId,
-      name: company,
-      industry,
-      createdAt,
-    });
-
-    store.projects.push({
-      id: nextProjectId,
-      organizationId: orgId,
-      name: projectName,
-      summary,
-      status: "discovery",
-      asdarStage: "analyse",
-      health: "green",
-      nextStep:
-        template?.kickoffGoal || "Kickoff vorbereiten und Intake vervollständigen.",
-      createdAt,
-      updatedAt: createdAt,
-    });
-
-    store.projectIntelligence.push({
-      projectId: nextProjectId,
-      companyContext: template?.intake.companyContext ?? "",
-      stakeholders: template?.intake.stakeholders ?? "",
-      issues: template?.intake.issues ?? "",
-      goals: template?.intake.goals ?? "",
-      currentTools: template?.intake.currentTools ?? "",
-      dataSituation: template?.intake.dataSituation ?? "",
-      constraints: template?.intake.constraints ?? "",
-      opportunities: template?.intake.opportunities ?? "",
-      internalNotes: template?.intake.internalNotes ?? "",
-      updatedAt: createdAt,
-    });
-
-    if (customerEmail) {
-      const customer = findUserByEmail(store, customerEmail);
-      if (customer && customer.role === "customer") {
-        store.projectMembers.push({
-          id: id("member"),
-          projectId: nextProjectId,
-          userId: customer.id,
-          role: "client_owner",
-          createdAt,
-        });
-      }
-    }
-
-    if (template) {
-      for (const task of template.seedTasks) {
-        store.tasks.push({
-          id: id("task"),
-          projectId: nextProjectId,
-          title: task.title,
-          owner: task.owner,
-          status: "todo",
-          visibleToCustomer: task.visibleToCustomer,
-          createdAt,
-        });
-      }
-
-      for (const milestone of template.seedMilestones) {
-        store.milestones.push({
-          id: id("milestone"),
-          projectId: nextProjectId,
-          title: milestone.title,
-          status: "planned",
-          visibleToCustomer: milestone.visibleToCustomer,
-          createdAt,
-        });
-      }
-
-      store.updates.push({
-        id: id("update"),
-        projectId: nextProjectId,
-        title: template.customerKickoffUpdate.title,
-        body: template.customerKickoffUpdate.body,
-        visibility: "customer",
-        asdarStage: "analyse",
-        createdBy: user.id,
-        createdAt,
-      });
-    }
-
-    addAuditUpdate({
-      store,
-      projectId: nextProjectId,
-      userId: user.id,
-      title: "Projekt erstellt",
-      body: `Projekt "${projectName}" für ${company} wurde angelegt.`,
-    });
-
-    return nextProjectId;
+  const projectId = await createProjectForAdmin({
+    userId: user.id,
+    company,
+    industry,
+    projectName,
+    summary,
+    customerEmail,
+    template,
   });
 
   revalidatePath(`/${locale}/portal`);

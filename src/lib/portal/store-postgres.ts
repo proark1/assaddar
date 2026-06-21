@@ -1,4 +1,6 @@
+import { randomUUID } from "crypto";
 import { getSql } from "./database";
+import type { ConsultingTemplate } from "./templates";
 import type {
   AiInsight,
   AuthToken,
@@ -17,6 +19,20 @@ import type {
 } from "./types";
 
 type Row = Record<string, unknown>;
+
+export type CreateProjectInput = {
+  userId: string;
+  company: string;
+  industry: string;
+  projectName: string;
+  summary: string;
+  customerEmail: string;
+  template?: ConsultingTemplate;
+};
+
+function id(prefix: string) {
+  return `${prefix}_${randomUUID().replaceAll("-", "").slice(0, 16)}`;
+}
 
 function value(value: unknown) {
   return value == null ? "" : String(value);
@@ -462,6 +478,129 @@ export async function readPostgresCustomersWithProjectBundles(): Promise<
       bundle.members.some((member) => member.userId === customer.id),
     ),
   }));
+}
+
+export async function createPostgresProjectForAdmin({
+  userId,
+  company,
+  industry,
+  projectName,
+  summary,
+  customerEmail,
+  template,
+}: CreateProjectInput) {
+  const sql = getSql();
+  const createdAt = new Date().toISOString();
+  const orgId = id("org");
+  const projectId = id("project");
+
+  await sql.begin(async (tx) => {
+    await tx`
+      insert into portal_organizations (id, name, industry, created_at)
+      values (${orgId}, ${company}, ${industry}, ${createdAt})
+    `;
+
+    await tx`
+      insert into portal_projects (
+        id, organization_id, name, summary, status, asdar_stage,
+        health, next_step, created_at, updated_at
+      )
+      values (
+        ${projectId}, ${orgId}, ${projectName}, ${summary}, 'discovery',
+        'analyse', 'green',
+        ${template?.kickoffGoal || "Kickoff vorbereiten und Intake vervollstaendigen."},
+        ${createdAt}, ${createdAt}
+      )
+    `;
+
+    await tx`
+      insert into portal_project_intelligence (
+        project_id, company_context, stakeholders, issues, goals,
+        current_tools, data_situation, constraints, opportunities,
+        internal_notes, updated_at
+      )
+      values (
+        ${projectId},
+        ${template?.intake.companyContext ?? ""},
+        ${template?.intake.stakeholders ?? ""},
+        ${template?.intake.issues ?? ""},
+        ${template?.intake.goals ?? ""},
+        ${template?.intake.currentTools ?? ""},
+        ${template?.intake.dataSituation ?? ""},
+        ${template?.intake.constraints ?? ""},
+        ${template?.intake.opportunities ?? ""},
+        ${template?.intake.internalNotes ?? ""},
+        ${createdAt}
+      )
+    `;
+
+    if (customerEmail) {
+      const rows = await tx`
+        select id, name, email, password_hash, role, email_verified_at, created_at
+        from portal_users
+        where lower(email) = lower(${customerEmail})
+        limit 1
+      `;
+      const customer = (rows as Row[])[0] ? toUser((rows as Row[])[0]) : null;
+      if (customer?.role === "customer") {
+        await tx`
+          insert into portal_project_members (id, project_id, user_id, role, created_at)
+          values (${id("member")}, ${projectId}, ${customer.id}, 'client_owner', ${createdAt})
+          on conflict (project_id, user_id) do update set role = excluded.role
+        `;
+      }
+    }
+
+    if (template) {
+      for (const task of template.seedTasks) {
+        await tx`
+          insert into portal_project_tasks (
+            id, project_id, title, owner, status, visible_to_customer, created_at
+          )
+          values (
+            ${id("task")}, ${projectId}, ${task.title}, ${task.owner},
+            'todo', ${task.visibleToCustomer}, ${createdAt}
+          )
+        `;
+      }
+
+      for (const milestone of template.seedMilestones) {
+        await tx`
+          insert into portal_project_milestones (
+            id, project_id, title, status, visible_to_customer, created_at
+          )
+          values (
+            ${id("milestone")}, ${projectId}, ${milestone.title},
+            'planned', ${milestone.visibleToCustomer}, ${createdAt}
+          )
+        `;
+      }
+
+      await tx`
+        insert into portal_project_updates (
+          id, project_id, title, body, visibility, asdar_stage, created_by, created_at
+        )
+        values (
+          ${id("update")}, ${projectId}, ${template.customerKickoffUpdate.title},
+          ${template.customerKickoffUpdate.body}, 'customer', 'analyse',
+          ${userId}, ${createdAt}
+        )
+      `;
+    }
+
+    await tx`
+      insert into portal_project_updates (
+        id, project_id, title, body, visibility, asdar_stage, created_by, created_at
+      )
+      values (
+        ${id("update")}, ${projectId}, 'Audit: Projekt erstellt',
+        ${`Projekt "${projectName}" fuer ${company} wurde angelegt.`},
+        'internal', 'analyse', ${userId}, ${createdAt}
+      )
+    `;
+  });
+
+  return projectId;
 }
 
 export async function readPostgresStore(): Promise<PortalStore> {

@@ -4,7 +4,6 @@ import {
   AlertTriangle,
   ArrowRight,
   BookOpen,
-  Plus,
   Search,
   Users,
 } from "lucide-react";
@@ -27,6 +26,7 @@ import {
   PortalShell,
   textareaClass,
 } from "@/components/portal/chrome";
+import { ProjectCreateSubmit } from "@/components/portal/project-create-submit";
 
 export const dynamic = "force-dynamic";
 
@@ -365,13 +365,7 @@ export default async function AdminPage({
               </label>
               <textarea name="summary" className={textareaClass} />
             </div>
-            <button
-              type="submit"
-              className="inline-flex w-full items-center justify-center gap-2 rounded-lg bg-copper px-4 py-3 text-sm font-medium text-oncopper transition-colors hover:bg-copper-hi"
-            >
-              <Plus className="h-4 w-4" />
-              Projekt erstellen
-            </button>
+            <ProjectCreateSubmit />
           </form>
         </PortalCard>
       </div>

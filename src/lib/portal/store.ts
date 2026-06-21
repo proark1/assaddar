@@ -4,6 +4,8 @@ import { randomBytes, randomUUID } from "crypto";
 import { hashPassword } from "./password";
 import { isPostgresBackendEnabled } from "./config";
 import {
+  createPostgresProjectForAdmin,
+  type CreateProjectInput,
   findPostgresUserByEmail,
   findPostgresUserById,
   readPostgresCustomersWithProjectBundles,
@@ -25,6 +27,8 @@ export type CustomerProjectBundles = {
   customer: User;
   projectBundles: ProjectBundle[];
 };
+
+export type CreateProjectForAdminInput = CreateProjectInput;
 
 const DATA_DIR = path.join(process.cwd(), ".portal-data");
 const STORE_PATH = path.join(DATA_DIR, "store.json");
@@ -443,6 +447,118 @@ export async function listCustomersWithProjectBundles(): Promise<
       return { customer, projectBundles };
     })
     .sort((a, b) => a.customer.name.localeCompare(b.customer.name));
+}
+
+export async function createProjectForAdmin(
+  input: CreateProjectForAdminInput,
+): Promise<string> {
+  if (isPostgresBackendEnabled()) {
+    return createPostgresProjectForAdmin(input);
+  }
+
+  return mutateStore((store) => {
+    const createdAt = now();
+    const orgId = id("org");
+    const nextProjectId = id("project");
+
+    store.organizations.push({
+      id: orgId,
+      name: input.company,
+      industry: input.industry,
+      createdAt,
+    });
+
+    store.projects.push({
+      id: nextProjectId,
+      organizationId: orgId,
+      name: input.projectName,
+      summary: input.summary,
+      status: "discovery",
+      asdarStage: "analyse",
+      health: "green",
+      nextStep:
+        input.template?.kickoffGoal ||
+        "Kickoff vorbereiten und Intake vervollstaendigen.",
+      createdAt,
+      updatedAt: createdAt,
+    });
+
+    store.projectIntelligence.push({
+      projectId: nextProjectId,
+      companyContext: input.template?.intake.companyContext ?? "",
+      stakeholders: input.template?.intake.stakeholders ?? "",
+      issues: input.template?.intake.issues ?? "",
+      goals: input.template?.intake.goals ?? "",
+      currentTools: input.template?.intake.currentTools ?? "",
+      dataSituation: input.template?.intake.dataSituation ?? "",
+      constraints: input.template?.intake.constraints ?? "",
+      opportunities: input.template?.intake.opportunities ?? "",
+      internalNotes: input.template?.intake.internalNotes ?? "",
+      updatedAt: createdAt,
+    });
+
+    if (input.customerEmail) {
+      const customer = findUserByEmail(store, input.customerEmail);
+      if (customer && customer.role === "customer") {
+        store.projectMembers.push({
+          id: id("member"),
+          projectId: nextProjectId,
+          userId: customer.id,
+          role: "client_owner",
+          createdAt,
+        });
+      }
+    }
+
+    if (input.template) {
+      for (const task of input.template.seedTasks) {
+        store.tasks.push({
+          id: id("task"),
+          projectId: nextProjectId,
+          title: task.title,
+          owner: task.owner,
+          status: "todo",
+          visibleToCustomer: task.visibleToCustomer,
+          createdAt,
+        });
+      }
+
+      for (const milestone of input.template.seedMilestones) {
+        store.milestones.push({
+          id: id("milestone"),
+          projectId: nextProjectId,
+          title: milestone.title,
+          status: "planned",
+          visibleToCustomer: milestone.visibleToCustomer,
+          createdAt,
+        });
+      }
+
+      store.updates.push({
+        id: id("update"),
+        projectId: nextProjectId,
+        title: input.template.customerKickoffUpdate.title,
+        body: input.template.customerKickoffUpdate.body,
+        visibility: "customer",
+        asdarStage: "analyse",
+        createdBy: input.userId,
+        createdAt,
+      });
+    }
+
+    store.updates.push({
+      id: id("update"),
+      projectId: nextProjectId,
+      title: "Audit: Projekt erstellt",
+      body: `Projekt "${input.projectName}" fuer ${input.company} wurde angelegt.`,
+      visibility: "internal",
+      asdarStage: "analyse",
+      createdBy: input.userId,
+      createdAt,
+    });
+
+    return nextProjectId;
+  });
 }
 
 export function upsertIntelligence(
