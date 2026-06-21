@@ -72,6 +72,18 @@ export async function findPostgresUserByEmail(email: string) {
   return row ? toUser(row) : null;
 }
 
+export async function findPostgresUserById(userId: string) {
+  const sql = getSql();
+  const rows = await sql`
+    select id, name, email, password_hash, role, email_verified_at, created_at
+    from portal_users
+    where id = ${userId}
+    limit 1
+  `;
+  const row = (rows as Row[])[0];
+  return row ? toUser(row) : null;
+}
+
 export async function readPostgresStore(): Promise<PortalStore> {
   const sql = getSql();
   const [

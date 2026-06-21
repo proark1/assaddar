@@ -16,6 +16,7 @@ export function PortalLoginForm({
 }) {
   const [pending, setPending] = useState(false);
   const [error, setError] = useState("");
+  const [redirectTo, setRedirectTo] = useState("");
 
   async function submit(event: React.FormEvent<HTMLFormElement>) {
     event.preventDefault();
@@ -24,10 +25,11 @@ export function PortalLoginForm({
     const form = event.currentTarget;
     const formData = new FormData(form);
     const controller = new AbortController();
-    const timeout = window.setTimeout(() => controller.abort(), 15000);
+    const requestTimeout = window.setTimeout(() => controller.abort(), 15000);
 
     setPending(true);
     setError("");
+    setRedirectTo("");
 
     try {
       const response = await fetch("/api/portal/login-json", {
@@ -54,7 +56,10 @@ export function PortalLoginForm({
         return;
       }
 
-      window.location.assign(result.redirectTo);
+      const redirectTarget = result.redirectTo;
+      setRedirectTo(redirectTarget);
+      window.setTimeout(() => window.location.assign(redirectTarget), 0);
+      window.setTimeout(() => setPending(false), 5000);
     } catch (cause) {
       setError(
         cause instanceof DOMException && cause.name === "AbortError"
@@ -63,7 +68,7 @@ export function PortalLoginForm({
       );
       setPending(false);
     } finally {
-      window.clearTimeout(timeout);
+      window.clearTimeout(requestTimeout);
     }
   }
 
@@ -109,13 +114,29 @@ export function PortalLoginForm({
         </p>
       )}
 
+      {redirectTo && (
+        <p
+          role="status"
+          className="rounded-md border border-success/30 bg-success/10 px-3 py-2 text-sm text-success"
+        >
+          Login erfolgreich.{" "}
+          <a href={redirectTo} className="font-medium underline underline-offset-4">
+            Portal oeffnen
+          </a>
+        </p>
+      )}
+
       <button
         type="submit"
-        disabled={pending}
+        disabled={pending || Boolean(redirectTo)}
         className="inline-flex w-full items-center justify-center gap-2 rounded-lg bg-copper px-5 py-3 text-sm font-medium text-oncopper shadow-[0_2px_8px_rgba(166,110,47,0.25)] transition-colors hover:bg-copper-hi disabled:cursor-wait disabled:opacity-70"
       >
         <LogIn className="h-4 w-4" />
-        {pending ? "Einloggen..." : "Einloggen"}
+        {redirectTo
+          ? "Portal wird geoeffnet..."
+          : pending
+            ? "Einloggen..."
+            : "Einloggen"}
       </button>
     </form>
   );

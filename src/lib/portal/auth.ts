@@ -2,7 +2,7 @@ import { createHmac, timingSafeEqual } from "crypto";
 import { cookies } from "next/headers";
 import { redirect } from "next/navigation";
 import type { Locale } from "@/content";
-import { readStore } from "./store";
+import { findUserByIdForSession } from "./store";
 import type { User } from "./types";
 
 const COOKIE_NAME = "assaddar_session";
@@ -104,8 +104,7 @@ export async function getCurrentUser(): Promise<User | null> {
   const payload = decodeSession(jar.get(COOKIE_NAME)?.value);
   if (!payload) return null;
 
-  const store = await readStore();
-  return store.users.find((user) => user.id === payload.userId) ?? null;
+  return findUserByIdForSession(payload.userId);
 }
 
 export async function requireUser(locale: Locale) {

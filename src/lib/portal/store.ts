@@ -5,6 +5,7 @@ import { hashPassword } from "./password";
 import { isPostgresBackendEnabled } from "./config";
 import {
   findPostgresUserByEmail,
+  findPostgresUserById,
   readPostgresStore,
   writePostgresStore,
 } from "./store-postgres";
@@ -290,6 +291,17 @@ export async function mutateStore<T>(
 export function findUserByEmail(store: PortalStore, email: string) {
   const normalized = email.trim().toLowerCase();
   return store.users.find((user) => user.email.toLowerCase() === normalized);
+}
+
+export async function findUserByIdForSession(
+  userId: string,
+): Promise<User | null> {
+  if (isPostgresBackendEnabled()) {
+    return findPostgresUserById(userId);
+  }
+
+  const store = await readStore();
+  return store.users.find((user) => user.id === userId) ?? null;
 }
 
 export async function findUserByEmailForLogin(
