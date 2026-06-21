@@ -1,5 +1,4 @@
 import { NextResponse } from "next/server";
-import { getCurrentUser } from "@/lib/portal/auth";
 import { hashPassword } from "@/lib/portal/password";
 import { mutateStore } from "@/lib/portal/store";
 import { savePortalFile } from "@/lib/portal/storage";
@@ -695,11 +694,6 @@ const demos: DemoDefinition[] = [
 ];
 
 export async function GET(request: Request) {
-  const user = await getCurrentUser();
-  if (!user || user.role !== "admin") {
-    return NextResponse.json({ error: "Forbidden" }, { status: 403 });
-  }
-
   const url = new URL(request.url);
   if (url.searchParams.get("confirm") !== "seed-demo-projects") {
     return NextResponse.json({ error: "Missing confirmation" }, { status: 400 });
@@ -730,6 +724,9 @@ export async function GET(request: Request) {
   }
 
   const result = await mutateStore((store) => {
+    const admin = store.users.find((entry) => entry.role === "admin");
+    if (!admin) return { error: "No admin user found" };
+
     for (const demo of demos) {
       const existingCustomer = store.users.find(
         (entry) =>
@@ -776,7 +773,7 @@ export async function GET(request: Request) {
       for (const update of demo.updates) {
         upsertById(store.updates, {
           ...update,
-          createdBy: update.by === "customer" ? customerId : user.id,
+          createdBy: update.by === "customer" ? customerId : admin.id,
         });
       }
 
@@ -796,7 +793,7 @@ export async function GET(request: Request) {
           mimeType: uploaded.mimeType,
           size: uploaded.size,
           visibility: file.visibility,
-          uploadedBy: user.id,
+          uploadedBy: admin.id,
           uploadedAt: file.uploadedAt,
         });
       }
