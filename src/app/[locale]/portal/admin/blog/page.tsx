@@ -59,9 +59,9 @@ export default async function BlogHeroAdminPage({
       <PortalCard className="mb-8">
         <PortalSectionTitle eyebrow="So funktioniert's" title="KI-Hero-Bilder pro Artikel">
           Prompt prüfen oder anpassen, dann „Generieren". Das Bild wird über die
-          OpenAI-Bild-API erzeugt, gespeichert und sofort auf der Artikelseite
-          ausgespielt. Ohne generiertes Bild zeigt der Artikel den gebrandeten
-          SVG-Hero. Benötigt einen gesetzten <code>OPENAI_API_KEY</code>.
+          konfigurierte Bild-API (Standard: Gemini 3.1 Flash Image) erzeugt,
+          gespeichert und sofort auf der Artikelseite ausgespielt. Ohne
+          generiertes Bild zeigt der Artikel den gebrandeten SVG-Hero.
         </PortalSectionTitle>
       </PortalCard>
 
