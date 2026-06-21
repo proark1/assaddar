@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import { hashPassword } from "@/lib/portal/password";
-import { mutateStore } from "@/lib/portal/store";
+import { getSql } from "@/lib/portal/database";
 import type {
   AiInsight,
   Invoice,
@@ -8,7 +8,6 @@ import type {
   Project,
   ProjectFile,
   ProjectIntelligence,
-  ProjectMember,
   ProjectMilestone,
   ProjectTask,
   ProjectUpdate,
@@ -51,12 +50,6 @@ function iso(daysOffset: number, hour = 10) {
 
 function date(daysOffset: number) {
   return iso(daysOffset).slice(0, 10);
-}
-
-function upsertById<T extends { id: string }>(items: T[], item: T) {
-  const index = items.findIndex((entry) => entry.id === item.id);
-  if (index >= 0) items[index] = item;
-  else items.push(item);
 }
 
 const demos: DemoDefinition[] = [
@@ -699,66 +692,250 @@ export async function GET(request: Request) {
   }
 
   const passwordHash = hashPassword(demoPassword);
-  const result = await mutateStore((store) => {
-    const admin = store.users.find((entry) => entry.role === "admin");
-    if (!admin) return { error: "No admin user found" };
+  const sql = getSql();
+  const result = await sql.begin(async (tx) => {
+    const adminRows = await tx`
+      select id from portal_users where role = 'admin' order by created_at asc limit 1
+    `;
+    const admin = adminRows[0] as { id?: unknown } | undefined;
+    const adminId = typeof admin?.id === "string" ? admin.id : "";
+    if (!adminId) return { error: "No admin user found" };
 
     for (const demo of demos) {
-      const existingCustomer = store.users.find(
-        (entry) =>
-          entry.id === demo.customer.id ||
-          entry.email.toLowerCase() === demo.customer.email.toLowerCase(),
-      );
-      const customerId = existingCustomer?.id ?? demo.customer.id;
-      const customer: User = {
-        id: customerId,
-        name: demo.customer.name,
-        email: demo.customer.email,
-        passwordHash,
-        role: "customer",
-        emailVerifiedAt: iso(0),
-        createdAt: existingCustomer?.createdAt ?? iso(-10),
-      };
+      const existingCustomerRows = await tx`
+        select id, created_at
+        from portal_users
+        where id = ${demo.customer.id} or lower(email) = lower(${demo.customer.email})
+        limit 1
+      `;
+      const existingCustomer = existingCustomerRows[0] as
+        | { id?: unknown; created_at?: unknown }
+        | undefined;
+      const customerId =
+        typeof existingCustomer?.id === "string" ? existingCustomer.id : demo.customer.id;
+      const customerCreatedAt =
+        typeof existingCustomer?.created_at === "string"
+          ? existingCustomer.created_at
+          : iso(-10);
 
-      upsertById(store.users, customer);
-      upsertById(store.organizations, demo.organization);
-      upsertById(store.projects, demo.project);
+      await tx`
+        insert into portal_users (id, name, email, password_hash, role, email_verified_at, created_at)
+        values (
+          ${customerId},
+          ${demo.customer.name},
+          ${demo.customer.email},
+          ${passwordHash},
+          'customer',
+          ${iso(0)},
+          ${customerCreatedAt}
+        )
+        on conflict (id) do update set
+          name = excluded.name,
+          email = excluded.email,
+          password_hash = excluded.password_hash,
+          role = excluded.role,
+          email_verified_at = excluded.email_verified_at
+      `;
 
-      const member: ProjectMember = {
-        id: `member_demo_${demo.key}`,
-        projectId: demo.project.id,
-        userId: customerId,
-        role: "client_owner",
-        createdAt: iso(-10),
-      };
-      store.projectMembers = store.projectMembers.filter(
-        (entry) =>
-          !(entry.projectId === member.projectId && entry.userId === member.userId),
-      );
-      store.projectMembers.push(member);
+      await tx`
+        insert into portal_organizations (id, name, industry, website, created_at)
+        values (
+          ${demo.organization.id},
+          ${demo.organization.name},
+          ${demo.organization.industry},
+          ${demo.organization.website ?? null},
+          ${demo.organization.createdAt}
+        )
+        on conflict (id) do update set
+          name = excluded.name,
+          industry = excluded.industry,
+          website = excluded.website
+      `;
 
-      const oldIntelligenceIndex = store.projectIntelligence.findIndex(
-        (entry) => entry.projectId === demo.project.id,
-      );
-      if (oldIntelligenceIndex >= 0) {
-        store.projectIntelligence[oldIntelligenceIndex] = demo.intelligence;
-      } else {
-        store.projectIntelligence.push(demo.intelligence);
-      }
+      await tx`
+        insert into portal_projects (
+          id, organization_id, name, summary, status, asdar_stage,
+          health, next_step, created_at, updated_at
+        )
+        values (
+          ${demo.project.id},
+          ${demo.project.organizationId},
+          ${demo.project.name},
+          ${demo.project.summary},
+          ${demo.project.status},
+          ${demo.project.asdarStage},
+          ${demo.project.health},
+          ${demo.project.nextStep},
+          ${demo.project.createdAt},
+          ${demo.project.updatedAt}
+        )
+        on conflict (id) do update set
+          organization_id = excluded.organization_id,
+          name = excluded.name,
+          summary = excluded.summary,
+          status = excluded.status,
+          asdar_stage = excluded.asdar_stage,
+          health = excluded.health,
+          next_step = excluded.next_step,
+          updated_at = excluded.updated_at
+      `;
+
+      await tx`
+        insert into portal_project_members (id, project_id, user_id, role, created_at)
+        values (${`member_demo_${demo.key}`}, ${demo.project.id}, ${customerId}, 'client_owner', ${iso(-10)})
+        on conflict (project_id, user_id) do update set role = excluded.role
+      `;
+
+      await tx`
+        insert into portal_project_intelligence (
+          project_id, company_context, stakeholders, issues, goals,
+          current_tools, data_situation, constraints, opportunities,
+          internal_notes, updated_at
+        )
+        values (
+          ${demo.intelligence.projectId},
+          ${demo.intelligence.companyContext},
+          ${demo.intelligence.stakeholders},
+          ${demo.intelligence.issues},
+          ${demo.intelligence.goals},
+          ${demo.intelligence.currentTools},
+          ${demo.intelligence.dataSituation},
+          ${demo.intelligence.constraints},
+          ${demo.intelligence.opportunities},
+          ${demo.intelligence.internalNotes},
+          ${demo.intelligence.updatedAt}
+        )
+        on conflict (project_id) do update set
+          company_context = excluded.company_context,
+          stakeholders = excluded.stakeholders,
+          issues = excluded.issues,
+          goals = excluded.goals,
+          current_tools = excluded.current_tools,
+          data_situation = excluded.data_situation,
+          constraints = excluded.constraints,
+          opportunities = excluded.opportunities,
+          internal_notes = excluded.internal_notes,
+          updated_at = excluded.updated_at
+      `;
 
       for (const update of demo.updates) {
-        upsertById(store.updates, {
-          ...update,
-          createdBy: update.by === "customer" ? customerId : admin.id,
-        });
+        await tx`
+          insert into portal_project_updates (
+            id, project_id, title, body, visibility, asdar_stage, created_by, created_at
+          )
+          values (
+            ${update.id},
+            ${update.projectId},
+            ${update.title},
+            ${update.body},
+            ${update.visibility},
+            ${update.asdarStage},
+            ${update.by === "customer" ? customerId : adminId},
+            ${update.createdAt}
+          )
+          on conflict (id) do update set
+            title = excluded.title,
+            body = excluded.body,
+            visibility = excluded.visibility,
+            asdar_stage = excluded.asdar_stage,
+            created_by = excluded.created_by
+        `;
       }
 
-      for (const task of demo.tasks) upsertById(store.tasks, task);
-      for (const milestone of demo.milestones) {
-        upsertById(store.milestones, milestone);
+      for (const task of demo.tasks) {
+        await tx`
+          insert into portal_project_tasks (
+            id, project_id, title, owner, status, due_date, visible_to_customer, created_at
+          )
+          values (
+            ${task.id},
+            ${task.projectId},
+            ${task.title},
+            ${task.owner},
+            ${task.status},
+            ${task.dueDate ?? null},
+            ${task.visibleToCustomer},
+            ${task.createdAt}
+          )
+          on conflict (id) do update set
+            title = excluded.title,
+            owner = excluded.owner,
+            status = excluded.status,
+            due_date = excluded.due_date,
+            visible_to_customer = excluded.visible_to_customer
+        `;
       }
-      for (const invoice of demo.invoices) upsertById(store.invoices, invoice);
-      for (const insight of demo.insights) upsertById(store.aiInsights, insight);
+
+      for (const milestone of demo.milestones) {
+        await tx`
+          insert into portal_project_milestones (
+            id, project_id, title, status, due_date, visible_to_customer, created_at
+          )
+          values (
+            ${milestone.id},
+            ${milestone.projectId},
+            ${milestone.title},
+            ${milestone.status},
+            ${milestone.dueDate ?? null},
+            ${milestone.visibleToCustomer},
+            ${milestone.createdAt}
+          )
+          on conflict (id) do update set
+            title = excluded.title,
+            status = excluded.status,
+            due_date = excluded.due_date,
+            visible_to_customer = excluded.visible_to_customer
+        `;
+      }
+
+      for (const invoice of demo.invoices) {
+        await tx`
+          insert into portal_invoices (
+            id, project_id, number, description, amount_cents,
+            currency, status, issued_at, due_date, payment_url, created_at
+          )
+          values (
+            ${invoice.id},
+            ${invoice.projectId},
+            ${invoice.number},
+            ${invoice.description},
+            ${invoice.amountCents},
+            ${invoice.currency},
+            ${invoice.status},
+            ${invoice.issuedAt},
+            ${invoice.dueDate ?? null},
+            ${invoice.paymentUrl ?? null},
+            ${invoice.createdAt}
+          )
+          on conflict (id) do update set
+            number = excluded.number,
+            description = excluded.description,
+            amount_cents = excluded.amount_cents,
+            currency = excluded.currency,
+            status = excluded.status,
+            issued_at = excluded.issued_at,
+            due_date = excluded.due_date,
+            payment_url = excluded.payment_url
+        `;
+      }
+
+      for (const insight of demo.insights) {
+        await tx`
+          insert into portal_ai_insights (id, project_id, title, body, kind, created_at)
+          values (
+            ${insight.id},
+            ${insight.projectId},
+            ${insight.title},
+            ${insight.body},
+            ${insight.kind},
+            ${insight.createdAt}
+          )
+          on conflict (id) do update set
+            title = excluded.title,
+            body = excluded.body,
+            kind = excluded.kind
+        `;
+      }
     }
 
     return {
