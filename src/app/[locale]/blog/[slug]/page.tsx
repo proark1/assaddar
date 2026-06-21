@@ -2,11 +2,11 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { marked } from "marked";
-import { ArrowLeft, ArrowRight } from "lucide-react";
+import { ArrowRight } from "lucide-react";
 import { getDict, SITE_URL } from "@/content";
 import { getPost, posts } from "@/blog/posts";
+import { Nav } from "@/components/nav";
 import { Footer } from "@/components/footer";
-import { ThemeToggle } from "@/components/theme-toggle";
 
 export const dynamicParams = false;
 
@@ -95,26 +95,7 @@ export default async function BlogArticle({
         dangerouslySetInnerHTML={{ __html: JSON.stringify(faqLd) }}
       />
 
-      <header className="sticky top-0 z-50 border-b border-hairline bg-bg/80 backdrop-blur-md">
-        <div className="mx-auto flex h-16 w-full max-w-[1120px] items-center justify-between px-6 md:px-10">
-          <Link
-            href="/de"
-            className="text-[15px] font-medium tracking-[0.22em] text-ink"
-          >
-            ASSADDAR<span className="text-copper">.</span>
-          </Link>
-          <div className="flex items-center gap-4">
-            <Link
-              href="/de#blog"
-              className="inline-flex items-center gap-1.5 text-[13px] text-ink2 transition-colors hover:text-ink"
-            >
-              <ArrowLeft className="h-4 w-4" />
-              Alle Artikel
-            </Link>
-            <ThemeToggle toDark={t.nav.themeToDark} toLight={t.nav.themeToLight} />
-          </div>
-        </div>
-      </header>
+      <Nav t={t.nav} locale="de" subpage />
 
       <main id="main" className="outline-none">
         <article className="mx-auto w-full max-w-[760px] px-6 py-16 md:px-10 md:py-20">

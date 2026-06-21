@@ -6,9 +6,44 @@ import { Menu, X } from "lucide-react";
 import type { Dict, Locale } from "@/content";
 import { ThemeToggle } from "./theme-toggle";
 
-export function Nav({ t, locale }: { t: Dict["nav"]; locale: Locale }) {
+export function Nav({
+  t,
+  locale,
+  subpage = false,
+}: {
+  t: Dict["nav"];
+  locale: Locale;
+  /** On subpages, in-page hash anchors must route back to the home page first. */
+  subpage?: boolean;
+}) {
   const [open, setOpen] = useState(false);
   const other: Locale = locale === "de" ? "en" : "de";
+
+  // Home: keep "#section" as a same-page anchor for smooth scroll.
+  // Subpage: rewrite "#section" -> "/<locale>#section" so it navigates home, then scrolls.
+  const isAnchor = (href: string) => href.startsWith("#") && !subpage;
+  const resolve = (href: string) =>
+    href.startsWith("#") && subpage ? `/${locale}${href}` : href;
+
+  const renderLink = (
+    l: { label: string; href: string },
+    className: string,
+    onClick?: () => void,
+  ) =>
+    isAnchor(l.href) ? (
+      <a key={l.href} href={l.href} onClick={onClick} className={className}>
+        {l.label}
+      </a>
+    ) : (
+      <Link
+        key={l.href}
+        href={resolve(l.href)}
+        onClick={onClick}
+        className={className}
+      >
+        {l.label}
+      </Link>
+    );
 
   return (
     <header className="sticky top-0 z-50 border-b border-hairline bg-bg/80 backdrop-blur-md">
@@ -22,22 +57,9 @@ export function Nav({ t, locale }: { t: Dict["nav"]; locale: Locale }) {
 
         <nav className="hidden items-center gap-8 md:flex">
           {t.links.map((l) =>
-            l.href.startsWith("#") ? (
-              <a
-                key={l.href}
-                href={l.href}
-                className="text-[13px] text-ink2 transition-colors hover:text-ink"
-              >
-                {l.label}
-              </a>
-            ) : (
-              <Link
-                key={l.href}
-                href={l.href}
-                className="text-[13px] text-ink2 transition-colors hover:text-ink"
-              >
-                {l.label}
-              </Link>
+            renderLink(
+              l,
+              "text-[13px] text-ink2 transition-colors hover:text-ink",
             ),
           )}
         </nav>
@@ -82,24 +104,10 @@ export function Nav({ t, locale }: { t: Dict["nav"]; locale: Locale }) {
         <div className="border-t border-hairline bg-bg md:hidden">
           <div className="mx-auto flex w-full max-w-[1120px] flex-col gap-1 px-6 py-4">
             {t.links.map((l) =>
-              l.href.startsWith("#") ? (
-                <a
-                  key={l.href}
-                  href={l.href}
-                  onClick={() => setOpen(false)}
-                  className="rounded-md px-2 py-2.5 text-sm text-ink2 transition-colors hover:bg-surface hover:text-ink"
-                >
-                  {l.label}
-                </a>
-              ) : (
-                <Link
-                  key={l.href}
-                  href={l.href}
-                  onClick={() => setOpen(false)}
-                  className="rounded-md px-2 py-2.5 text-sm text-ink2 transition-colors hover:bg-surface hover:text-ink"
-                >
-                  {l.label}
-                </Link>
+              renderLink(
+                l,
+                "rounded-md px-2 py-2.5 text-sm text-ink2 transition-colors hover:bg-surface hover:text-ink",
+                () => setOpen(false),
               ),
             )}
             <Link

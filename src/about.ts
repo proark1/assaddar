@@ -41,8 +41,8 @@ const de: AboutContent = {
   headline:
     "Konzern-Disziplin, Mittelstands-Pragmatismus und Gründer-Mentalität — in einer Person.",
   lead: [
-    "Ich bin Assad Dar: Transformations-Executive und Unternehmer mit 19 Jahren internationaler Führungserfahrung. Ich habe digitale Transformation dort verantwortet, wo Prozesse reguliert und komplex sind — in globalen Pharma-Konzernen — und ich habe zwei eigene Unternehmen aufgebaut, finanziert und geführt.",
-    "Diese Kombination ist selten: Ich kenne die Governance und Methodik des Konzerns, den Pragmatismus und das Budget des Mittelstands und die Geschwindigkeit eines Gründers. Genau das brauchen Unternehmen, die KI und Digitalisierung nicht als Spielerei wollen, sondern als messbaren Hebel.",
+    "Ich bin Assad Dar: Transformations-Executive und Unternehmer mit 19 Jahren internationaler Führungserfahrung — zu Hause an der Schnittstelle von IT und Business. Ich habe als dualer Student im Konzern angefangen, später digitale Transformation dort verantwortet, wo Prozesse reguliert und komplex sind — in globalen Pharma-Konzernen — und ich habe zwei eigene Unternehmen aufgebaut, finanziert und geführt.",
+    "Diese Kombination ist selten: Ich kenne die Governance und Methodik des Konzerns, den Pragmatismus und das Budget des Mittelstands und die Geschwindigkeit eines Gründers — weil ich in allen drei Welten selbst gearbeitet habe. Ich weiß, wie sich Ihre Lage anfühlt, und helfe konkret, statt nur zu präsentieren. Genau das brauchen Unternehmen, die KI und Digitalisierung nicht als Spielerei wollen, sondern als messbaren Hebel.",
   ],
   stats: [
     { value: "19", label: "Jahre internationale Führung" },
@@ -56,13 +56,13 @@ const de: AboutContent = {
       tag: "Konzern",
       title: "Globale Marken bei Bayer",
       org: "Bayer AG",
-      text: "Als Digital Lead habe ich die digitale Transformation globaler OTC-Marken wie Aspirin, Bepanthen und Iberogast verantwortet — in einem multinationalen, streng regulierten Umfeld mit Berichtslinie bis zur Führungsebene.",
+      text: "Als Digital Lead habe ich die digitale Transformation globaler OTC-Marken wie Aspirin, Bepanthen und Rennie verantwortet — in einem multinationalen, streng regulierten Umfeld mit Berichtslinie bis zur Führungsebene.",
     },
     {
       tag: "Mittelstand",
       title: "Transformation im Mittelstand",
       org: "Bionorica",
-      text: "Als Director Global Digital Transformation habe ich die digitale Transformationsfunktion eines mittelständischen Pharmaunternehmens aufgebaut und geleitet — Commercial Operating Model, Agile Governance und OKR, E-Commerce und neue digitale Geschäftsmodelle.",
+      text: "Als Director Global Digital Transformation habe ich die digitale Transformationsfunktion eines mittelständischen Pharmaunternehmens — mit Marken wie Sinupret — aufgebaut und geleitet: Commercial Operating Model, Agile Governance und OKR, E-Commerce und neue digitale Geschäftsmodelle.",
     },
     {
       tag: "Eigene Startups",
@@ -112,7 +112,7 @@ const de: AboutContent = {
       org: "Bayer AG",
       world: "Konzern",
       bullets: [
-        "Digitale Transformation globaler OTC-Marken (Aspirin, Bepanthen, Iberogast u. a.).",
+        "Digitale Transformation globaler OTC-Marken (Aspirin, Bepanthen, Rennie u. a.).",
         "Skalierbare Performance-Marketing-Infrastruktur und datengetriebene Media-Modelle.",
         "E-Commerce-Integration und cross-funktionale Steuerung (Marketing, IT, Regulatory, Sales).",
       ],
@@ -139,8 +139,8 @@ const de: AboutContent = {
       text: "In meinen eigenen Unternehmen habe ich KI-gestützte Betriebsmodelle entworfen und betrieben. Ich weiß, was in der Praxis trägt und was nur in der Präsentation gut aussieht.",
     },
     {
-      title: "Beide Welten: Konzern-Disziplin und Gründer-Tempo",
-      text: "Ich bringe die Methodik und Governance großer Organisationen mit — übersetzt in das Tempo und Budget, das Ihr Unternehmen tatsächlich hat.",
+      title: "Ich war in allen drei Welten selbst",
+      text: "Konzern, Mittelstand und eigenes Startup — ich habe in jeder dieser Welten gearbeitet und ihre Zwänge selbst erlebt. Ich verstehe Ihre Lage, statt sie mir aus Folien herzuleiten — und übersetze Konzern-Methodik in das Tempo und Budget, das Ihr Unternehmen tatsächlich hat.",
     },
     {
       title: "Ich finde, wo Prozesse wirklich Geld kosten",
@@ -153,7 +153,7 @@ const de: AboutContent = {
   ],
   eduTitle: "Ausbildung",
   education:
-    "B.Sc. Information Science for Business — FHDW Bergisch Gladbach (2010–2013)",
+    "Duales Studium bei Bayer — B.Sc. Information Science for Business, FHDW Bergisch Gladbach (2010–2013)",
   languagesTitle: "Sprachen",
   languages: "Deutsch (Muttersprache), Englisch (verhandlungssicher)",
   ctaTitle: "Lassen Sie uns über Ihr Unternehmen sprechen.",
@@ -168,8 +168,8 @@ const en: AboutContent = {
   headline:
     "Corporate discipline, Mittelstand pragmatism, and a founder's drive — in one person.",
   lead: [
-    "I'm Assad Dar: a transformation executive and entrepreneur with 19 years of international leadership experience. I led digital transformation where processes are regulated and complex — inside global pharmaceutical corporations — and I built, funded, and ran two companies of my own.",
-    "That combination is rare: I know the governance and method of the corporate world, the pragmatism and budget of the Mittelstand, and the speed of a founder. That's exactly what companies need when they want AI and digitalization as a measurable lever, not a gimmick.",
+    "I'm Assad Dar: a transformation executive and entrepreneur with 19 years of international leadership experience — at home at the intersection of IT and business. I started as a dual-study student inside a corporation, went on to lead digital transformation where processes are regulated and complex — inside global pharmaceutical corporations — and I built, funded, and ran two companies of my own.",
+    "That combination is rare: I know the governance and method of the corporate world, the pragmatism and budget of the Mittelstand, and the speed of a founder — because I've worked in all three worlds myself. I know what your situation feels like, and I help in concrete terms instead of just presenting. That's exactly what companies need when they want AI and digitalization as a measurable lever, not a gimmick.",
   ],
   stats: [
     { value: "19", label: "years of international leadership" },
@@ -183,13 +183,13 @@ const en: AboutContent = {
       tag: "Corporate",
       title: "Global brands at Bayer",
       org: "Bayer AG",
-      text: "As Digital Lead I owned the digital transformation of global OTC brands like Aspirin, Bepanthen, and Iberogast — in a multinational, strictly regulated environment with a reporting line to the top.",
+      text: "As Digital Lead I owned the digital transformation of global OTC brands like Aspirin, Bepanthen, and Rennie — in a multinational, strictly regulated environment with a reporting line to the top.",
     },
     {
       tag: "Mittelstand",
       title: "Transformation in the Mittelstand",
       org: "Bionorica",
-      text: "As Director Global Digital Transformation I built and led the digital transformation function of a mid-sized pharma company — commercial operating model, Agile governance and OKRs, e-commerce, and new digital business models.",
+      text: "As Director Global Digital Transformation I built and led the digital transformation function of a mid-sized pharma company — with brands like Sinupret: commercial operating model, Agile governance and OKRs, e-commerce, and new digital business models.",
     },
     {
       tag: "Own startups",
@@ -239,7 +239,7 @@ const en: AboutContent = {
       org: "Bayer AG",
       world: "Corporate",
       bullets: [
-        "Digital transformation of global OTC brands (Aspirin, Bepanthen, Iberogast, and more).",
+        "Digital transformation of global OTC brands (Aspirin, Bepanthen, Rennie, and more).",
         "Scalable performance-marketing infrastructure and data-driven media models.",
         "E-commerce integration and cross-functional steering (marketing, IT, regulatory, sales).",
       ],
@@ -266,8 +266,8 @@ const en: AboutContent = {
       text: "In my own companies I designed and ran AI-enabled operating models. I know what holds up in practice and what only looks good in a deck.",
     },
     {
-      title: "Both worlds: corporate discipline and founder speed",
-      text: "I bring the method and governance of large organizations — translated into the speed and budget your company actually has.",
+      title: "I've been in all three worlds myself",
+      text: "Corporate, Mittelstand, and my own startup — I've worked in each and felt their constraints first-hand. I understand your situation instead of inferring it from a deck — and I translate corporate method into the speed and budget your company actually has.",
     },
     {
       title: "I find where processes really cost money",
@@ -280,7 +280,7 @@ const en: AboutContent = {
   ],
   eduTitle: "Education",
   education:
-    "B.Sc. Information Science for Business — FHDW Bergisch Gladbach (2010–2013)",
+    "Dual study program at Bayer — B.Sc. Information Science for Business, FHDW Bergisch Gladbach (2010–2013)",
   languagesTitle: "Languages",
   languages: "German (native), English (fluent)",
   ctaTitle: "Let's talk about your company.",

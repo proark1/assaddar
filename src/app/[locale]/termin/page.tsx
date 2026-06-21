@@ -1,10 +1,9 @@
 import type { Metadata } from "next";
-import Link from "next/link";
 import { ArrowRight, Calendar, Mail, Phone } from "lucide-react";
 import { CAL_LINK, getDict, isLocale, type Locale } from "@/content";
 import { ContactForm } from "@/components/contact-form";
+import { Nav } from "@/components/nav";
 import { Footer } from "@/components/footer";
-import { ThemeToggle } from "@/components/theme-toggle";
 
 export function generateStaticParams() {
   return [{ locale: "de" }, { locale: "en" }];
@@ -38,25 +37,7 @@ export default async function TerminPage({
 
   return (
     <>
-      <header className="sticky top-0 z-50 border-b border-hairline bg-bg/80 backdrop-blur-md">
-        <div className="mx-auto flex h-16 w-full max-w-[1120px] items-center justify-between px-6 md:px-10">
-          <Link
-            href={`/${safe}`}
-            className="text-[15px] font-medium tracking-[0.22em] text-ink"
-          >
-            ASSADDAR<span className="text-copper">.</span>
-          </Link>
-          <div className="flex items-center gap-4">
-            <Link
-              href={`/${safe}`}
-              className="text-[13px] text-ink2 transition-colors hover:text-ink"
-            >
-              {tt.backHome}
-            </Link>
-            <ThemeToggle toDark={t.nav.themeToDark} toLight={t.nav.themeToLight} />
-          </div>
-        </div>
-      </header>
+      <Nav t={t.nav} locale={safe} subpage />
 
       <main id="main" className="outline-none">
         <section className="mx-auto w-full max-w-[760px] px-6 py-16 md:px-10 md:py-20">
