@@ -3,12 +3,17 @@ import { randomBytes } from "crypto";
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { isLocale, type Locale } from "@/content";
-import { requireAdmin } from "@/lib/portal/auth";
+import { requireAdmin, requireUser } from "@/lib/portal/auth";
 import { requestExternalAiInsight } from "@/lib/portal/ai-providers";
+import {
+  buildConsultantBrief,
+  buildCustomerSafeSummary,
+} from "@/lib/portal/automation";
 import { appUrl } from "@/lib/portal/config";
 import { sendPortalEmail } from "@/lib/portal/email";
 import {
   findUserByEmail,
+  getProjectAccess,
   getProjectBundle,
   id,
   mutateStore,
@@ -134,6 +139,30 @@ function safeFilename(value: string) {
 
 function adminProjectPath(locale: Locale, projectId: string) {
   return `/${locale}/portal/admin/projects/${projectId}`;
+}
+
+function customerProjectPath(locale: Locale, projectId: string) {
+  return `/${locale}/portal/projects/${projectId}`;
+}
+
+function appendNote(existing: string, title: string, body: string) {
+  if (!body) return existing;
+  return [existing, `${title}\n${body}`].filter(Boolean).join("\n\n");
+}
+
+async function requireProjectAccessForAction(locale: Locale, projectId: string) {
+  const user = await requireUser(locale);
+  const store = await readStore();
+  if (!getProjectAccess(store, user.id, projectId)) {
+    redirect(`/${locale}/portal`);
+  }
+  return user;
+}
+
+function revalidateProjectViews(locale: Locale, projectId: string) {
+  revalidatePath(adminProjectPath(locale, projectId));
+  revalidatePath(customerProjectPath(locale, projectId));
+  revalidatePath(`/${locale}/portal`);
 }
 
 function randomTemporaryPassword() {
@@ -494,6 +523,142 @@ export async function updateIntelligenceAction(formData: FormData) {
 
   revalidatePath(adminProjectPath(locale, projectId));
   redirect(`${adminProjectPath(locale, projectId)}?saved=intelligence`);
+}
+
+export async function submitCustomerIntakeAction(formData: FormData) {
+  const locale = safeLocale(formData.get("locale"));
+  const projectId = text(formData, "projectId");
+  const user = await requireProjectAccessForAction(locale, projectId);
+  if (user.role === "admin") redirect(adminProjectPath(locale, projectId));
+
+  const answers = [
+    ["Unternehmenskontext", text(formData, "companyContext")],
+    ["Probleme und Engpaesse", text(formData, "issues")],
+    ["Ziele", text(formData, "goals")],
+    ["Aktuelle Tools", text(formData, "currentTools")],
+    ["Daten und Dokumente", text(formData, "dataSituation")],
+    ["Rahmenbedingungen", text(formData, "constraints")],
+  ].filter((entry) => entry[1]);
+
+  const questionLabels = formData.getAll("questionLabel").map(String);
+  const questionAnswers = formData.getAll("questionAnswer").map(String);
+  const questionnaire = questionLabels
+    .map((label, index) => ({
+      label: label.trim(),
+      answer: (questionAnswers[index] ?? "").trim(),
+    }))
+    .filter((entry) => entry.label && entry.answer);
+
+  if (answers.length === 0 && questionnaire.length === 0) {
+    redirect(`${customerProjectPath(locale, projectId)}?error=intake`);
+  }
+
+  await mutateStore((store) => {
+    const bundle = getProjectBundle(store, projectId);
+    if (!bundle) return;
+
+    const now = new Date().toISOString();
+    const answerBlock = [
+      `Eingereicht von ${user.name} (${user.email}) am ${now.slice(0, 10)}`,
+      "",
+      ...answers.map(([label, answer]) => `${label}:\n${answer}`),
+      ...questionnaire.map(
+        (entry) => `${entry.label}:\n${entry.answer}`,
+      ),
+    ].join("\n\n");
+
+    upsertIntelligence(store, projectId, {
+      companyContext: appendNote(
+        bundle.intelligence.companyContext,
+        "Kundeninput: Unternehmenskontext",
+        text(formData, "companyContext"),
+      ),
+      stakeholders: bundle.intelligence.stakeholders,
+      issues: appendNote(
+        bundle.intelligence.issues,
+        "Kundeninput: Probleme und Engpaesse",
+        text(formData, "issues"),
+      ),
+      goals: appendNote(
+        bundle.intelligence.goals,
+        "Kundeninput: Ziele",
+        text(formData, "goals"),
+      ),
+      currentTools: appendNote(
+        bundle.intelligence.currentTools,
+        "Kundeninput: Aktuelle Tools",
+        text(formData, "currentTools"),
+      ),
+      dataSituation: appendNote(
+        bundle.intelligence.dataSituation,
+        "Kundeninput: Daten und Dokumente",
+        text(formData, "dataSituation"),
+      ),
+      constraints: appendNote(
+        bundle.intelligence.constraints,
+        "Kundeninput: Rahmenbedingungen",
+        text(formData, "constraints"),
+      ),
+      opportunities: bundle.intelligence.opportunities,
+      internalNotes: appendNote(
+        bundle.intelligence.internalNotes,
+        "Kundenfragebogen",
+        answerBlock,
+      ),
+    });
+
+    store.updates.push({
+      id: id("update"),
+      projectId,
+      title: "Intake: Kundenantworten eingereicht",
+      body:
+        "Der gefuehrte Fragebogen wurde eingereicht. Assad nutzt die Antworten fuer Analyse, Empfehlungen und naechste Schritte.",
+      visibility: "customer",
+      asdarStage: bundle.project.asdarStage,
+      createdBy: user.id,
+      createdAt: now,
+    });
+
+    const updatedBundle = getProjectBundle(store, projectId);
+    if (updatedBundle) {
+      store.aiInsights.push({
+        id: id("insight"),
+        projectId,
+        title: `Intake Recommendations: ${now.slice(0, 10)}`,
+        body: buildConsultantBrief(updatedBundle),
+        kind: "guidance",
+        createdAt: now,
+      });
+    }
+
+    const hasReviewTask = store.tasks.some(
+      (task) =>
+        task.projectId === projectId &&
+        task.title === "Kundenintake auswerten und Beratungsschritte ableiten",
+    );
+    if (!hasReviewTask) {
+      store.tasks.push({
+        id: id("task"),
+        projectId,
+        title: "Kundenintake auswerten und Beratungsschritte ableiten",
+        owner: "assad",
+        status: "todo",
+        visibleToCustomer: false,
+        createdAt: now,
+      });
+    }
+
+    addAuditUpdate({
+      store,
+      projectId,
+      userId: user.id,
+      title: "Kundenintake eingereicht",
+      body: `${user.name} hat den gefuehrten Projektfragebogen eingereicht.`,
+    });
+  });
+
+  revalidateProjectViews(locale, projectId);
+  redirect(`${customerProjectPath(locale, projectId)}?saved=intake`);
 }
 
 export async function applyConsultingTemplateAction(formData: FormData) {
@@ -901,6 +1066,54 @@ export async function addUpdateAction(formData: FormData) {
   redirect(`${adminProjectPath(locale, projectId)}?saved=update`);
 }
 
+export async function addProjectCommentAction(formData: FormData) {
+  const locale = safeLocale(formData.get("locale"));
+  const projectId = text(formData, "projectId");
+  const user = await requireProjectAccessForAction(locale, projectId);
+  const message = text(formData, "message");
+  const topic = text(formData, "topic") || "Projekt";
+
+  if (!message) {
+    redirect(
+      user.role === "admin"
+        ? `${adminProjectPath(locale, projectId)}?error=comment`
+        : `${customerProjectPath(locale, projectId)}?error=comment`,
+    );
+  }
+
+  await mutateStore((store) => {
+    const bundle = getProjectBundle(store, projectId);
+    if (!bundle) return;
+
+    const now = new Date().toISOString();
+    store.updates.push({
+      id: id("update"),
+      projectId,
+      title: `Kommentar: ${topic}`,
+      body: `${user.name}\n\n${message}`,
+      visibility: "customer",
+      asdarStage: bundle.project.asdarStage,
+      createdBy: user.id,
+      createdAt: now,
+    });
+
+    addAuditUpdate({
+      store,
+      projectId,
+      userId: user.id,
+      title: "Kommentar erstellt",
+      body: `${user.name} hat einen Kommentar zu "${topic}" geschrieben.`,
+    });
+  });
+
+  revalidateProjectViews(locale, projectId);
+  redirect(
+    user.role === "admin"
+      ? `${adminProjectPath(locale, projectId)}?saved=comment`
+      : `${customerProjectPath(locale, projectId)}?saved=comment`,
+  );
+}
+
 export async function addTaskAction(formData: FormData) {
   const locale = safeLocale(formData.get("locale"));
   const user = await requireAdmin(locale);
@@ -1107,6 +1320,227 @@ export async function archiveProjectAction(formData: FormData) {
   redirect(`${adminProjectPath(locale, projectId)}?saved=archive`);
 }
 
+export async function customerTaskStatusAction(formData: FormData) {
+  const locale = safeLocale(formData.get("locale"));
+  const projectId = text(formData, "projectId");
+  const taskId = text(formData, "taskId");
+  const user = await requireProjectAccessForAction(locale, projectId);
+  if (user.role === "admin") redirect(adminProjectPath(locale, projectId));
+
+  await mutateStore((store) => {
+    const bundle = getProjectBundle(store, projectId);
+    const task = store.tasks.find(
+      (entry) => entry.id === taskId && entry.projectId === projectId,
+    );
+    if (!bundle || !task || task.owner !== "customer" || !task.visibleToCustomer) {
+      return;
+    }
+
+    const now = new Date().toISOString();
+    const nextStatus = taskStatus(text(formData, "status")) === "todo"
+      ? "doing"
+      : taskStatus(text(formData, "status"));
+    task.status = nextStatus;
+
+    store.updates.push({
+      id: id("update"),
+      projectId,
+      title: `Kommentar: Aufgabe ${task.title}`,
+      body:
+        nextStatus === "done"
+          ? `${user.name}\n\nIch habe diese Aufgabe als erledigt markiert.`
+          : `${user.name}\n\nIch arbeite an dieser Aufgabe.`,
+      visibility: "customer",
+      asdarStage: bundle.project.asdarStage,
+      createdBy: user.id,
+      createdAt: now,
+    });
+
+    addAuditUpdate({
+      store,
+      projectId,
+      userId: user.id,
+      title: "Kundenaufgabe aktualisiert",
+      body: `${task.title} wurde durch ${user.name} auf ${nextStatus} gesetzt.`,
+    });
+  });
+
+  revalidateProjectViews(locale, projectId);
+  redirect(`${customerProjectPath(locale, projectId)}?saved=task`);
+}
+
+export async function customerTaskFileAction(formData: FormData) {
+  const locale = safeLocale(formData.get("locale"));
+  const projectId = text(formData, "projectId");
+  const taskId = text(formData, "taskId");
+  const user = await requireProjectAccessForAction(locale, projectId);
+  if (user.role === "admin") redirect(adminProjectPath(locale, projectId));
+
+  const file = formData.get("file");
+  if (!file || typeof file !== "object" || !("arrayBuffer" in file)) {
+    redirect(`${customerProjectPath(locale, projectId)}?error=file`);
+  }
+
+  const upload = file as File;
+  if (!upload.size) redirect(`${customerProjectPath(locale, projectId)}?error=file`);
+
+  const sourceStore = await readStore();
+  const sourceTask = sourceStore.tasks.find(
+    (entry) => entry.id === taskId && entry.projectId === projectId,
+  );
+  if (!sourceTask || sourceTask.owner !== "customer" || !sourceTask.visibleToCustomer) {
+    redirect(`${customerProjectPath(locale, projectId)}?error=file`);
+  }
+
+  const fileId = id("file");
+  const safeName = safeFilename(upload.name || "upload.bin");
+  const displayName = text(formData, "name") || upload.name || "Datei";
+  const buffer = Buffer.from(await upload.arrayBuffer());
+  const storagePath = await savePortalFile({
+    projectId,
+    fileId,
+    filename: safeName,
+    bytes: buffer,
+    contentType: upload.type || "application/octet-stream",
+  });
+
+  await mutateStore((store) => {
+    const bundle = getProjectBundle(store, projectId);
+    const task = store.tasks.find(
+      (entry) => entry.id === taskId && entry.projectId === projectId,
+    );
+    if (!bundle || !task) return;
+    const now = new Date().toISOString();
+
+    store.files.push({
+      id: fileId,
+      projectId,
+      name: displayName,
+      description: `Zur Aufgabe "${task.title}" hochgeladen von ${user.name}.`,
+      storagePath,
+      mimeType: upload.type || "application/octet-stream",
+      size: upload.size,
+      visibility: "customer",
+      uploadedBy: user.id,
+      uploadedAt: now,
+    });
+
+    if (task.status === "todo") task.status = "doing";
+
+    store.updates.push({
+      id: id("update"),
+      projectId,
+      title: `Kommentar: Datei zu ${task.title}`,
+      body: `${user.name}\n\nIch habe eine Datei zur Aufgabe hochgeladen: ${displayName}`,
+      visibility: "customer",
+      asdarStage: bundle.project.asdarStage,
+      createdBy: user.id,
+      createdAt: now,
+    });
+
+    addAuditUpdate({
+      store,
+      projectId,
+      userId: user.id,
+      title: "Kundendatei hochgeladen",
+      body: `${displayName} wurde zur Aufgabe "${task.title}" hochgeladen.`,
+    });
+  });
+
+  revalidateProjectViews(locale, projectId);
+  redirect(`${customerProjectPath(locale, projectId)}?saved=file`);
+}
+
+export async function approveMilestoneAction(formData: FormData) {
+  const locale = safeLocale(formData.get("locale"));
+  const projectId = text(formData, "projectId");
+  const milestoneId = text(formData, "milestoneId");
+  const user = await requireProjectAccessForAction(locale, projectId);
+  if (user.role === "admin") redirect(adminProjectPath(locale, projectId));
+
+  await mutateStore((store) => {
+    const bundle = getProjectBundle(store, projectId);
+    const milestone = store.milestones.find(
+      (entry) => entry.id === milestoneId && entry.projectId === projectId,
+    );
+    if (!bundle || !milestone || !milestone.visibleToCustomer) return;
+    const now = new Date().toISOString();
+
+    milestone.status = "done";
+    store.updates.push({
+      id: id("update"),
+      projectId,
+      title: `Freigabe: ${milestone.title}`,
+      body: `APPROVAL_MILESTONE:${milestone.id}\n${user.name} hat diesen Meilenstein freigegeben.`,
+      visibility: "customer",
+      asdarStage: bundle.project.asdarStage,
+      createdBy: user.id,
+      createdAt: now,
+    });
+
+    addAuditUpdate({
+      store,
+      projectId,
+      userId: user.id,
+      title: "Meilenstein freigegeben",
+      body: `${milestone.title} wurde durch ${user.name} freigegeben.`,
+    });
+  });
+
+  revalidateProjectViews(locale, projectId);
+  redirect(`${customerProjectPath(locale, projectId)}?saved=approval`);
+}
+
+export async function approveFileAction(formData: FormData) {
+  const locale = safeLocale(formData.get("locale"));
+  const projectId = text(formData, "projectId");
+  const fileId = text(formData, "fileId");
+  const user = await requireProjectAccessForAction(locale, projectId);
+  if (user.role === "admin") redirect(adminProjectPath(locale, projectId));
+
+  await mutateStore((store) => {
+    const bundle = getProjectBundle(store, projectId);
+    const file = store.files.find(
+      (entry) =>
+        entry.id === fileId &&
+        entry.projectId === projectId &&
+        entry.visibility === "customer",
+    );
+    if (!bundle || !file) return;
+
+    const hasApproval = store.updates.some(
+      (update) =>
+        update.projectId === projectId &&
+        update.title.startsWith("Freigabe:") &&
+        update.body.includes(`APPROVAL_FILE:${file.id}`),
+    );
+    if (hasApproval) return;
+
+    const now = new Date().toISOString();
+    store.updates.push({
+      id: id("update"),
+      projectId,
+      title: `Freigabe: ${file.name}`,
+      body: `APPROVAL_FILE:${file.id}\n${user.name} hat diese Datei / dieses Deliverable freigegeben.`,
+      visibility: "customer",
+      asdarStage: bundle.project.asdarStage,
+      createdBy: user.id,
+      createdAt: now,
+    });
+
+    addAuditUpdate({
+      store,
+      projectId,
+      userId: user.id,
+      title: "Deliverable freigegeben",
+      body: `${file.name} wurde durch ${user.name} freigegeben.`,
+    });
+  });
+
+  revalidateProjectViews(locale, projectId);
+  redirect(`${customerProjectPath(locale, projectId)}?saved=approval`);
+}
+
 export async function addFileAction(formData: FormData) {
   const locale = safeLocale(formData.get("locale"));
   const user = await requireAdmin(locale);
@@ -1222,6 +1656,232 @@ export async function addInvoiceAction(formData: FormData) {
   revalidatePath(adminProjectPath(locale, projectId));
   revalidatePath(`/${locale}/portal/projects/${projectId}`);
   redirect(`${adminProjectPath(locale, projectId)}?saved=invoice`);
+}
+
+export async function updateInvoiceStatusAction(formData: FormData) {
+  const locale = safeLocale(formData.get("locale"));
+  const user = await requireAdmin(locale);
+  const projectId = text(formData, "projectId");
+  const invoiceId = text(formData, "invoiceId");
+  const nextStatus =
+    text(formData, "status") === "paid"
+      ? "paid"
+      : text(formData, "status") === "overdue"
+        ? "overdue"
+        : text(formData, "status") === "draft"
+          ? "draft"
+          : "sent";
+
+  await mutateStore((store) => {
+    const invoice = store.invoices.find(
+      (entry) => entry.id === invoiceId && entry.projectId === projectId,
+    );
+    if (!invoice || !getProjectBundle(store, projectId)) return;
+
+    const previousStatus = invoice.status;
+    invoice.status = nextStatus;
+    addAuditUpdate({
+      store,
+      projectId,
+      userId: user.id,
+      title: "Rechnungsstatus aktualisiert",
+      body: `${invoice.number} wurde von ${previousStatus} auf ${nextStatus} gesetzt.`,
+    });
+  });
+
+  revalidateProjectViews(locale, projectId);
+  redirect(`${adminProjectPath(locale, projectId)}?saved=invoice-status`);
+}
+
+export async function sendProjectReminderAction(formData: FormData) {
+  const locale = safeLocale(formData.get("locale"));
+  const user = await requireAdmin(locale);
+  const projectId = text(formData, "projectId");
+  const reminderType = text(formData, "reminderType");
+  const entityId = text(formData, "entityId");
+
+  const sourceStore = await readStore();
+  const bundle = getProjectBundle(sourceStore, projectId);
+  if (!bundle) redirect(`/${locale}/portal/admin`);
+
+  const task = bundle.tasks.find((entry) => entry.id === entityId);
+  const invoice = bundle.invoices.find((entry) => entry.id === entityId);
+  const customMessage = text(formData, "message");
+  const reminder =
+    reminderType === "task" && task
+      ? {
+          title: `Erinnerung: Aufgabe ${task.title}`,
+          subject: `Assad Dar Portal: Aufgabe offen`,
+          body:
+            customMessage ||
+            `Bitte pruefen Sie die offene Aufgabe im Projektportal: ${task.title}`,
+        }
+      : reminderType === "invoice" && invoice
+        ? {
+            title: `Erinnerung: Rechnung ${invoice.number}`,
+            subject: `Assad Dar Portal: Rechnung ${invoice.number}`,
+            body:
+              customMessage ||
+              `Bitte pruefen Sie die Rechnung ${invoice.number} im Projektportal.`,
+          }
+        : reminderType === "intake"
+          ? {
+              title: "Erinnerung: Projektfragebogen",
+              subject: "Assad Dar Portal: Projektfragebogen",
+              body:
+                customMessage ||
+                "Bitte fuellen Sie den gefuehrten Projektfragebogen im Portal aus, damit Assad die Analyse vorbereiten kann.",
+            }
+          : {
+              title: "Erinnerung: Projektinput",
+              subject: "Assad Dar Portal: Projektinput",
+              body:
+                customMessage ||
+                "Bitte pruefen Sie das Projektportal. Dort wartet ein naechster Schritt.",
+            };
+
+  await mutateStore((store) => {
+    const nextBundle = getProjectBundle(store, projectId);
+    if (!nextBundle) return;
+    const now = new Date().toISOString();
+    store.updates.push({
+      id: id("update"),
+      projectId,
+      title: reminder.title,
+      body: reminder.body,
+      visibility: "customer",
+      asdarStage: nextBundle.project.asdarStage,
+      createdBy: user.id,
+      createdAt: now,
+    });
+    addAuditUpdate({
+      store,
+      projectId,
+      userId: user.id,
+      title: "Reminder gesendet",
+      body: reminder.title,
+    });
+  });
+
+  await notifyProjectCustomers({
+    locale,
+    projectId,
+    subject: reminder.subject,
+    body: reminder.body,
+  });
+  revalidateProjectViews(locale, projectId);
+  redirect(`${adminProjectPath(locale, projectId)}?saved=reminder`);
+}
+
+export async function generateProjectBriefAction(formData: FormData) {
+  const locale = safeLocale(formData.get("locale"));
+  const user = await requireAdmin(locale);
+  const projectId = text(formData, "projectId");
+  const publishSummary = checkbox(formData, "publishSummary");
+  const createActions = checkbox(formData, "createActions");
+  const sourceStore = await readStore();
+  const bundle = getProjectBundle(sourceStore, projectId);
+  if (!bundle) redirect(`/${locale}/portal/admin`);
+
+  const now = new Date();
+  const nowIso = now.toISOString();
+  const briefText = buildConsultantBrief(bundle);
+  const customerSummary = buildCustomerSafeSummary(bundle);
+  const briefId = id("brief");
+  const filename = `ASDAR-Projektbrief-${nowIso.slice(0, 10)}.txt`;
+  const buffer = Buffer.from(
+    [briefText, "", "Customer Safe Summary", "", customerSummary].join("\n"),
+    "utf8",
+  );
+  const storagePath = await savePortalFile({
+    projectId,
+    fileId: briefId,
+    filename,
+    bytes: buffer,
+    contentType: "text/plain; charset=utf-8",
+  });
+
+  await mutateStore((store) => {
+    const nextBundle = getProjectBundle(store, projectId);
+    if (!nextBundle) return;
+    const template = matchConsultingTemplate(nextBundle.organization.industry);
+
+    store.aiInsights.push({
+      id: id("insight"),
+      projectId,
+      title: `Consultant Brief: ${nowIso.slice(0, 10)}`,
+      body: briefText,
+      kind: "guidance",
+      createdAt: nowIso,
+    });
+
+    store.files.push({
+      id: briefId,
+      projectId,
+      name: `ASDAR Projektbrief ${nowIso.slice(0, 10)}`,
+      description: "Interner Consultant Brief mit Kunden-Zusammenfassung.",
+      storagePath,
+      mimeType: "text/plain; charset=utf-8",
+      size: buffer.length,
+      visibility: "internal",
+      uploadedBy: user.id,
+      uploadedAt: nowIso,
+    });
+
+    if (publishSummary) {
+      store.updates.push({
+        id: id("update"),
+        projectId,
+        title: "Projektbrief aktualisiert",
+        body: customerSummary,
+        visibility: "customer",
+        asdarStage: nextBundle.project.asdarStage,
+        createdBy: user.id,
+        createdAt: nowIso,
+      });
+    }
+
+    if (createActions) {
+      const existingTitles = new Set(
+        store.tasks
+          .filter((task) => task.projectId === projectId)
+          .map((task) => task.title.toLowerCase()),
+      );
+      for (const item of template.quickWins.slice(0, 3)) {
+        const title = `Quick Win pruefen: ${item}`;
+        if (existingTitles.has(title.toLowerCase())) continue;
+        store.tasks.push({
+          id: id("task"),
+          projectId,
+          title,
+          owner: "assad",
+          status: "todo",
+          visibleToCustomer: false,
+          createdAt: nowIso,
+        });
+      }
+    }
+
+    addAuditUpdate({
+      store,
+      projectId,
+      userId: user.id,
+      title: "Projektbrief generiert",
+      body: `Interner Brief wurde erzeugt${publishSummary ? " und eine Kundenzusammenfassung wurde veroeffentlicht" : ""}.`,
+    });
+  });
+
+  if (publishSummary) {
+    await notifyProjectCustomers({
+      locale,
+      projectId,
+      subject: "Assad Dar Portal: Projektbrief aktualisiert",
+      body: "Ein neuer Projektbrief wurde im Portal veroeffentlicht.",
+    });
+  }
+
+  revalidateProjectViews(locale, projectId);
+  redirect(`${adminProjectPath(locale, projectId)}?saved=brief`);
 }
 
 export async function generateProposalAction(formData: FormData) {

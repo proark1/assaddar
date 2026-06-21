@@ -8,9 +8,28 @@ import {
   Download,
   ExternalLink,
   FileText,
+  MessageCircle,
+  Send,
+  Upload,
 } from "lucide-react";
+import {
+  addProjectCommentAction,
+  approveFileAction,
+  approveMilestoneAction,
+  customerTaskFileAction,
+  customerTaskStatusAction,
+  submitCustomerIntakeAction,
+} from "@/app/actions/portal";
 import { isLocale, type Locale } from "@/content";
 import { requireUser } from "@/lib/portal/auth";
+import {
+  buildIntakeQuestions,
+  isApproval,
+  isCustomerComment,
+  isCustomerIntake,
+  isReminder,
+  isStructuredUpdate,
+} from "@/lib/portal/automation";
 import {
   getProjectAccess,
   getProjectBundle,
@@ -25,9 +44,11 @@ import {
 import {
   Badge,
   EmptyState,
+  fieldClass,
   PortalCard,
   PortalSectionTitle,
   PortalShell,
+  textareaClass,
 } from "@/components/portal/chrome";
 
 export const dynamic = "force-dynamic";
@@ -39,8 +60,10 @@ export const metadata: Metadata = {
 
 export default async function CustomerProjectPage({
   params,
+  searchParams,
 }: {
   params: Promise<{ locale: string; projectId: string }>;
+  searchParams: Promise<{ saved?: string; error?: string }>;
 }) {
   const { locale, projectId } = await params;
   const safe: Locale = isLocale(locale) ? locale : "de";
@@ -54,9 +77,26 @@ export default async function CustomerProjectPage({
   const bundle = getProjectBundle(store, projectId);
   if (!bundle) notFound();
 
-  const updates = bundle.updates.filter(
+  const query = await searchParams;
+  const allCustomerUpdates = bundle.updates.filter(
     (update) => update.visibility === "customer",
   );
+  const comments = allCustomerUpdates.filter((update) =>
+    isCustomerComment(update.title),
+  );
+  const approvals = allCustomerUpdates.filter((update) =>
+    isApproval(update.title),
+  );
+  const reminders = allCustomerUpdates.filter((update) =>
+    isReminder(update.title),
+  );
+  const updates = allCustomerUpdates.filter(
+    (update) => !isStructuredUpdate(update.title),
+  );
+  const intakeSubmitted = allCustomerUpdates.some((update) =>
+    isCustomerIntake(update.title),
+  );
+  const intakeQuestions = buildIntakeQuestions(bundle);
   const tasks = bundle.tasks.filter((task) => task.visibleToCustomer);
   const milestones = bundle.milestones.filter(
     (milestone) => milestone.visibleToCustomer,
@@ -64,6 +104,16 @@ export default async function CustomerProjectPage({
   const files = bundle.files.filter((file) => file.visibility === "customer");
   const invoices = bundle.invoices.filter(
     (invoice) => invoice.status !== "draft",
+  );
+  const approvedFileIds = new Set(
+    approvals
+      .map((update) => update.body.match(/APPROVAL_FILE:([^\n]+)/)?.[1])
+      .filter((value): value is string => Boolean(value)),
+  );
+  const approvedMilestoneIds = new Set(
+    approvals
+      .map((update) => update.body.match(/APPROVAL_MILESTONE:([^\n]+)/)?.[1])
+      .filter((value): value is string => Boolean(value)),
   );
   const timeline = [
     ...updates.map((update) => ({
@@ -101,6 +151,27 @@ export default async function CustomerProjectPage({
       title: invoice.number,
       body: `${formatCurrency(invoice.amountCents, invoice.currency)} · ${invoice.status}`,
     })),
+    ...comments.map((comment) => ({
+      id: comment.id,
+      date: comment.createdAt,
+      type: "Kommentar",
+      title: comment.title.replace(/^Kommentar:\s*/, ""),
+      body: comment.body,
+    })),
+    ...approvals.map((approval) => ({
+      id: approval.id,
+      date: approval.createdAt,
+      type: "Freigabe",
+      title: approval.title.replace(/^Freigabe:\s*/, ""),
+      body: approval.body.replace(/^APPROVAL_[A-Z]+:[^\n]+\n/, ""),
+    })),
+    ...reminders.map((reminder) => ({
+      id: reminder.id,
+      date: reminder.createdAt,
+      type: "Reminder",
+      title: reminder.title.replace(/^Erinnerung:\s*/, ""),
+      body: reminder.body,
+    })),
   ].sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
 
   return (
@@ -111,6 +182,16 @@ export default async function CustomerProjectPage({
       title={bundle.project.name}
       backHref={`/${safe}/portal`}
     >
+      {(query.saved || query.error) && (
+        <div className="mb-6 rounded-lg border border-copper/30 bg-copper/10 px-4 py-3 text-sm text-ink">
+          {query.saved && "Gespeichert."}
+          {query.error === "intake" &&
+            " Bitte mindestens ein Intake-Feld ausfuellen."}
+          {query.error === "file" && " Datei konnte nicht hochgeladen werden."}
+          {query.error === "comment" && " Bitte einen Kommentar eintragen."}
+        </div>
+      )}
+
       <div className="grid gap-6 lg:grid-cols-[1.4fr_0.8fr]">
         <div className="space-y-6">
           <PortalCard>
@@ -137,6 +218,71 @@ export default async function CustomerProjectPage({
                 {bundle.project.nextStep || "Der nächste Schritt wird vorbereitet."}
               </p>
             </div>
+          </PortalCard>
+
+          <PortalCard>
+            <PortalSectionTitle
+              eyebrow="Ihr Input"
+              title="Gefuehrter Projektfragebogen"
+            >
+              Ihre Antworten landen direkt in Assads interner Analyse und
+              erzeugen automatisch eine erste Beratungsgrundlage.
+            </PortalSectionTitle>
+            {intakeSubmitted && (
+              <div className="mt-4 rounded-lg border border-success/25 bg-success/10 p-3 text-sm text-success">
+                Fragebogen wurde bereits eingereicht. Sie koennen ihn erneut
+                senden, wenn sich wichtige Informationen geaendert haben.
+              </div>
+            )}
+            <details open={!intakeSubmitted} className="mt-5">
+              <summary className="cursor-pointer text-sm font-medium text-copper">
+                Fragebogen oeffnen
+              </summary>
+              <form action={submitCustomerIntakeAction} className="mt-5 space-y-4">
+                <input type="hidden" name="locale" value={safe} />
+                <input type="hidden" name="projectId" value={projectId} />
+                {intakeQuestions.map((question) =>
+                  question.id.startsWith("template_") ? (
+                    <div key={question.id}>
+                      <input
+                        type="hidden"
+                        name="questionLabel"
+                        value={question.prompt}
+                      />
+                      <label className="mb-1.5 block text-sm text-ink2">
+                        {question.prompt}
+                      </label>
+                      <textarea
+                        name="questionAnswer"
+                        placeholder={question.placeholder}
+                        className={textareaClass}
+                      />
+                    </div>
+                  ) : (
+                    <div key={question.id}>
+                      <label className="mb-1.5 block text-sm text-ink2">
+                        {question.label}
+                      </label>
+                      <p className="mb-2 text-[12px] leading-relaxed text-muted">
+                        {question.prompt}
+                      </p>
+                      <textarea
+                        name={question.id}
+                        placeholder={question.placeholder}
+                        className={textareaClass}
+                      />
+                    </div>
+                  ),
+                )}
+                <button
+                  type="submit"
+                  className="inline-flex items-center gap-2 rounded-lg bg-copper px-4 py-2.5 text-sm font-medium text-oncopper transition-colors hover:bg-copper-hi"
+                >
+                  <Send className="h-4 w-4" />
+                  Antworten senden
+                </button>
+              </form>
+            </details>
           </PortalCard>
 
           <PortalCard>
@@ -233,6 +379,32 @@ export default async function CustomerProjectPage({
                         <div className="mt-1 text-[12px] text-muted">
                           {formatDate(milestone.dueDate)} · {milestone.status}
                         </div>
+                        {approvedMilestoneIds.has(milestone.id) ? (
+                          <div className="mt-3">
+                            <Badge tone="green">Freigegeben</Badge>
+                          </div>
+                        ) : (
+                          <form action={approveMilestoneAction} className="mt-3">
+                            <input type="hidden" name="locale" value={safe} />
+                            <input
+                              type="hidden"
+                              name="projectId"
+                              value={projectId}
+                            />
+                            <input
+                              type="hidden"
+                              name="milestoneId"
+                              value={milestone.id}
+                            />
+                            <button
+                              type="submit"
+                              className="inline-flex items-center gap-2 rounded-lg border border-hairline px-3 py-2 text-[12px] font-medium text-ink transition-colors hover:border-copper hover:text-copper"
+                            >
+                              <CheckCircle2 className="h-3.5 w-3.5" />
+                              Freigeben
+                            </button>
+                          </form>
+                        )}
                       </div>
                     </div>
                   </div>
@@ -258,6 +430,58 @@ export default async function CustomerProjectPage({
                       Owner: {task.owner === "assad" ? "Assad" : "Kunde"} ·{" "}
                       {task.status} · {formatDate(task.dueDate)}
                     </div>
+                    {task.owner === "customer" && task.status !== "done" && (
+                      <div className="mt-3 space-y-3">
+                        <form action={customerTaskStatusAction}>
+                          <input type="hidden" name="locale" value={safe} />
+                          <input
+                            type="hidden"
+                            name="projectId"
+                            value={projectId}
+                          />
+                          <input type="hidden" name="taskId" value={task.id} />
+                          <input type="hidden" name="status" value="done" />
+                          <button
+                            type="submit"
+                            className="inline-flex items-center gap-2 rounded-lg border border-hairline px-3 py-2 text-[12px] font-medium text-ink transition-colors hover:border-copper hover:text-copper"
+                          >
+                            <CheckCircle2 className="h-3.5 w-3.5" />
+                            Als erledigt markieren
+                          </button>
+                        </form>
+                        <form
+                          action={customerTaskFileAction}
+                          encType="multipart/form-data"
+                          className="space-y-2 border-t border-hairline pt-3"
+                        >
+                          <input type="hidden" name="locale" value={safe} />
+                          <input
+                            type="hidden"
+                            name="projectId"
+                            value={projectId}
+                          />
+                          <input type="hidden" name="taskId" value={task.id} />
+                          <input
+                            name="name"
+                            placeholder="Dateiname / Hinweis"
+                            className={fieldClass}
+                          />
+                          <input
+                            name="file"
+                            type="file"
+                            required
+                            className="block w-full text-sm text-ink file:mr-3 file:rounded-md file:border-0 file:bg-copper file:px-3 file:py-2 file:text-sm file:font-medium file:text-oncopper"
+                          />
+                          <button
+                            type="submit"
+                            className="inline-flex items-center gap-2 rounded-lg border border-hairline px-3 py-2 text-[12px] font-medium text-ink transition-colors hover:border-copper hover:text-copper"
+                          >
+                            <Upload className="h-3.5 w-3.5" />
+                            Datei zur Aufgabe hochladen
+                          </button>
+                        </form>
+                      </div>
+                    )}
                   </div>
                 ))}
                 {tasks.length === 0 && (
@@ -266,6 +490,55 @@ export default async function CustomerProjectPage({
               </div>
             </PortalCard>
           </div>
+
+          <PortalCard>
+            <PortalSectionTitle eyebrow="Nachrichten" title="Kommentare" />
+            <form action={addProjectCommentAction} className="mt-5 space-y-3">
+              <input type="hidden" name="locale" value={safe} />
+              <input type="hidden" name="projectId" value={projectId} />
+              <input name="topic" placeholder="Thema" className={fieldClass} />
+              <textarea
+                name="message"
+                required
+                placeholder="Ihre Nachricht an Assad"
+                className={textareaClass}
+              />
+              <button
+                type="submit"
+                className="inline-flex items-center gap-2 rounded-lg bg-copper px-4 py-2.5 text-sm font-medium text-oncopper transition-colors hover:bg-copper-hi"
+              >
+                <MessageCircle className="h-4 w-4" />
+                Kommentar senden
+              </button>
+            </form>
+            <div className="mt-5 space-y-3">
+              {comments.map((comment) => {
+                const [author, ...messageParts] = comment.body.split("\n\n");
+                return (
+                  <article
+                    key={comment.id}
+                    className="rounded-lg border border-hairline bg-bg p-3"
+                  >
+                    <div className="flex flex-wrap items-center gap-2">
+                      <Badge>{comment.title.replace(/^Kommentar:\s*/, "")}</Badge>
+                      <span className="text-[12px] text-muted">
+                        {formatDate(comment.createdAt)}
+                      </span>
+                    </div>
+                    <div className="mt-2 text-sm font-medium text-ink">
+                      {author}
+                    </div>
+                    <p className="mt-1 whitespace-pre-line text-sm leading-relaxed text-ink2">
+                      {messageParts.join("\n\n")}
+                    </p>
+                  </article>
+                );
+              })}
+              {comments.length === 0 && (
+                <p className="text-sm text-muted">Noch keine Kommentare.</p>
+              )}
+            </div>
+          </PortalCard>
         </div>
 
         <aside className="space-y-6">
@@ -273,25 +546,65 @@ export default async function CustomerProjectPage({
             <PortalSectionTitle eyebrow="Dateien" title="Deliverables" />
             <div className="mt-5 space-y-3">
               {files.map((file) => (
-                <a
-                  key={file.id}
-                  href={`/api/portal/files/${file.id}`}
-                  className="flex items-start gap-3 rounded-lg border border-hairline bg-bg p-3 transition-colors hover:border-copper"
-                >
-                  <Download className="mt-0.5 h-4 w-4 text-copper" />
-                  <div>
-                    <div className="text-sm font-medium text-ink">{file.name}</div>
-                    <div className="mt-1 text-[12px] text-muted">
-                      {file.description || "Datei herunterladen"}
+                <div key={file.id} className="space-y-2">
+                  <a
+                    href={`/api/portal/files/${file.id}`}
+                    className="flex items-start gap-3 rounded-lg border border-hairline bg-bg p-3 transition-colors hover:border-copper"
+                  >
+                    <Download className="mt-0.5 h-4 w-4 text-copper" />
+                    <div>
+                      <div className="text-sm font-medium text-ink">
+                        {file.name}
+                      </div>
+                      <div className="mt-1 text-[12px] text-muted">
+                        {file.description || "Datei herunterladen"}
+                      </div>
                     </div>
-                  </div>
-                </a>
+                  </a>
+                  {approvedFileIds.has(file.id) ? (
+                    <Badge tone="green">Freigegeben</Badge>
+                  ) : (
+                    <form action={approveFileAction}>
+                      <input type="hidden" name="locale" value={safe} />
+                      <input type="hidden" name="projectId" value={projectId} />
+                      <input type="hidden" name="fileId" value={file.id} />
+                      <button
+                        type="submit"
+                        className="inline-flex items-center gap-2 rounded-lg border border-hairline px-3 py-2 text-[12px] font-medium text-ink transition-colors hover:border-copper hover:text-copper"
+                      >
+                        <CheckCircle2 className="h-3.5 w-3.5" />
+                        Datei freigeben
+                      </button>
+                    </form>
+                  )}
+                </div>
               ))}
               {files.length === 0 && (
                 <p className="text-sm text-muted">Noch keine Dateien.</p>
               )}
             </div>
           </PortalCard>
+
+          {reminders.length > 0 && (
+            <PortalCard>
+              <PortalSectionTitle eyebrow="Reminder" title="Offene Hinweise" />
+              <div className="mt-5 space-y-3">
+                {reminders.slice(0, 4).map((reminder) => (
+                  <div
+                    key={reminder.id}
+                    className="rounded-lg border border-copper/25 bg-copper/10 p-3"
+                  >
+                    <div className="text-sm font-medium text-ink">
+                      {reminder.title.replace(/^Erinnerung:\s*/, "")}
+                    </div>
+                    <p className="mt-1 text-sm leading-relaxed text-ink2">
+                      {reminder.body}
+                    </p>
+                  </div>
+                ))}
+              </div>
+            </PortalCard>
+          )}
 
           <PortalCard>
             <PortalSectionTitle eyebrow="Rechnungen" title="Payment" />

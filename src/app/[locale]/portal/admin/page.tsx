@@ -1,8 +1,16 @@
 import type { Metadata } from "next";
 import Link from "next/link";
-import { ArrowRight, BookOpen, Plus, Search, Users } from "lucide-react";
+import {
+  AlertTriangle,
+  ArrowRight,
+  BookOpen,
+  Plus,
+  Search,
+  Users,
+} from "lucide-react";
 import { createProjectAction } from "@/app/actions/portal";
 import { isLocale, type Locale } from "@/content";
+import { buildAttentionItems } from "@/lib/portal/automation";
 import { requireAdmin } from "@/lib/portal/auth";
 import { getProjectBundle, readStore } from "@/lib/portal/store";
 import {
@@ -50,6 +58,7 @@ export default async function AdminPage({
   const allBundles = store.projects
     .map((project) => getProjectBundle(store, project.id))
     .filter((bundle): bundle is NonNullable<typeof bundle> => Boolean(bundle));
+  const attentionItems = allBundles.flatMap(buildAttentionItems);
   const bundles = allBundles.filter((bundle) => {
     const matchesQuery =
       !projectQuery ||
@@ -89,6 +98,47 @@ export default async function AdminPage({
     >
       <div className="grid gap-6 lg:grid-cols-[1.35fr_0.85fr]">
         <div className="space-y-5">
+          <PortalCard>
+            <PortalSectionTitle
+              eyebrow="Heute"
+              title="Needs Attention"
+            >
+              Automatisch erkannte Punkte, bei denen Assad nachfassen,
+              erinnern oder den naechsten Beratungsschritt setzen sollte.
+            </PortalSectionTitle>
+            <div className="mt-5 space-y-3">
+              {attentionItems.slice(0, 8).map((item) => (
+                <Link
+                  key={item.id}
+                  href={`/${safe}/portal/admin/projects/${item.projectId}`}
+                  className="flex items-start gap-3 rounded-lg border border-hairline bg-bg p-3 transition-colors hover:border-copper"
+                >
+                  <AlertTriangle
+                    className={`mt-0.5 h-4 w-4 shrink-0 ${
+                      item.tone === "red" ? "text-critical" : "text-copper"
+                    }`}
+                  />
+                  <div>
+                    <div className="flex flex-wrap items-center gap-2">
+                      <div className="text-sm font-medium text-ink">
+                        {item.title}
+                      </div>
+                      <Badge tone={item.tone}>{item.tone}</Badge>
+                    </div>
+                    <p className="mt-1 text-sm leading-relaxed text-ink2">
+                      {item.body}
+                    </p>
+                  </div>
+                </Link>
+              ))}
+              {attentionItems.length === 0 && (
+                <p className="text-sm text-muted">
+                  Keine dringenden Punkte erkannt.
+                </p>
+              )}
+            </div>
+          </PortalCard>
+
           <PortalCard>
             <PortalSectionTitle
               eyebrow="Playbook Library"

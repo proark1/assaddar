@@ -3,6 +3,7 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 import {
   Archive,
+  Bell,
   BrainCircuit,
   BookOpen,
   CheckCircle2,
@@ -23,6 +24,7 @@ import {
   addFileAction,
   addInvoiceAction,
   addMilestoneAction,
+  addProjectCommentAction,
   addTaskAction,
   addUpdateAction,
   applyConsultingTemplateAction,
@@ -30,11 +32,14 @@ import {
   assignCustomerAction,
   completeSetupWizardAction,
   generateProposalAction,
+  generateProjectBriefAction,
   inviteCustomerAction,
   addMeetingNoteAction,
   runAiScanAction,
   saveKnowledgeSnapshotAction,
+  sendProjectReminderAction,
   updateIntelligenceAction,
+  updateInvoiceStatusAction,
   updateMilestoneStatusAction,
   updateProjectOverviewAction,
   updateTaskStatusAction,
@@ -42,6 +47,13 @@ import {
 import { isLocale, type Locale } from "@/content";
 import { requireAdmin } from "@/lib/portal/auth";
 import { buildConsultantGuidance, findSimilarProjects } from "@/lib/portal/ai";
+import {
+  isApproval,
+  isCustomerComment,
+  isCustomerIntake,
+  isReminder,
+  isStructuredUpdate,
+} from "@/lib/portal/automation";
 import { getProjectBundle, readStore } from "@/lib/portal/store";
 import {
   consultingTemplates,
@@ -106,8 +118,22 @@ export default async function AdminProjectPage({
   const auditUpdates = bundle.updates.filter((update) =>
     update.title.startsWith("Audit:"),
   );
+  const comments = bundle.updates.filter((update) =>
+    isCustomerComment(update.title),
+  );
+  const approvals = bundle.updates.filter((update) => isApproval(update.title));
+  const reminders = bundle.updates.filter((update) => isReminder(update.title));
+  const intakeUpdates = bundle.updates.filter((update) =>
+    isCustomerIntake(update.title),
+  );
   const projectUpdates = bundle.updates.filter(
-    (update) => !update.title.startsWith("Audit:"),
+    (update) =>
+      !update.title.startsWith("Audit:") && !isStructuredUpdate(update.title),
+  );
+  const approvedFileIds = new Set(
+    approvals
+      .map((update) => update.body.match(/APPROVAL_FILE:([^\n]+)/)?.[1])
+      .filter((value): value is string => Boolean(value)),
   );
 
   return (
@@ -138,6 +164,7 @@ export default async function AdminProjectPage({
             " AI Scan konnte nicht gespeichert werden. Prüfen Sie Provider-Key und Modell."}
           {query.error === "archive" &&
             " Zum Archivieren bitte ARCHIVIEREN exakt eingeben."}
+          {query.error === "comment" && " Bitte einen Kommentar eintragen."}
         </div>
       )}
 
@@ -572,6 +599,60 @@ export default async function AdminProjectPage({
               )}
             </div>
           </PortalCard>
+
+          <PortalCard>
+            <PortalSectionTitle
+              eyebrow="Nachrichten"
+              title="Kundenkommentare"
+            >
+              Kurze Rueckfragen und Antworten, ohne daraus ein formales
+              Statusupdate zu machen.
+            </PortalSectionTitle>
+            <form action={addProjectCommentAction} className="mt-5 space-y-3">
+              <HiddenProjectFields locale={safe} projectId={projectId} />
+              <input name="topic" placeholder="Thema" className={fieldClass} />
+              <textarea
+                name="message"
+                required
+                placeholder="Antwort oder Rueckfrage"
+                className={textareaClass}
+              />
+              <button
+                type="submit"
+                className="inline-flex items-center gap-2 rounded-lg bg-copper px-4 py-2.5 text-sm font-medium text-oncopper transition-colors hover:bg-copper-hi"
+              >
+                <MessagesSquare className="h-4 w-4" />
+                Kommentar senden
+              </button>
+            </form>
+            <div className="mt-5 space-y-3">
+              {comments.map((comment) => {
+                const [author, ...messageParts] = comment.body.split("\n\n");
+                return (
+                  <article
+                    key={comment.id}
+                    className="rounded-lg border border-hairline bg-bg p-3"
+                  >
+                    <div className="flex flex-wrap items-center gap-2">
+                      <Badge>{comment.title.replace(/^Kommentar:\s*/, "")}</Badge>
+                      <span className="text-[12px] text-muted">
+                        {formatDate(comment.createdAt)}
+                      </span>
+                    </div>
+                    <div className="mt-2 text-sm font-medium text-ink">
+                      {author}
+                    </div>
+                    <p className="mt-1 whitespace-pre-line text-sm leading-relaxed text-ink2">
+                      {messageParts.join("\n\n")}
+                    </p>
+                  </article>
+                );
+              })}
+              {comments.length === 0 && (
+                <p className="text-sm text-muted">Noch keine Kommentare.</p>
+              )}
+            </div>
+          </PortalCard>
         </div>
 
         <aside className="space-y-6">
@@ -876,6 +957,45 @@ export default async function AdminProjectPage({
                 Knowledge Snapshot speichern
               </button>
             </form>
+            <form
+              action={generateProjectBriefAction}
+              className="mt-3 rounded-lg border border-copper/25 bg-copper/10 p-3"
+            >
+              <HiddenProjectFields locale={safe} projectId={projectId} />
+              <div className="text-sm font-medium text-ink">
+                Projektbrief Generator
+              </div>
+              <p className="mt-1 text-[12px] leading-relaxed text-ink2">
+                Erzeugt internen Consultant Brief, Kunden-Zusammenfassung,
+                Meeting-Fokus und Quick-Win-Ideen aus dem aktuellen Projektstand.
+              </p>
+              <div className="mt-3 space-y-2 text-sm text-ink2">
+                <label className="flex items-center gap-2">
+                  <input
+                    name="publishSummary"
+                    type="checkbox"
+                    className="h-4 w-4 accent-[var(--color-copper)]"
+                  />
+                  Kundensichere Zusammenfassung veroeffentlichen
+                </label>
+                <label className="flex items-center gap-2">
+                  <input
+                    name="createActions"
+                    type="checkbox"
+                    defaultChecked
+                    className="h-4 w-4 accent-[var(--color-copper)]"
+                  />
+                  Quick-Win-Aufgaben fuer Assad anlegen
+                </label>
+              </div>
+              <button
+                type="submit"
+                className="mt-3 inline-flex w-full items-center justify-center gap-2 rounded-lg bg-copper px-4 py-2.5 text-sm font-medium text-oncopper transition-colors hover:bg-copper-hi"
+              >
+                <BrainCircuit className="h-4 w-4" />
+                Projektbrief generieren
+              </button>
+            </form>
             <div className="mt-5 space-y-3">
               {bundle.aiInsights.map((insight) => (
                 <article
@@ -932,6 +1052,92 @@ export default async function AdminProjectPage({
                   sobald mehrere Projekte gepflegt sind.
                 </p>
               )}
+            </div>
+          </PortalCard>
+
+          <PortalCard>
+            <PortalSectionTitle
+              eyebrow="Customer Signals"
+              title="Input, Freigaben, Reminder"
+            >
+              Schneller Blick darauf, was vom Kunden gekommen ist und wo Assad
+              nachfassen sollte.
+            </PortalSectionTitle>
+            <div className="mt-5 space-y-4">
+              <div className="rounded-lg border border-hairline bg-bg p-3">
+                <div className="flex flex-wrap items-center justify-between gap-3">
+                  <div>
+                    <div className="text-sm font-medium text-ink">
+                      Kunden-Intake
+                    </div>
+                    <div className="mt-1 text-[12px] text-muted">
+                      {intakeUpdates.length > 0
+                        ? `Eingereicht: ${formatDate(intakeUpdates[0].createdAt)}`
+                        : "Noch nicht eingereicht"}
+                    </div>
+                  </div>
+                  <Badge tone={intakeUpdates.length > 0 ? "green" : "amber"}>
+                    {intakeUpdates.length > 0 ? "Vorhanden" : "Offen"}
+                  </Badge>
+                </div>
+                {intakeUpdates.length === 0 && (
+                  <form action={sendProjectReminderAction} className="mt-3">
+                    <HiddenProjectFields locale={safe} projectId={projectId} />
+                    <input type="hidden" name="reminderType" value="intake" />
+                    <button
+                      type="submit"
+                      className="inline-flex w-full items-center justify-center gap-2 rounded-lg border border-hairline px-3 py-2 text-[12px] font-medium text-ink transition-colors hover:border-copper hover:text-copper"
+                    >
+                      <Bell className="h-3.5 w-3.5" />
+                      Intake Reminder senden
+                    </button>
+                  </form>
+                )}
+              </div>
+
+              <div>
+                <h3 className="text-sm font-medium text-ink">Freigaben</h3>
+                <div className="mt-2 space-y-2">
+                  {approvals.slice(0, 4).map((approval) => (
+                    <div
+                      key={approval.id}
+                      className="rounded-lg border border-hairline bg-bg p-3"
+                    >
+                      <div className="text-sm font-medium text-ink">
+                        {approval.title.replace(/^Freigabe:\s*/, "")}
+                      </div>
+                      <div className="mt-1 text-[12px] text-muted">
+                        {formatDate(approval.createdAt)}
+                      </div>
+                    </div>
+                  ))}
+                  {approvals.length === 0 && (
+                    <p className="text-sm text-muted">Noch keine Freigaben.</p>
+                  )}
+                </div>
+              </div>
+
+              <div>
+                <h3 className="text-sm font-medium text-ink">Reminder</h3>
+                <div className="mt-2 space-y-2">
+                  {reminders.slice(0, 4).map((reminder) => (
+                    <div
+                      key={reminder.id}
+                      className="rounded-lg border border-hairline bg-bg p-3"
+                    >
+                      <div className="text-sm font-medium text-ink">
+                        {reminder.title.replace(/^Erinnerung:\s*/, "")}
+                      </div>
+                      <p className="mt-1 text-[12px] leading-relaxed text-muted">
+                        {reminder.body}
+                      </p>
+                    </div>
+                  ))}
+                  {reminders.length === 0 && (
+                    <p className="text-sm text-muted">Noch keine Reminder.</p>
+                  )}
+                </div>
+              </div>
             </div>
           </PortalCard>
 
@@ -1076,7 +1282,14 @@ export default async function AdminProjectPage({
                 >
                   <Download className="mt-0.5 h-4 w-4 text-copper" />
                   <div>
-                    <div className="text-sm font-medium text-ink">{file.name}</div>
+                    <div className="flex flex-wrap items-center gap-2">
+                      <div className="text-sm font-medium text-ink">
+                        {file.name}
+                      </div>
+                      {approvedFileIds.has(file.id) && (
+                        <Badge tone="green">Freigegeben</Badge>
+                      )}
+                    </div>
                     <div className="mt-1 text-[12px] text-muted">
                       {file.visibility} · {Math.ceil(file.size / 1024)} KB
                     </div>
@@ -1158,6 +1371,22 @@ export default async function AdminProjectPage({
                       </button>
                     </form>
                   </div>
+                  {task.owner === "customer" &&
+                    task.visibleToCustomer &&
+                    task.status !== "done" && (
+                      <form action={sendProjectReminderAction} className="mt-3">
+                        <HiddenProjectFields locale={safe} projectId={projectId} />
+                        <input type="hidden" name="reminderType" value="task" />
+                        <input type="hidden" name="entityId" value={task.id} />
+                        <button
+                          type="submit"
+                          className="inline-flex items-center gap-2 rounded-lg border border-hairline px-3 py-2 text-[12px] font-medium text-ink transition-colors hover:border-copper hover:text-copper"
+                        >
+                          <Bell className="h-3.5 w-3.5" />
+                          Kunden erinnern
+                        </button>
+                      </form>
+                    )}
                 </div>
               ))}
             </div>
@@ -1362,6 +1591,58 @@ export default async function AdminProjectPage({
                   </div>
                   <div className="mt-1 text-[12px] text-muted">
                     Fällig: {formatDate(invoice.dueDate)}
+                  </div>
+                  <div className="mt-3 grid gap-2 sm:grid-cols-[1fr_auto]">
+                    <form
+                      action={updateInvoiceStatusAction}
+                      className="flex items-center gap-2"
+                    >
+                      <HiddenProjectFields locale={safe} projectId={projectId} />
+                      <input
+                        type="hidden"
+                        name="invoiceId"
+                        value={invoice.id}
+                      />
+                      <select
+                        name="status"
+                        defaultValue={invoice.status}
+                        className={fieldClass}
+                      >
+                        <option value="sent">Sent</option>
+                        <option value="draft">Draft</option>
+                        <option value="paid">Paid</option>
+                        <option value="overdue">Overdue</option>
+                      </select>
+                      <button
+                        type="submit"
+                        aria-label="Rechnungsstatus speichern"
+                        className="inline-flex h-9 w-9 shrink-0 items-center justify-center rounded-lg border border-hairline text-ink2 transition-colors hover:border-copper hover:text-copper"
+                      >
+                        <CheckCircle2 className="h-4 w-4" />
+                      </button>
+                    </form>
+                    {invoice.status !== "paid" && invoice.status !== "draft" && (
+                      <form action={sendProjectReminderAction}>
+                        <HiddenProjectFields locale={safe} projectId={projectId} />
+                        <input
+                          type="hidden"
+                          name="reminderType"
+                          value="invoice"
+                        />
+                        <input
+                          type="hidden"
+                          name="entityId"
+                          value={invoice.id}
+                        />
+                        <button
+                          type="submit"
+                          className="inline-flex h-9 items-center justify-center gap-2 rounded-lg border border-hairline px-3 text-[12px] font-medium text-ink transition-colors hover:border-copper hover:text-copper"
+                        >
+                          <Bell className="h-3.5 w-3.5" />
+                          Reminder
+                        </button>
+                      </form>
+                    )}
                   </div>
                 </div>
               ))}

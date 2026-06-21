@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import { getStripeWebhookClient } from "@/lib/portal/payments";
-import { mutateStore } from "@/lib/portal/store";
+import { id, mutateStore } from "@/lib/portal/store";
 
 export const dynamic = "force-dynamic";
 
@@ -36,7 +36,36 @@ export async function POST(request: Request) {
     if (invoiceId) {
       await mutateStore((store) => {
         const invoice = store.invoices.find((entry) => entry.id === invoiceId);
-        if (invoice) invoice.status = "paid";
+        if (!invoice || invoice.status === "paid") return;
+
+        invoice.status = "paid";
+        const project = store.projects.find(
+          (entry) => entry.id === invoice.projectId,
+        );
+        const admin = store.users.find((entry) => entry.role === "admin");
+        if (!project || !admin) return;
+
+        const now = new Date().toISOString();
+        store.updates.push({
+          id: id("update"),
+          projectId: invoice.projectId,
+          title: "Zahlung: Rechnung bezahlt",
+          body: `Rechnung ${invoice.number} wurde per Stripe als bezahlt markiert.`,
+          visibility: "customer",
+          asdarStage: project.asdarStage,
+          createdBy: admin.id,
+          createdAt: now,
+        });
+        store.updates.push({
+          id: id("update"),
+          projectId: invoice.projectId,
+          title: "Audit: Zahlung synchronisiert",
+          body: `Stripe hat Rechnung ${invoice.number} als bezahlt gemeldet.`,
+          visibility: "internal",
+          asdarStage: project.asdarStage,
+          createdBy: admin.id,
+          createdAt: now,
+        });
       });
     }
   }
