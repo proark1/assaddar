@@ -12,6 +12,7 @@ yarn-error.log*
 !.env.example
 next-env.d.ts
 *.tsbuildinfo
+.portal-data/
 
 # internal strategy doc — kept out of the public repo
 docs/

@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 import Link from "next/link";
-import { Menu, X } from "lucide-react";
+import { Menu, UserRound, X } from "lucide-react";
 import type { Dict, Locale } from "@/content";
 import { ThemeToggle } from "./theme-toggle";
 
@@ -83,6 +83,13 @@ export function Nav({
             className="hidden sm:inline-flex"
           />
           <Link
+            href={`/${locale}/login`}
+            className="hidden items-center gap-1.5 rounded-lg border border-hairline px-3 py-2 text-[13px] font-medium text-ink2 transition-colors hover:border-copper hover:text-copper sm:inline-flex"
+          >
+            <UserRound className="h-3.5 w-3.5" />
+            {t.portal}
+          </Link>
+          <Link
             href={`/${locale}/termin`}
             className="hidden rounded-lg bg-copper px-4 py-2 text-[13px] font-medium text-oncopper transition-colors hover:bg-copper-hi sm:inline-flex"
           >
@@ -111,9 +118,17 @@ export function Nav({
               ),
             )}
             <Link
+              href={`/${locale}/login`}
+              onClick={() => setOpen(false)}
+              className="mt-2 inline-flex items-center justify-center gap-2 rounded-lg border border-hairline px-4 py-3 text-sm font-medium text-ink"
+            >
+              <UserRound className="h-4 w-4" />
+              {t.portal}
+            </Link>
+            <Link
               href={`/${locale}/termin`}
               onClick={() => setOpen(false)}
-              className="mt-2 inline-flex items-center justify-center rounded-lg bg-copper px-4 py-3 text-sm font-medium text-oncopper"
+              className="inline-flex items-center justify-center rounded-lg bg-copper px-4 py-3 text-sm font-medium text-oncopper"
             >
               {t.cta}
             </Link>
