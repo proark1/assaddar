@@ -6,6 +6,7 @@ import { isPostgresBackendEnabled } from "./config";
 import {
   findPostgresUserByEmail,
   findPostgresUserById,
+  readPostgresProjectBundlesForUser,
   readPostgresStore,
   writePostgresStore,
 } from "./store-postgres";
@@ -388,6 +389,19 @@ export function getProjectBundle(
       .filter((entry) => entry.projectId === projectId)
       .sort((a, b) => b.createdAt.localeCompare(a.createdAt)),
   };
+}
+
+export async function listProjectBundlesForUser(
+  user: User,
+): Promise<ProjectBundle[]> {
+  if (isPostgresBackendEnabled()) {
+    return readPostgresProjectBundlesForUser(user);
+  }
+
+  const store = await readStore();
+  return listProjectsForUser(store, user.id)
+    .map((project) => getProjectBundle(store, project.id))
+    .filter((bundle): bundle is ProjectBundle => Boolean(bundle));
 }
 
 export function upsertIntelligence(

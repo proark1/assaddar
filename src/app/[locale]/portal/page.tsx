@@ -3,11 +3,7 @@ import Link from "next/link";
 import { ArrowRight, CreditCard, FileText, FolderKanban } from "lucide-react";
 import { isLocale, type Locale } from "@/content";
 import { requireUser } from "@/lib/portal/auth";
-import {
-  getProjectBundle,
-  listProjectsForUser,
-  readStore,
-} from "@/lib/portal/store";
+import { listProjectBundlesForUser } from "@/lib/portal/store";
 import { formatCurrency, formatStage, formatStatus } from "@/lib/portal/format";
 import {
   Badge,
@@ -24,6 +20,23 @@ export const metadata: Metadata = {
   robots: { index: false, follow: false },
 };
 
+async function withTimeout<T>(promise: Promise<T>, timeoutMs: number): Promise<T> {
+  let timeout: ReturnType<typeof setTimeout> | undefined;
+  try {
+    return await Promise.race([
+      promise,
+      new Promise<T>((_, reject) => {
+        timeout = setTimeout(
+          () => reject(new Error("Portal dashboard data timed out.")),
+          timeoutMs,
+        );
+      }),
+    ]);
+  } finally {
+    if (timeout) clearTimeout(timeout);
+  }
+}
+
 export default async function PortalPage({
   params,
 }: {
@@ -32,11 +45,14 @@ export default async function PortalPage({
   const { locale } = await params;
   const safe: Locale = isLocale(locale) ? locale : "de";
   const user = await requireUser(safe);
-  const store = await readStore();
-  const projects = listProjectsForUser(store, user.id);
-  const bundles = projects
-    .map((project) => getProjectBundle(store, project.id))
-    .filter((bundle): bundle is NonNullable<typeof bundle> => Boolean(bundle));
+  let bundles: Awaited<ReturnType<typeof listProjectBundlesForUser>> = [];
+  let loadError = false;
+
+  try {
+    bundles = await withTimeout(listProjectBundlesForUser(user), 8000);
+  } catch {
+    loadError = true;
+  }
 
   const openInvoices = bundles.flatMap((bundle) =>
     bundle.invoices.filter((invoice) => invoice.status !== "paid"),
@@ -109,7 +125,13 @@ export default async function PortalPage({
       </div>
 
       <div className="mt-8">
-        {bundles.length === 0 ? (
+        {loadError ? (
+          <EmptyState title="Portal-Daten konnten nicht geladen werden">
+            Der Login war erfolgreich, aber die Projektuebersicht antwortet
+            gerade nicht schnell genug. Bitte laden Sie die Seite neu oder
+            versuchen Sie es in einem Moment erneut.
+          </EmptyState>
+        ) : bundles.length === 0 ? (
           <EmptyState title="Noch kein Projekt zugeordnet">
             Ihr Konto ist aktiv. Sobald Assad Sie einem Projekt zuordnet, sehen
             Sie hier Status, Updates, Dateien, Aufgaben und Rechnungen.

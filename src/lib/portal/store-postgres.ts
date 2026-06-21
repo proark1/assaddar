@@ -6,6 +6,7 @@ import type {
   Organization,
   PortalStore,
   Project,
+  ProjectBundle,
   ProjectFile,
   ProjectIntelligence,
   ProjectMember,
@@ -60,6 +61,219 @@ function toUser(row: Row): User {
   };
 }
 
+function toOrganization(row: Row): Organization {
+  return {
+    id: value(row.id),
+    name: value(row.name),
+    industry: value(row.industry),
+    website: value(row.website) || undefined,
+    createdAt: iso(row.created_at),
+  };
+}
+
+function toProject(row: Row): Project {
+  return {
+    id: value(row.id),
+    organizationId: value(row.organization_id),
+    name: value(row.name),
+    summary: value(row.summary),
+    status:
+      value(row.status) === "analysis"
+        ? "analysis"
+        : value(row.status) === "implementation"
+          ? "implementation"
+          : value(row.status) === "paused"
+            ? "paused"
+            : value(row.status) === "completed"
+              ? "completed"
+              : "discovery",
+    asdarStage:
+      value(row.asdar_stage) === "structure"
+        ? "structure"
+        : value(row.asdar_stage) === "digitize"
+          ? "digitize"
+          : value(row.asdar_stage) === "automate"
+            ? "automate"
+            : value(row.asdar_stage) === "realize"
+              ? "realize"
+              : "analyse",
+    health:
+      value(row.health) === "red"
+        ? "red"
+        : value(row.health) === "amber"
+          ? "amber"
+          : "green",
+    nextStep: value(row.next_step),
+    createdAt: iso(row.created_at),
+    updatedAt: iso(row.updated_at),
+  };
+}
+
+function toProjectMember(row: Row): ProjectMember {
+  return {
+    id: value(row.id),
+    projectId: value(row.project_id),
+    userId: value(row.user_id),
+    role: value(row.role) === "client_viewer" ? "client_viewer" : "client_owner",
+    createdAt: iso(row.created_at),
+  };
+}
+
+function toProjectIntelligence(row: Row): ProjectIntelligence {
+  return {
+    projectId: value(row.project_id),
+    companyContext: value(row.company_context),
+    stakeholders: value(row.stakeholders),
+    issues: value(row.issues),
+    goals: value(row.goals),
+    currentTools: value(row.current_tools),
+    dataSituation: value(row.data_situation),
+    constraints: value(row.constraints),
+    opportunities: value(row.opportunities),
+    internalNotes: value(row.internal_notes),
+    updatedAt: iso(row.updated_at),
+  };
+}
+
+function emptyProjectIntelligence(projectId: string): ProjectIntelligence {
+  return {
+    projectId,
+    companyContext: "",
+    stakeholders: "",
+    issues: "",
+    goals: "",
+    currentTools: "",
+    dataSituation: "",
+    constraints: "",
+    opportunities: "",
+    internalNotes: "",
+    updatedAt: new Date().toISOString(),
+  };
+}
+
+function toProjectUpdate(row: Row): ProjectUpdate {
+  return {
+    id: value(row.id),
+    projectId: value(row.project_id),
+    title: value(row.title),
+    body: value(row.body),
+    visibility: value(row.visibility) === "customer" ? "customer" : "internal",
+    asdarStage:
+      value(row.asdar_stage) === "structure"
+        ? "structure"
+        : value(row.asdar_stage) === "digitize"
+          ? "digitize"
+          : value(row.asdar_stage) === "automate"
+            ? "automate"
+            : value(row.asdar_stage) === "realize"
+              ? "realize"
+              : "analyse",
+    createdBy: value(row.created_by),
+    createdAt: iso(row.created_at),
+  };
+}
+
+function toProjectTask(row: Row): ProjectTask {
+  return {
+    id: value(row.id),
+    projectId: value(row.project_id),
+    title: value(row.title),
+    owner: value(row.owner) === "customer" ? "customer" : "assad",
+    status:
+      value(row.status) === "done"
+        ? "done"
+        : value(row.status) === "doing"
+          ? "doing"
+          : "todo",
+    dueDate: dateOnly(row.due_date),
+    visibleToCustomer: boolean(row.visible_to_customer),
+    createdAt: iso(row.created_at),
+  };
+}
+
+function toProjectMilestone(row: Row): ProjectMilestone {
+  return {
+    id: value(row.id),
+    projectId: value(row.project_id),
+    title: value(row.title),
+    status:
+      value(row.status) === "done"
+        ? "done"
+        : value(row.status) === "active"
+          ? "active"
+          : "planned",
+    dueDate: dateOnly(row.due_date),
+    visibleToCustomer: boolean(row.visible_to_customer),
+    createdAt: iso(row.created_at),
+  };
+}
+
+function toProjectFile(row: Row): ProjectFile {
+  return {
+    id: value(row.id),
+    projectId: value(row.project_id),
+    name: value(row.name),
+    description: value(row.description),
+    storagePath: value(row.storage_path),
+    mimeType: value(row.mime_type),
+    size: number(row.size),
+    visibility: value(row.visibility) === "customer" ? "customer" : "internal",
+    uploadedBy: value(row.uploaded_by),
+    uploadedAt: iso(row.uploaded_at),
+  };
+}
+
+function toInvoice(row: Row): Invoice {
+  return {
+    id: value(row.id),
+    projectId: value(row.project_id),
+    number: value(row.number),
+    description: value(row.description),
+    amountCents: number(row.amount_cents),
+    currency: value(row.currency) === "USD" ? "USD" : "EUR",
+    status:
+      value(row.status) === "paid"
+        ? "paid"
+        : value(row.status) === "overdue"
+          ? "overdue"
+          : value(row.status) === "draft"
+            ? "draft"
+            : "sent",
+    issuedAt: dateOnly(row.issued_at) ?? new Date().toISOString().slice(0, 10),
+    dueDate: dateOnly(row.due_date),
+    paymentUrl: value(row.payment_url) || undefined,
+    createdAt: iso(row.created_at),
+  };
+}
+
+function toAiInsight(row: Row): AiInsight {
+  return {
+    id: value(row.id),
+    projectId: value(row.project_id),
+    title: value(row.title),
+    body: value(row.body),
+    kind:
+      value(row.kind) === "similar_project"
+        ? "similar_project"
+        : value(row.kind) === "risk"
+          ? "risk"
+          : value(row.kind) === "next_step"
+            ? "next_step"
+            : "guidance",
+    createdAt: iso(row.created_at),
+  };
+}
+
+function groupByProjectId<T extends { projectId: string }>(items: T[]) {
+  const grouped = new Map<string, T[]>();
+  for (const item of items) {
+    const existing = grouped.get(item.projectId) ?? [];
+    existing.push(item);
+    grouped.set(item.projectId, existing);
+  }
+  return grouped;
+}
+
 export async function findPostgresUserByEmail(email: string) {
   const sql = getSql();
   const rows = await sql`
@@ -82,6 +296,117 @@ export async function findPostgresUserById(userId: string) {
   `;
   const row = (rows as Row[])[0];
   return row ? toUser(row) : null;
+}
+
+export async function readPostgresProjectBundlesForUser(
+  user: User,
+): Promise<ProjectBundle[]> {
+  const sql = getSql();
+  const projectRows =
+    user.role === "admin"
+      ? await sql`select * from portal_projects order by created_at asc`
+      : await sql`
+          select p.*
+          from portal_projects p
+          inner join portal_project_members pm on pm.project_id = p.id
+          where pm.user_id = ${user.id}
+          order by p.created_at asc
+        `;
+  const projects = (projectRows as Row[]).map(toProject);
+  const projectIds = projects.map((project) => project.id);
+  if (projectIds.length === 0) return [];
+
+  const organizationIds = [
+    ...new Set(projects.map((project) => project.organizationId)),
+  ];
+  const [
+    organizationRows,
+    memberRows,
+    intelligenceRows,
+    updateRows,
+    taskRows,
+    milestoneRows,
+    fileRows,
+    invoiceRows,
+    aiInsightRows,
+  ] = await Promise.all([
+    sql`select * from portal_organizations where id = any(${sql(organizationIds)})`,
+    sql`select * from portal_project_members where project_id = any(${sql(projectIds)}) order by created_at asc`,
+    sql`select * from portal_project_intelligence where project_id = any(${sql(projectIds)}) order by updated_at desc`,
+    sql`select * from portal_project_updates where project_id = any(${sql(projectIds)}) order by created_at desc`,
+    sql`select * from portal_project_tasks where project_id = any(${sql(projectIds)}) order by created_at asc`,
+    sql`select * from portal_project_milestones where project_id = any(${sql(projectIds)}) order by created_at asc`,
+    sql`select * from portal_project_files where project_id = any(${sql(projectIds)}) order by uploaded_at desc`,
+    sql`select * from portal_invoices where project_id = any(${sql(projectIds)}) order by created_at desc`,
+    sql`select * from portal_ai_insights where project_id = any(${sql(projectIds)}) order by created_at desc`,
+  ]);
+
+  const organizations = new Map(
+    (organizationRows as Row[]).map((row) => {
+      const organization = toOrganization(row);
+      return [organization.id, organization];
+    }),
+  );
+  const members = (memberRows as Row[]).map(toProjectMember);
+  const memberUserIds = [...new Set(members.map((member) => member.userId))];
+  const userRows =
+    memberUserIds.length > 0
+      ? await sql`select id, name, email, password_hash, role, email_verified_at, created_at from portal_users where id = any(${sql(memberUserIds)})`
+      : [];
+  const users = new Map(
+    (userRows as Row[]).map((row) => {
+      const memberUser = toUser(row);
+      return [memberUser.id, memberUser];
+    }),
+  );
+  const intelligence = new Map(
+    (intelligenceRows as Row[]).map((row) => {
+      const item = toProjectIntelligence(row);
+      return [item.projectId, item];
+    }),
+  );
+  const membersByProject = groupByProjectId(members);
+  const updatesByProject = groupByProjectId(
+    (updateRows as Row[]).map(toProjectUpdate),
+  );
+  const tasksByProject = groupByProjectId((taskRows as Row[]).map(toProjectTask));
+  const milestonesByProject = groupByProjectId(
+    (milestoneRows as Row[]).map(toProjectMilestone),
+  );
+  const filesByProject = groupByProjectId((fileRows as Row[]).map(toProjectFile));
+  const invoicesByProject = groupByProjectId(
+    (invoiceRows as Row[]).map(toInvoice),
+  );
+  const aiInsightsByProject = groupByProjectId(
+    (aiInsightRows as Row[]).map(toAiInsight),
+  );
+
+  return projects.flatMap((project) => {
+    const organization = organizations.get(project.organizationId);
+    if (!organization) return [];
+
+    const projectMembers = membersByProject.get(project.id) ?? [];
+    const customerUsers = projectMembers
+      .map((member) => users.get(member.userId))
+      .filter((entry): entry is User => Boolean(entry));
+
+    return [
+      {
+        project,
+        organization,
+        members: projectMembers,
+        customerUsers,
+        intelligence:
+          intelligence.get(project.id) ?? emptyProjectIntelligence(project.id),
+        updates: updatesByProject.get(project.id) ?? [],
+        tasks: tasksByProject.get(project.id) ?? [],
+        milestones: milestonesByProject.get(project.id) ?? [],
+        files: filesByProject.get(project.id) ?? [],
+        invoices: invoicesByProject.get(project.id) ?? [],
+        aiInsights: aiInsightsByProject.get(project.id) ?? [],
+      },
+    ];
+  });
 }
 
 export async function readPostgresStore(): Promise<PortalStore> {
