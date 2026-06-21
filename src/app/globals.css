@@ -1,0 +1,113 @@
+@import "tailwindcss";
+
+@theme {
+  --color-bg: var(--bg);
+  --color-surface: var(--surface);
+  --color-surface2: var(--surface2);
+  --color-hairline: var(--hairline);
+  --color-strong: var(--strong);
+
+  --color-copper: var(--copper);
+  --color-copper-hi: var(--copper-hi);
+  --color-copper-lo: var(--copper-lo);
+  --color-slate: var(--slate);
+
+  --color-ink: var(--ink);
+  --color-ink2: var(--ink2);
+  --color-muted: var(--muted);
+
+  --color-success: var(--success);
+  --color-critical: var(--critical);
+
+  --color-oncopper: #15181d;
+
+  --shadow-card: 0 1px 2px rgba(22, 25, 30, 0.04), 0 8px 24px -8px rgba(22, 25, 30, 0.12);
+
+  --font-sans: var(--font-geist-sans), ui-sans-serif, system-ui, sans-serif;
+  --font-mono: var(--font-geist-mono), ui-monospace, monospace;
+  --font-serif: var(--font-source-serif), ui-serif, Georgia, serif;
+}
+
+/* Light theme — the default */
+:root {
+  color-scheme: light;
+  --bg: #f7f5f1;
+  --surface: #ffffff;
+  --surface2: #f1ece2;
+  --hairline: #ddd6ca;
+  --strong: #c6bfb1;
+
+  --copper: #a66e2f;
+  --copper-hi: #8c5a24;
+  --copper-lo: #b98a4e;
+  --slate: #3e5573;
+
+  --ink: #16191e;
+  --ink2: #454c57;
+  --muted: #5f6671;
+
+  --success: #1f7a4d;
+  --critical: #b4453e;
+}
+
+/* Dark theme — opt-in via .dark on <html> */
+.dark {
+  color-scheme: dark;
+  --bg: #0b0d10;
+  --surface: #13161b;
+  --surface2: #1b1f26;
+  --hairline: #272c34;
+  --strong: #39414c;
+
+  --copper: #e0a458;
+  --copper-hi: #edb874;
+  --copper-lo: #b97e3a;
+  --slate: #7e97b8;
+
+  --ink: #f4f2ee;
+  --ink2: #a7aeb8;
+  --muted: #6b727d;
+
+  --success: #5fae7e;
+  --critical: #c8615a;
+}
+
+html {
+  scroll-behavior: smooth;
+  scroll-padding-top: 68px;
+}
+
+body {
+  background-color: var(--color-bg);
+  color: var(--color-ink);
+  font-family: var(--font-sans);
+  -webkit-font-smoothing: antialiased;
+  text-rendering: optimizeLegibility;
+}
+
+::selection {
+  background: var(--color-copper);
+  color: #15181d;
+}
+
+:focus-visible {
+  outline: 2px solid var(--color-copper);
+  outline-offset: 2px;
+  border-radius: 2px;
+}
+
+input[type="range"] {
+  accent-color: var(--color-copper);
+  width: 100%;
+  cursor: pointer;
+}
+
+a {
+  -webkit-tap-highlight-color: transparent;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  html {
+    scroll-behavior: auto;
+  }
+}
