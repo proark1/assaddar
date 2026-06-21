@@ -54,12 +54,24 @@ export const metadata: Metadata = {
   robots: { index: false, follow: false },
 };
 
+type CustomerView = "overview" | "input" | "actions" | "files" | "messages";
+
+function customerView(value?: string): CustomerView | null {
+  return value === "overview" ||
+    value === "input" ||
+    value === "actions" ||
+    value === "files" ||
+    value === "messages"
+    ? value
+    : null;
+}
+
 export default async function CustomerProjectPage({
   params,
   searchParams,
 }: {
   params: Promise<{ locale: string; projectId: string }>;
-  searchParams: Promise<{ saved?: string; error?: string }>;
+  searchParams: Promise<{ saved?: string; error?: string; view?: string }>;
 }) {
   const { locale, projectId } = await params;
   const safe: Locale = isLocale(locale) ? locale : "de";
@@ -167,6 +179,72 @@ export default async function CustomerProjectPage({
       body: reminder.body,
     })),
   ].sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
+  const pendingCustomerTasks = tasks.filter(
+    (task) => task.owner === "customer" && task.status !== "done",
+  );
+  const pendingMilestoneApprovals = milestones.filter(
+    (milestone) => !approvedMilestoneIds.has(milestone.id),
+  );
+  const pendingFileApprovals = files.filter(
+    (file) => !approvedFileIds.has(file.id),
+  );
+  const defaultView: CustomerView = !intakeSubmitted
+    ? "input"
+    : pendingCustomerTasks.length ||
+        pendingMilestoneApprovals.length ||
+        pendingFileApprovals.length
+      ? "actions"
+      : "overview";
+  const activeView = customerView(query.view) ?? defaultView;
+  const stepHref = (view: CustomerView) =>
+    `/${safe}/portal/projects/${projectId}?view=${view}`;
+  const steps: Array<{
+    id: CustomerView;
+    eyebrow: string;
+    title: string;
+    body: string;
+    count?: number;
+  }> = [
+    {
+      id: "overview",
+      eyebrow: "1",
+      title: "Überblick",
+      body: "Status, Fortschritt und letzte Aktivitaet.",
+      count: timeline.length,
+    },
+    {
+      id: "input",
+      eyebrow: "2",
+      title: "Fragebogen",
+      body: intakeSubmitted
+        ? "Ergaenzen bei Aenderungen."
+        : "Zuerst ausfuellen.",
+    },
+    {
+      id: "actions",
+      eyebrow: "3",
+      title: "To-dos",
+      body: "Aufgaben und Freigaben.",
+      count:
+        pendingCustomerTasks.length +
+        pendingMilestoneApprovals.length +
+        pendingFileApprovals.length,
+    },
+    {
+      id: "files",
+      eyebrow: "4",
+      title: "Dateien",
+      body: "Deliverables und Rechnungen.",
+      count: files.length + invoices.length,
+    },
+    {
+      id: "messages",
+      eyebrow: "5",
+      title: "Nachricht",
+      body: "Eine Rueckfrage senden.",
+      count: comments.length,
+    },
+  ];
 
   return (
     <PortalShell
@@ -186,34 +264,74 @@ export default async function CustomerProjectPage({
         </div>
       )}
 
-      <div className="grid gap-6 lg:grid-cols-[1.4fr_0.8fr]">
-        <div className="space-y-6">
-          <PortalCard>
-            <div className="flex flex-wrap gap-2">
-              <Badge tone="copper">{formatStage(bundle.project.asdarStage)}</Badge>
-              <Badge
-                tone={
-                  bundle.project.health === "red"
-                    ? "red"
-                    : bundle.project.health === "amber"
-                      ? "amber"
-                      : "green"
-                }
-              >
-                {formatStatus(bundle.project.status)}
-              </Badge>
-            </div>
-            <p className="mt-5 text-base leading-relaxed text-ink2">
-              {bundle.project.summary || "Die Projektbeschreibung folgt."}
+      <div className="space-y-6">
+        <PortalCard>
+          <div className="flex flex-wrap gap-2">
+            <Badge tone="copper">
+              {formatStage(bundle.project.asdarStage)}
+            </Badge>
+            <Badge
+              tone={
+                bundle.project.health === "red"
+                  ? "red"
+                  : bundle.project.health === "amber"
+                    ? "amber"
+                    : "green"
+              }
+            >
+              {formatStatus(bundle.project.status)}
+            </Badge>
+          </div>
+          <p className="mt-5 text-base leading-relaxed text-ink2">
+            {bundle.project.summary || "Die Projektbeschreibung folgt."}
+          </p>
+          <div className="mt-6 rounded-lg border border-copper/25 bg-copper/10 p-4">
+            <div className="text-sm font-medium text-ink">Nächster Schritt</div>
+            <p className="mt-2 text-sm leading-relaxed text-ink2">
+              {bundle.project.nextStep ||
+                "Der nächste Schritt wird vorbereitet."}
             </p>
-            <div className="mt-6 rounded-lg border border-copper/25 bg-copper/10 p-4">
-              <div className="text-sm font-medium text-ink">Nächster Schritt</div>
-              <p className="mt-2 text-sm leading-relaxed text-ink2">
-                {bundle.project.nextStep || "Der nächste Schritt wird vorbereitet."}
-              </p>
-            </div>
-          </PortalCard>
+          </div>
+        </PortalCard>
 
+        <nav
+          className="grid gap-3 md:grid-cols-5"
+          aria-label="Projekt-Schritte"
+        >
+          {steps.map((step) => {
+            const active = step.id === activeView;
+            return (
+              <Link
+                key={step.id}
+                href={stepHref(step.id)}
+                className={`rounded-lg border p-4 transition-colors ${
+                  active
+                    ? "border-copper bg-copper/10 text-ink"
+                    : "border-hairline bg-surface text-ink2 hover:border-copper hover:text-ink"
+                }`}
+              >
+                <div className="flex items-center justify-between gap-2">
+                  <span className="font-mono text-[10.5px] uppercase tracking-[0.14em] text-copper">
+                    Schritt {step.eyebrow}
+                  </span>
+                  {typeof step.count === "number" && step.count > 0 && (
+                    <Badge tone={active ? "copper" : "neutral"}>
+                      {step.count}
+                    </Badge>
+                  )}
+                </div>
+                <div className="mt-2 text-sm font-medium text-ink">
+                  {step.title}
+                </div>
+                <p className="mt-1 text-[12px] leading-relaxed text-muted">
+                  {step.body}
+                </p>
+              </Link>
+            );
+          })}
+        </nav>
+
+        {activeView === "input" && (
           <PortalCard>
             <PortalSectionTitle
               eyebrow="Ihr Input"
@@ -232,7 +350,10 @@ export default async function CustomerProjectPage({
               <summary className="cursor-pointer text-sm font-medium text-copper">
                 Fragebogen oeffnen
               </summary>
-              <form action={submitCustomerIntakeAction} className="mt-5 space-y-4">
+              <form
+                action={submitCustomerIntakeAction}
+                className="mt-5 space-y-4"
+              >
                 <input type="hidden" name="locale" value={safe} />
                 <input type="hidden" name="projectId" value={projectId} />
                 {intakeQuestions.map((question) =>
@@ -278,79 +399,87 @@ export default async function CustomerProjectPage({
               </form>
             </details>
           </PortalCard>
+        )}
 
-          <PortalCard>
-            <PortalSectionTitle
-              eyebrow="Timeline"
-              title="Was gerade im Projekt passiert"
-            >
-              Eine chronologische Sicht auf freigegebene Updates, Aufgaben,
-              Dateien, Meilensteine und Rechnungen.
-            </PortalSectionTitle>
-            <div className="mt-5 space-y-4">
-              {timeline.length === 0 ? (
-                <EmptyState title="Noch keine Aktivität">
-                  Sobald im Projekt etwas für Sie freigegeben wird, erscheint
-                  es hier.
-                </EmptyState>
-              ) : (
-                timeline.slice(0, 12).map((item) => (
-                  <article
-                    key={`${item.type}-${item.id}`}
-                    className="flex gap-4 rounded-lg border border-hairline bg-bg p-4"
-                  >
-                    <div className="mt-1 h-2.5 w-2.5 shrink-0 rounded-full bg-copper" />
-                    <div>
+        {activeView === "overview" && (
+          <div className="space-y-6">
+            <PortalCard>
+              <PortalSectionTitle
+                eyebrow="Timeline"
+                title="Was gerade im Projekt passiert"
+              >
+                Eine chronologische Sicht auf freigegebene Updates, Aufgaben,
+                Dateien, Meilensteine und Rechnungen.
+              </PortalSectionTitle>
+              <div className="mt-5 space-y-4">
+                {timeline.length === 0 ? (
+                  <EmptyState title="Noch keine Aktivität">
+                    Sobald im Projekt etwas für Sie freigegeben wird, erscheint
+                    es hier.
+                  </EmptyState>
+                ) : (
+                  timeline.slice(0, 12).map((item) => (
+                    <article
+                      key={`${item.type}-${item.id}`}
+                      className="flex gap-4 rounded-lg border border-hairline bg-bg p-4"
+                    >
+                      <div className="mt-1 h-2.5 w-2.5 shrink-0 rounded-full bg-copper" />
+                      <div>
+                        <div className="flex flex-wrap items-center gap-2">
+                          <Badge>{item.type}</Badge>
+                          <span className="text-[12px] text-muted">
+                            {formatDate(item.date)}
+                          </span>
+                        </div>
+                        <h3 className="mt-2 text-sm font-medium text-ink">
+                          {item.title}
+                        </h3>
+                        <p className="mt-1 line-clamp-3 whitespace-pre-line text-sm leading-relaxed text-ink2">
+                          {item.body}
+                        </p>
+                      </div>
+                    </article>
+                  ))
+                )}
+              </div>
+            </PortalCard>
+
+            <PortalCard>
+              <PortalSectionTitle eyebrow="Updates" title="Projektfortschritt">
+                Kurze Statusmeldungen, die Assad für Sie freigegeben hat.
+              </PortalSectionTitle>
+              <div className="mt-5 space-y-4">
+                {updates.length === 0 ? (
+                  <EmptyState title="Noch keine Updates">
+                    Sobald ein Update veröffentlicht wird, erscheint es hier.
+                  </EmptyState>
+                ) : (
+                  updates.map((update) => (
+                    <article
+                      key={update.id}
+                      className="border-l-2 border-copper pl-4"
+                    >
                       <div className="flex flex-wrap items-center gap-2">
-                        <Badge>{item.type}</Badge>
+                        <Badge>{formatStage(update.asdarStage)}</Badge>
                         <span className="text-[12px] text-muted">
-                          {formatDate(item.date)}
+                          {formatDate(update.createdAt)}
                         </span>
                       </div>
-                      <h3 className="mt-2 text-sm font-medium text-ink">
-                        {item.title}
+                      <h3 className="mt-2 font-medium text-ink">
+                        {update.title}
                       </h3>
-                      <p className="mt-1 line-clamp-3 whitespace-pre-line text-sm leading-relaxed text-ink2">
-                        {item.body}
+                      <p className="mt-2 whitespace-pre-line text-sm leading-relaxed text-ink2">
+                        {update.body}
                       </p>
-                    </div>
-                  </article>
-                ))
-              )}
-            </div>
-          </PortalCard>
+                    </article>
+                  ))
+                )}
+              </div>
+            </PortalCard>
+          </div>
+        )}
 
-          <PortalCard>
-            <PortalSectionTitle eyebrow="Updates" title="Projektfortschritt">
-              Kurze Statusmeldungen, die Assad für Sie freigegeben hat.
-            </PortalSectionTitle>
-            <div className="mt-5 space-y-4">
-              {updates.length === 0 ? (
-                <EmptyState title="Noch keine Updates">
-                  Sobald ein Update veröffentlicht wird, erscheint es hier.
-                </EmptyState>
-              ) : (
-                updates.map((update) => (
-                  <article
-                    key={update.id}
-                    className="border-l-2 border-copper pl-4"
-                  >
-                    <div className="flex flex-wrap items-center gap-2">
-                      <Badge>{formatStage(update.asdarStage)}</Badge>
-                      <span className="text-[12px] text-muted">
-                        {formatDate(update.createdAt)}
-                      </span>
-                    </div>
-                    <h3 className="mt-2 font-medium text-ink">{update.title}</h3>
-                    <p className="mt-2 whitespace-pre-line text-sm leading-relaxed text-ink2">
-                      {update.body}
-                    </p>
-                  </article>
-                ))
-              )}
-            </div>
-          </PortalCard>
-
+        {activeView === "actions" && (
           <div className="grid gap-6 md:grid-cols-2">
             <PortalCard>
               <PortalSectionTitle eyebrow="Meilensteine" title="Roadmap" />
@@ -378,7 +507,10 @@ export default async function CustomerProjectPage({
                             <Badge tone="green">Freigegeben</Badge>
                           </div>
                         ) : (
-                          <form action={approveMilestoneAction} className="mt-3">
+                          <form
+                            action={approveMilestoneAction}
+                            className="mt-3"
+                          >
                             <input type="hidden" name="locale" value={safe} />
                             <input
                               type="hidden"
@@ -483,8 +615,55 @@ export default async function CustomerProjectPage({
                 )}
               </div>
             </PortalCard>
-          </div>
 
+            <PortalCard className="md:col-span-2">
+              <PortalSectionTitle
+                eyebrow="Freigaben"
+                title="Dateien zur Prüfung"
+              />
+              <div className="mt-5 space-y-3">
+                {pendingFileApprovals.map((file) => (
+                  <div
+                    key={file.id}
+                    className="flex flex-col gap-3 rounded-lg border border-hairline bg-bg p-3 sm:flex-row sm:items-center sm:justify-between"
+                  >
+                    <a
+                      href={`/api/portal/files/${file.id}`}
+                      className="flex items-start gap-3 text-sm text-ink transition-colors hover:text-copper"
+                    >
+                      <Download className="mt-0.5 h-4 w-4 text-copper" />
+                      <span>
+                        <span className="block font-medium">{file.name}</span>
+                        <span className="mt-1 block text-[12px] text-muted">
+                          {file.description || "Datei herunterladen und prüfen"}
+                        </span>
+                      </span>
+                    </a>
+                    <form action={approveFileAction}>
+                      <input type="hidden" name="locale" value={safe} />
+                      <input type="hidden" name="projectId" value={projectId} />
+                      <input type="hidden" name="fileId" value={file.id} />
+                      <button
+                        type="submit"
+                        className="inline-flex items-center gap-2 rounded-lg border border-hairline px-3 py-2 text-[12px] font-medium text-ink transition-colors hover:border-copper hover:text-copper"
+                      >
+                        <CheckCircle2 className="h-3.5 w-3.5" />
+                        Datei freigeben
+                      </button>
+                    </form>
+                  </div>
+                ))}
+                {pendingFileApprovals.length === 0 && (
+                  <p className="text-sm text-muted">
+                    Keine offenen Dateifreigaben.
+                  </p>
+                )}
+              </div>
+            </PortalCard>
+          </div>
+        )}
+
+        {activeView === "messages" && (
           <PortalCard>
             <PortalSectionTitle eyebrow="Nachrichten" title="Kommentare" />
             <form action={addProjectCommentAction} className="mt-5 space-y-3">
@@ -514,7 +693,9 @@ export default async function CustomerProjectPage({
                     className="rounded-lg border border-hairline bg-bg p-3"
                   >
                     <div className="flex flex-wrap items-center gap-2">
-                      <Badge>{comment.title.replace(/^Kommentar:\s*/, "")}</Badge>
+                      <Badge>
+                        {comment.title.replace(/^Kommentar:\s*/, "")}
+                      </Badge>
                       <span className="text-[12px] text-muted">
                         {formatDate(comment.createdAt)}
                       </span>
@@ -533,133 +714,146 @@ export default async function CustomerProjectPage({
               )}
             </div>
           </PortalCard>
-        </div>
+        )}
 
-        <aside className="space-y-6">
-          <PortalCard>
-            <PortalSectionTitle eyebrow="Dateien" title="Deliverables" />
-            <div className="mt-5 space-y-3">
-              {files.map((file) => (
-                <div key={file.id} className="space-y-2">
-                  <a
-                    href={`/api/portal/files/${file.id}`}
-                    className="flex items-start gap-3 rounded-lg border border-hairline bg-bg p-3 transition-colors hover:border-copper"
-                  >
-                    <Download className="mt-0.5 h-4 w-4 text-copper" />
-                    <div>
-                      <div className="text-sm font-medium text-ink">
-                        {file.name}
-                      </div>
-                      <div className="mt-1 text-[12px] text-muted">
-                        {file.description || "Datei herunterladen"}
-                      </div>
-                    </div>
-                  </a>
-                  {approvedFileIds.has(file.id) ? (
-                    <Badge tone="green">Freigegeben</Badge>
-                  ) : (
-                    <form action={approveFileAction}>
-                      <input type="hidden" name="locale" value={safe} />
-                      <input type="hidden" name="projectId" value={projectId} />
-                      <input type="hidden" name="fileId" value={file.id} />
-                      <button
-                        type="submit"
-                        className="inline-flex items-center gap-2 rounded-lg border border-hairline px-3 py-2 text-[12px] font-medium text-ink transition-colors hover:border-copper hover:text-copper"
-                      >
-                        <CheckCircle2 className="h-3.5 w-3.5" />
-                        Datei freigeben
-                      </button>
-                    </form>
-                  )}
-                </div>
-              ))}
-              {files.length === 0 && (
-                <p className="text-sm text-muted">Noch keine Dateien.</p>
-              )}
-            </div>
-          </PortalCard>
-
-          {reminders.length > 0 && (
+        {activeView === "files" && (
+          <div className="grid gap-6 lg:grid-cols-[1fr_0.85fr]">
             <PortalCard>
-              <PortalSectionTitle eyebrow="Reminder" title="Offene Hinweise" />
+              <PortalSectionTitle eyebrow="Dateien" title="Deliverables" />
               <div className="mt-5 space-y-3">
-                {reminders.slice(0, 4).map((reminder) => (
-                  <div
-                    key={reminder.id}
-                    className="rounded-lg border border-copper/25 bg-copper/10 p-3"
-                  >
-                    <div className="text-sm font-medium text-ink">
-                      {reminder.title.replace(/^Erinnerung:\s*/, "")}
-                    </div>
-                    <p className="mt-1 text-sm leading-relaxed text-ink2">
-                      {reminder.body}
-                    </p>
+                {files.map((file) => (
+                  <div key={file.id} className="space-y-2">
+                    <a
+                      href={`/api/portal/files/${file.id}`}
+                      className="flex items-start gap-3 rounded-lg border border-hairline bg-bg p-3 transition-colors hover:border-copper"
+                    >
+                      <Download className="mt-0.5 h-4 w-4 text-copper" />
+                      <div>
+                        <div className="text-sm font-medium text-ink">
+                          {file.name}
+                        </div>
+                        <div className="mt-1 text-[12px] text-muted">
+                          {file.description || "Datei herunterladen"}
+                        </div>
+                      </div>
+                    </a>
+                    {approvedFileIds.has(file.id) ? (
+                      <Badge tone="green">Freigegeben</Badge>
+                    ) : (
+                      <form action={approveFileAction}>
+                        <input type="hidden" name="locale" value={safe} />
+                        <input
+                          type="hidden"
+                          name="projectId"
+                          value={projectId}
+                        />
+                        <input type="hidden" name="fileId" value={file.id} />
+                        <button
+                          type="submit"
+                          className="inline-flex items-center gap-2 rounded-lg border border-hairline px-3 py-2 text-[12px] font-medium text-ink transition-colors hover:border-copper hover:text-copper"
+                        >
+                          <CheckCircle2 className="h-3.5 w-3.5" />
+                          Datei freigeben
+                        </button>
+                      </form>
+                    )}
                   </div>
                 ))}
+                {files.length === 0 && (
+                  <p className="text-sm text-muted">Noch keine Dateien.</p>
+                )}
               </div>
             </PortalCard>
-          )}
 
-          <PortalCard>
-            <PortalSectionTitle eyebrow="Rechnungen" title="Payment" />
-            <div className="mt-5 space-y-3">
-              {invoices.map((invoice) => (
-                <div
-                  key={invoice.id}
-                  className="rounded-lg border border-hairline bg-bg p-3"
-                >
-                  <div className="flex items-center justify-between gap-3">
-                    <div className="flex items-center gap-2 text-sm font-medium text-ink">
-                      <CreditCard className="h-4 w-4 text-copper" />
-                      {invoice.number}
+            {reminders.length > 0 && (
+              <PortalCard>
+                <PortalSectionTitle
+                  eyebrow="Reminder"
+                  title="Offene Hinweise"
+                />
+                <div className="mt-5 space-y-3">
+                  {reminders.slice(0, 4).map((reminder) => (
+                    <div
+                      key={reminder.id}
+                      className="rounded-lg border border-copper/25 bg-copper/10 p-3"
+                    >
+                      <div className="text-sm font-medium text-ink">
+                        {reminder.title.replace(/^Erinnerung:\s*/, "")}
+                      </div>
+                      <p className="mt-1 text-sm leading-relaxed text-ink2">
+                        {reminder.body}
+                      </p>
                     </div>
-                    <Badge
-                      tone={
-                        invoice.status === "paid"
-                          ? "green"
-                          : invoice.status === "overdue"
-                            ? "red"
-                            : "amber"
-                      }
-                    >
-                      {invoice.status}
-                    </Badge>
-                  </div>
-                  <p className="mt-2 text-sm text-ink2">{invoice.description}</p>
-                  <div className="mt-2 text-sm font-medium text-ink">
-                    {formatCurrency(invoice.amountCents, invoice.currency)}
-                  </div>
-                  <div className="mt-1 text-[12px] text-muted">
-                    Fällig: {formatDate(invoice.dueDate)}
-                  </div>
-                  {invoice.paymentUrl && (
-                    <Link
-                      href={invoice.paymentUrl}
-                      className="mt-3 inline-flex items-center gap-1.5 text-sm font-medium text-copper"
-                    >
-                      Zahlung öffnen
-                      <ExternalLink className="h-3.5 w-3.5" />
-                    </Link>
-                  )}
+                  ))}
                 </div>
-              ))}
-              {invoices.length === 0 && (
-                <p className="text-sm text-muted">Keine Rechnungen sichtbar.</p>
-              )}
-            </div>
-          </PortalCard>
+              </PortalCard>
+            )}
 
-          <PortalCard>
-            <PortalSectionTitle eyebrow="Hinweis" title="Interne Arbeit" />
-            <div className="mt-4 flex gap-3 text-sm leading-relaxed text-ink2">
-              <FileText className="mt-0.5 h-4 w-4 shrink-0 text-copper" />
-              <p>
-                Sie sehen freigegebene Inhalte. Interne Analysen, Hypothesen und
-                Beratungsnotizen bleiben in Assads Arbeitsbereich.
-              </p>
-            </div>
-          </PortalCard>
-        </aside>
+            <PortalCard>
+              <PortalSectionTitle eyebrow="Rechnungen" title="Payment" />
+              <div className="mt-5 space-y-3">
+                {invoices.map((invoice) => (
+                  <div
+                    key={invoice.id}
+                    className="rounded-lg border border-hairline bg-bg p-3"
+                  >
+                    <div className="flex items-center justify-between gap-3">
+                      <div className="flex items-center gap-2 text-sm font-medium text-ink">
+                        <CreditCard className="h-4 w-4 text-copper" />
+                        {invoice.number}
+                      </div>
+                      <Badge
+                        tone={
+                          invoice.status === "paid"
+                            ? "green"
+                            : invoice.status === "overdue"
+                              ? "red"
+                              : "amber"
+                        }
+                      >
+                        {invoice.status}
+                      </Badge>
+                    </div>
+                    <p className="mt-2 text-sm text-ink2">
+                      {invoice.description}
+                    </p>
+                    <div className="mt-2 text-sm font-medium text-ink">
+                      {formatCurrency(invoice.amountCents, invoice.currency)}
+                    </div>
+                    <div className="mt-1 text-[12px] text-muted">
+                      Fällig: {formatDate(invoice.dueDate)}
+                    </div>
+                    {invoice.paymentUrl && (
+                      <Link
+                        href={invoice.paymentUrl}
+                        className="mt-3 inline-flex items-center gap-1.5 text-sm font-medium text-copper"
+                      >
+                        Zahlung öffnen
+                        <ExternalLink className="h-3.5 w-3.5" />
+                      </Link>
+                    )}
+                  </div>
+                ))}
+                {invoices.length === 0 && (
+                  <p className="text-sm text-muted">
+                    Keine Rechnungen sichtbar.
+                  </p>
+                )}
+              </div>
+            </PortalCard>
+
+            <PortalCard>
+              <PortalSectionTitle eyebrow="Hinweis" title="Interne Arbeit" />
+              <div className="mt-4 flex gap-3 text-sm leading-relaxed text-ink2">
+                <FileText className="mt-0.5 h-4 w-4 shrink-0 text-copper" />
+                <p>
+                  Sie sehen freigegebene Inhalte. Interne Analysen, Hypothesen
+                  und Beratungsnotizen bleiben in Assads Arbeitsbereich.
+                </p>
+              </div>
+            </PortalCard>
+          </div>
+        )}
       </div>
     </PortalShell>
   );

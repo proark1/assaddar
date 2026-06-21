@@ -85,6 +85,25 @@ export const metadata: Metadata = {
   robots: { index: false, follow: false },
 };
 
+type AdminProjectView =
+  | "setup"
+  | "guidance"
+  | "communication"
+  | "delivery"
+  | "billing"
+  | "access";
+
+function adminProjectView(value?: string): AdminProjectView | null {
+  return value === "setup" ||
+    value === "guidance" ||
+    value === "communication" ||
+    value === "delivery" ||
+    value === "billing" ||
+    value === "access"
+    ? value
+    : null;
+}
+
 function HiddenProjectFields({
   locale,
   projectId,
@@ -105,7 +124,12 @@ export default async function AdminProjectPage({
   searchParams,
 }: {
   params: Promise<{ locale: string; projectId: string }>;
-  searchParams: Promise<{ saved?: string; assigned?: string; error?: string }>;
+  searchParams: Promise<{
+    saved?: string;
+    assigned?: string;
+    error?: string;
+    view?: string;
+  }>;
 }) {
   const { locale, projectId } = await params;
   const safe: Locale = isLocale(locale) ? locale : "de";
@@ -138,6 +162,66 @@ export default async function AdminProjectPage({
       .map((update) => update.body.match(/APPROVAL_FILE:([^\n]+)/)?.[1])
       .filter((value): value is string => Boolean(value)),
   );
+  const activeView = adminProjectView(query.view) ?? "setup";
+  const viewClass = (view: AdminProjectView) =>
+    activeView === view ? "" : "hidden";
+  const stepHref = (view: AdminProjectView) =>
+    `/${safe}/portal/admin/projects/${projectId}?view=${view}`;
+  const openCustomerTasks = bundle.tasks.filter(
+    (task) => task.owner === "customer" && task.status !== "done",
+  ).length;
+  const openInvoices = bundle.invoices.filter(
+    (invoice) => invoice.status !== "paid" && invoice.status !== "draft",
+  ).length;
+  const steps: Array<{
+    id: AdminProjectView;
+    eyebrow: string;
+    title: string;
+    body: string;
+    count?: number;
+  }> = [
+    {
+      id: "setup",
+      eyebrow: "1",
+      title: "Setup",
+      body: "Basis, Wizard und interne Projektfelder.",
+    },
+    {
+      id: "guidance",
+      eyebrow: "2",
+      title: "Beratung",
+      body: "Playbook, Meeting-Copilot und AI-Scans.",
+      count: bundle.aiInsights.length + similar.length,
+    },
+    {
+      id: "communication",
+      eyebrow: "3",
+      title: "Kunde",
+      body: "Updates, Kommentare und Kundensignale.",
+      count: comments.length + reminders.length,
+    },
+    {
+      id: "delivery",
+      eyebrow: "4",
+      title: "Umsetzung",
+      body: "Dateien, Aufgaben und Roadmap.",
+      count: bundle.files.length + openCustomerTasks + bundle.milestones.length,
+    },
+    {
+      id: "billing",
+      eyebrow: "5",
+      title: "Abrechnung",
+      body: "Proposal, Rechnungen und Reminder.",
+      count: openInvoices,
+    },
+    {
+      id: "access",
+      eyebrow: "6",
+      title: "Zugriff",
+      body: "Kunden, Einladungen und Audit.",
+      count: bundle.customerUsers.length,
+    },
+  ];
 
   return (
     <PortalShell
@@ -171,9 +255,46 @@ export default async function AdminProjectPage({
         </div>
       )}
 
-      <div className="grid gap-6 lg:grid-cols-[1.15fr_0.85fr]">
+      <nav
+        className="mb-6 grid gap-3 md:grid-cols-3 xl:grid-cols-6"
+        aria-label="Admin-Projekt-Schritte"
+      >
+        {steps.map((step) => {
+          const active = step.id === activeView;
+          return (
+            <Link
+              key={step.id}
+              href={stepHref(step.id)}
+              className={`rounded-lg border p-4 transition-colors ${
+                active
+                  ? "border-copper bg-copper/10 text-ink"
+                  : "border-hairline bg-surface text-ink2 hover:border-copper hover:text-ink"
+              }`}
+            >
+              <div className="flex items-center justify-between gap-2">
+                <span className="font-mono text-[10.5px] uppercase tracking-[0.14em] text-copper">
+                  Schritt {step.eyebrow}
+                </span>
+                {typeof step.count === "number" && step.count > 0 && (
+                  <Badge tone={active ? "copper" : "neutral"}>
+                    {step.count}
+                  </Badge>
+                )}
+              </div>
+              <div className="mt-2 text-sm font-medium text-ink">
+                {step.title}
+              </div>
+              <p className="mt-1 text-[12px] leading-relaxed text-muted">
+                {step.body}
+              </p>
+            </Link>
+          );
+        })}
+      </nav>
+
+      <div className="space-y-6">
         <div className="space-y-6">
-          <PortalCard>
+          <PortalCard className={viewClass("setup")}>
             <PortalSectionTitle
               eyebrow="Projektsteuerung"
               title="Öffentliche Projektbasis"
@@ -181,7 +302,10 @@ export default async function AdminProjectPage({
               Diese Felder sind Grundlage für Dashboard, Kundenansicht und
               interne ASDAR-Guidance.
             </PortalSectionTitle>
-            <form action={updateProjectOverviewAction} className="mt-5 space-y-4">
+            <form
+              action={updateProjectOverviewAction}
+              className="mt-5 space-y-4"
+            >
               <HiddenProjectFields locale={safe} projectId={projectId} />
               <div className="grid gap-4 md:grid-cols-2">
                 <div>
@@ -334,7 +458,7 @@ export default async function AdminProjectPage({
             </form>
           </PortalCard>
 
-          <PortalCard>
+          <PortalCard className={viewClass("setup")}>
             <PortalSectionTitle
               eyebrow="Setup Wizard"
               title="5-Minuten Projekt-Setup"
@@ -404,7 +528,7 @@ export default async function AdminProjectPage({
             </form>
           </PortalCard>
 
-          <PortalCard>
+          <PortalCard className={viewClass("guidance")}>
             <PortalSectionTitle
               eyebrow="Private Intelligence"
               title="ASDAR Intake und Beratungsnotizen"
@@ -520,19 +644,21 @@ export default async function AdminProjectPage({
             </form>
           </PortalCard>
 
-          <PortalCard>
+          <PortalCard className={viewClass("communication")}>
             <PortalSectionTitle
               eyebrow="Kundenkommunikation"
               title="Update veröffentlichen"
             >
-              Interne Updates bleiben privat. Kundenupdates erscheinen direkt
-              im Kundenportal.
+              Interne Updates bleiben privat. Kundenupdates erscheinen direkt im
+              Kundenportal.
             </PortalSectionTitle>
             <form action={addUpdateAction} className="mt-5 space-y-4">
               <HiddenProjectFields locale={safe} projectId={projectId} />
               <div className="grid gap-4 md:grid-cols-3">
                 <div className="md:col-span-2">
-                  <label className="mb-1.5 block text-sm text-ink2">Titel</label>
+                  <label className="mb-1.5 block text-sm text-ink2">
+                    Titel
+                  </label>
                   <input name="title" className={fieldClass} />
                 </div>
                 <div>
@@ -581,7 +707,11 @@ export default async function AdminProjectPage({
                   className="rounded-lg border border-hairline bg-bg p-4"
                 >
                   <div className="flex flex-wrap items-center gap-2">
-                    <Badge tone={update.visibility === "customer" ? "green" : "neutral"}>
+                    <Badge
+                      tone={
+                        update.visibility === "customer" ? "green" : "neutral"
+                      }
+                    >
                       {update.visibility === "customer" ? "Kunde" : "Intern"}
                     </Badge>
                     <Badge>{formatStage(update.asdarStage)}</Badge>
@@ -603,11 +733,8 @@ export default async function AdminProjectPage({
             </div>
           </PortalCard>
 
-          <PortalCard>
-            <PortalSectionTitle
-              eyebrow="Nachrichten"
-              title="Kundenkommentare"
-            >
+          <PortalCard className={viewClass("communication")}>
+            <PortalSectionTitle eyebrow="Nachrichten" title="Kundenkommentare">
               Kurze Rueckfragen und Antworten, ohne daraus ein formales
               Statusupdate zu machen.
             </PortalSectionTitle>
@@ -637,7 +764,9 @@ export default async function AdminProjectPage({
                     className="rounded-lg border border-hairline bg-bg p-3"
                   >
                     <div className="flex flex-wrap items-center gap-2">
-                      <Badge>{comment.title.replace(/^Kommentar:\s*/, "")}</Badge>
+                      <Badge>
+                        {comment.title.replace(/^Kommentar:\s*/, "")}
+                      </Badge>
                       <span className="text-[12px] text-muted">
                         {formatDate(comment.createdAt)}
                       </span>
@@ -659,15 +788,18 @@ export default async function AdminProjectPage({
         </div>
 
         <aside className="space-y-6">
-          <PortalCard>
+          <PortalCard className={viewClass("guidance")}>
             <PortalSectionTitle
               eyebrow="Industry Playbook"
               title="Template fuer dieses Projekt"
             >
-              Branchenbezogene Diagnose, Quick Wins und ASDAR-Schritte fuer
-              den Beratungsablauf.
+              Branchenbezogene Diagnose, Quick Wins und ASDAR-Schritte fuer den
+              Beratungsablauf.
             </PortalSectionTitle>
-            <form action={applyConsultingTemplateAction} className="mt-5 space-y-3">
+            <form
+              action={applyConsultingTemplateAction}
+              className="mt-5 space-y-3"
+            >
               <HiddenProjectFields locale={safe} projectId={projectId} />
               <input
                 type="hidden"
@@ -739,7 +871,7 @@ export default async function AdminProjectPage({
             </div>
           </PortalCard>
 
-          <PortalCard>
+          <PortalCard className={viewClass("guidance")}>
             <PortalSectionTitle
               eyebrow="Meeting Copilot"
               title="Call- und Workshop-Guidance"
@@ -850,14 +982,17 @@ export default async function AdminProjectPage({
             </div>
           </PortalCard>
 
-          <PortalCard>
+          <PortalCard className={viewClass("guidance")}>
             <PortalSectionTitle
               eyebrow="Branchen-ASDAR"
               title="Phasenplan aus dem Template"
             />
             <div className="mt-5 space-y-4">
               {asdarStages.map((stage) => (
-                <div key={stage.value} className="rounded-lg border border-hairline bg-bg p-3">
+                <div
+                  key={stage.value}
+                  className="rounded-lg border border-hairline bg-bg p-3"
+                >
                   <div className="flex items-center gap-2">
                     <Badge
                       tone={
@@ -882,7 +1017,7 @@ export default async function AdminProjectPage({
             </div>
           </PortalCard>
 
-          <PortalCard>
+          <PortalCard className={viewClass("guidance")}>
             <PortalSectionTitle
               eyebrow="ASDAR Guidance"
               title="Nächste Beratungsimpulse"
@@ -895,7 +1030,9 @@ export default async function AdminProjectPage({
                 <div key={item.title} className="flex gap-3">
                   <Lightbulb className="mt-0.5 h-4 w-4 shrink-0 text-copper" />
                   <div>
-                    <h3 className="text-sm font-medium text-ink">{item.title}</h3>
+                    <h3 className="text-sm font-medium text-ink">
+                      {item.title}
+                    </h3>
                     <p className="mt-1 text-sm leading-relaxed text-ink2">
                       {item.body}
                     </p>
@@ -905,7 +1042,7 @@ export default async function AdminProjectPage({
             </div>
           </PortalCard>
 
-          <PortalCard>
+          <PortalCard className={viewClass("guidance")}>
             <PortalSectionTitle
               eyebrow="External AI"
               title="Multi-Provider Scan"
@@ -970,7 +1107,8 @@ export default async function AdminProjectPage({
               </div>
               <p className="mt-1 text-[12px] leading-relaxed text-ink2">
                 Erzeugt internen Consultant Brief, Kunden-Zusammenfassung,
-                Meeting-Fokus und Quick-Win-Ideen aus dem aktuellen Projektstand.
+                Meeting-Fokus und Quick-Win-Ideen aus dem aktuellen
+                Projektstand.
               </p>
               <div className="mt-3 space-y-2 text-sm text-ink2">
                 <label className="flex items-center gap-2">
@@ -1021,7 +1159,7 @@ export default async function AdminProjectPage({
             </div>
           </PortalCard>
 
-          <PortalCard>
+          <PortalCard className={viewClass("guidance")}>
             <PortalSectionTitle
               eyebrow="Similarity Scan"
               title="Ähnliche Projekte"
@@ -1058,7 +1196,7 @@ export default async function AdminProjectPage({
             </div>
           </PortalCard>
 
-          <PortalCard>
+          <PortalCard className={viewClass("communication")}>
             <PortalSectionTitle
               eyebrow="Customer Signals"
               title="Input, Freigaben, Reminder"
@@ -1144,7 +1282,7 @@ export default async function AdminProjectPage({
             </div>
           </PortalCard>
 
-          <PortalCard>
+          <PortalCard className={viewClass("access")}>
             <PortalSectionTitle eyebrow="Audit" title="Interner Verlauf">
               Automatische Spur der wichtigsten Admin-Aktionen in diesem
               Projekt.
@@ -1177,7 +1315,7 @@ export default async function AdminProjectPage({
             </div>
           </PortalCard>
 
-          <PortalCard>
+          <PortalCard className={viewClass("access")}>
             <PortalSectionTitle eyebrow="Kunden" title="Zugriff verwalten" />
             <div className="mt-4 space-y-2">
               {bundle.customerUsers.map((customer) => (
@@ -1192,7 +1330,9 @@ export default async function AdminProjectPage({
                 </div>
               ))}
               {bundle.customerUsers.length === 0 && (
-                <p className="text-sm text-muted">Noch kein Kunde zugeordnet.</p>
+                <p className="text-sm text-muted">
+                  Noch kein Kunde zugeordnet.
+                </p>
               )}
             </div>
             <form action={assignCustomerAction} className="mt-5 space-y-3">
@@ -1240,7 +1380,7 @@ export default async function AdminProjectPage({
             </form>
           </PortalCard>
 
-          <PortalCard>
+          <PortalCard className={viewClass("delivery")}>
             <PortalSectionTitle eyebrow="Dateien" title="Upload" />
             <form
               action={addFileAction}
@@ -1302,11 +1442,15 @@ export default async function AdminProjectPage({
             </div>
           </PortalCard>
 
-          <PortalCard>
+          <PortalCard className={viewClass("delivery")}>
             <PortalSectionTitle eyebrow="Aufgaben" title="Tasks" />
             <form action={addTaskAction} className="mt-5 space-y-3">
               <HiddenProjectFields locale={safe} projectId={projectId} />
-              <input name="title" placeholder="Aufgabe" className={fieldClass} />
+              <input
+                name="title"
+                placeholder="Aufgabe"
+                className={fieldClass}
+              />
               <div className="grid grid-cols-2 gap-3">
                 <select name="owner" className={fieldClass}>
                   <option value="assad">Assad</option>
@@ -1354,7 +1498,10 @@ export default async function AdminProjectPage({
                       action={updateTaskStatusAction}
                       className="flex items-center gap-2"
                     >
-                      <HiddenProjectFields locale={safe} projectId={projectId} />
+                      <HiddenProjectFields
+                        locale={safe}
+                        projectId={projectId}
+                      />
                       <input type="hidden" name="taskId" value={task.id} />
                       <select
                         name="status"
@@ -1378,7 +1525,10 @@ export default async function AdminProjectPage({
                     task.visibleToCustomer &&
                     task.status !== "done" && (
                       <form action={sendProjectReminderAction} className="mt-3">
-                        <HiddenProjectFields locale={safe} projectId={projectId} />
+                        <HiddenProjectFields
+                          locale={safe}
+                          projectId={projectId}
+                        />
                         <input type="hidden" name="reminderType" value="task" />
                         <input type="hidden" name="entityId" value={task.id} />
                         <button
@@ -1395,7 +1545,7 @@ export default async function AdminProjectPage({
             </div>
           </PortalCard>
 
-          <PortalCard>
+          <PortalCard className={viewClass("delivery")}>
             <PortalSectionTitle eyebrow="Meilensteine" title="Roadmap" />
             <form action={addMilestoneAction} className="mt-5 space-y-3">
               <HiddenProjectFields locale={safe} projectId={projectId} />
@@ -1449,7 +1599,10 @@ export default async function AdminProjectPage({
                       action={updateMilestoneStatusAction}
                       className="flex items-center gap-2"
                     >
-                      <HiddenProjectFields locale={safe} projectId={projectId} />
+                      <HiddenProjectFields
+                        locale={safe}
+                        projectId={projectId}
+                      />
                       <input
                         type="hidden"
                         name="milestoneId"
@@ -1478,7 +1631,7 @@ export default async function AdminProjectPage({
             </div>
           </PortalCard>
 
-          <PortalCard>
+          <PortalCard className={viewClass("billing")}>
             <PortalSectionTitle eyebrow="Rechnungen" title="Payment" />
             <form action={generateProposalAction} className="mt-5 space-y-3">
               <div className="rounded-lg border border-copper/25 bg-copper/10 p-3">
@@ -1506,7 +1659,11 @@ export default async function AdminProjectPage({
                 placeholder="Zeitrahmen"
                 className={fieldClass}
               />
-              <input name="amount" placeholder="2900,00" className={fieldClass} />
+              <input
+                name="amount"
+                placeholder="2900,00"
+                className={fieldClass}
+              />
               <label className="flex items-center gap-2 text-sm text-ink2">
                 <input
                   name="createInvoice"
@@ -1540,7 +1697,11 @@ export default async function AdminProjectPage({
                 className={fieldClass}
               />
               <div className="grid grid-cols-2 gap-3">
-                <input name="amount" placeholder="2900,00" className={fieldClass} />
+                <input
+                  name="amount"
+                  placeholder="2900,00"
+                  className={fieldClass}
+                />
                 <select name="currency" className={fieldClass}>
                   <option value="EUR">EUR</option>
                   <option value="USD">USD</option>
@@ -1600,7 +1761,10 @@ export default async function AdminProjectPage({
                       action={updateInvoiceStatusAction}
                       className="flex items-center gap-2"
                     >
-                      <HiddenProjectFields locale={safe} projectId={projectId} />
+                      <HiddenProjectFields
+                        locale={safe}
+                        projectId={projectId}
+                      />
                       <input
                         type="hidden"
                         name="invoiceId"
@@ -1624,28 +1788,32 @@ export default async function AdminProjectPage({
                         <CheckCircle2 className="h-4 w-4" />
                       </button>
                     </form>
-                    {invoice.status !== "paid" && invoice.status !== "draft" && (
-                      <form action={sendProjectReminderAction}>
-                        <HiddenProjectFields locale={safe} projectId={projectId} />
-                        <input
-                          type="hidden"
-                          name="reminderType"
-                          value="invoice"
-                        />
-                        <input
-                          type="hidden"
-                          name="entityId"
-                          value={invoice.id}
-                        />
-                        <button
-                          type="submit"
-                          className="inline-flex h-9 items-center justify-center gap-2 rounded-lg border border-hairline px-3 text-[12px] font-medium text-ink transition-colors hover:border-copper hover:text-copper"
-                        >
-                          <Bell className="h-3.5 w-3.5" />
-                          Reminder
-                        </button>
-                      </form>
-                    )}
+                    {invoice.status !== "paid" &&
+                      invoice.status !== "draft" && (
+                        <form action={sendProjectReminderAction}>
+                          <HiddenProjectFields
+                            locale={safe}
+                            projectId={projectId}
+                          />
+                          <input
+                            type="hidden"
+                            name="reminderType"
+                            value="invoice"
+                          />
+                          <input
+                            type="hidden"
+                            name="entityId"
+                            value={invoice.id}
+                          />
+                          <button
+                            type="submit"
+                            className="inline-flex h-9 items-center justify-center gap-2 rounded-lg border border-hairline px-3 text-[12px] font-medium text-ink transition-colors hover:border-copper hover:text-copper"
+                          >
+                            <Bell className="h-3.5 w-3.5" />
+                            Reminder
+                          </button>
+                        </form>
+                      )}
                   </div>
                 </div>
               ))}
