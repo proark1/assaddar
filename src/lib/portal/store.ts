@@ -2,6 +2,8 @@ import { promises as fs } from "fs";
 import path from "path";
 import { randomUUID } from "crypto";
 import { hashPassword } from "./password";
+import { isPostgresBackendEnabled } from "./config";
+import { readPostgresStore, writePostgresStore } from "./store-postgres";
 import type {
   AsdarStage,
   PortalStore,
@@ -53,6 +55,7 @@ function buildSeedStore(): PortalStore {
         email: "admin@assad-dar.de",
         passwordHash: hashPassword("AssadDemo2026!"),
         role: "admin",
+        emailVerifiedAt: createdAt,
         createdAt,
       },
       {
@@ -61,6 +64,7 @@ function buildSeedStore(): PortalStore {
         email: "kunde@example.com",
         passwordHash: hashPassword("kunde1234"),
         role: "customer",
+        emailVerifiedAt: createdAt,
         createdAt,
       },
     ],
@@ -204,6 +208,25 @@ function buildSeedStore(): PortalStore {
       },
     ],
     aiInsights: [],
+    authTokens: [],
+  };
+}
+
+function normalizeStore(store: PortalStore): PortalStore {
+  return {
+    ...store,
+    users: store.users ?? [],
+    organizations: store.organizations ?? [],
+    projects: store.projects ?? [],
+    projectMembers: store.projectMembers ?? [],
+    projectIntelligence: store.projectIntelligence ?? [],
+    updates: store.updates ?? [],
+    tasks: store.tasks ?? [],
+    milestones: store.milestones ?? [],
+    files: store.files ?? [],
+    invoices: store.invoices ?? [],
+    aiInsights: store.aiInsights ?? [],
+    authTokens: store.authTokens ?? [],
   };
 }
 
@@ -223,12 +246,21 @@ async function ensureStore() {
 }
 
 export async function readStore(): Promise<PortalStore> {
+  if (isPostgresBackendEnabled()) {
+    return readPostgresStore();
+  }
+
   await ensureStore();
   const raw = await fs.readFile(STORE_PATH, "utf8");
-  return JSON.parse(raw) as PortalStore;
+  return normalizeStore(JSON.parse(raw) as PortalStore);
 }
 
 export async function writeStore(store: PortalStore) {
+  if (isPostgresBackendEnabled()) {
+    await writePostgresStore(store);
+    return;
+  }
+
   await ensureStore();
   const tmp = `${STORE_PATH}.tmp`;
   await fs.writeFile(tmp, JSON.stringify(store, null, 2), "utf8");

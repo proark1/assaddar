@@ -1,7 +1,7 @@
-import { promises as fs } from "fs";
 import { NextResponse } from "next/server";
 import { getCurrentUser } from "@/lib/portal/auth";
 import { getProjectAccess, readStore } from "@/lib/portal/store";
+import { readPortalFile } from "@/lib/portal/storage";
 
 export const dynamic = "force-dynamic";
 
@@ -26,11 +26,15 @@ export async function GET(
   }
 
   try {
-    const bytes = await fs.readFile(file.storagePath);
-    return new NextResponse(bytes, {
+    const stored = await readPortalFile(file);
+    const body = stored.bytes.buffer.slice(
+      stored.bytes.byteOffset,
+      stored.bytes.byteOffset + stored.bytes.byteLength,
+    ) as ArrayBuffer;
+    return new NextResponse(body, {
       headers: {
-        "Content-Type": file.mimeType,
-        "Content-Length": String(file.size),
+        "Content-Type": stored.contentType,
+        "Content-Length": String(stored.size),
         "Content-Disposition": `attachment; filename="${encodeURIComponent(
           file.name,
         )}"`,

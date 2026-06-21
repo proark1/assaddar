@@ -22,6 +22,7 @@ export type User = {
   email: string;
   passwordHash: string;
   role: UserRole;
+  emailVerifiedAt?: string;
   createdAt: string;
 };
 
@@ -136,6 +137,16 @@ export type AiInsight = {
   createdAt: string;
 };
 
+export type AuthToken = {
+  id: string;
+  userId: string;
+  tokenHash: string;
+  purpose: "email_verification" | "password_reset" | "project_invite";
+  expiresAt: string;
+  consumedAt?: string;
+  createdAt: string;
+};
+
 export type PortalStore = {
   users: User[];
   organizations: Organization[];
@@ -148,6 +159,7 @@ export type PortalStore = {
   files: ProjectFile[];
   invoices: Invoice[];
   aiInsights: AiInsight[];
+  authTokens: AuthToken[];
 };
 
 export type ProjectBundle = {

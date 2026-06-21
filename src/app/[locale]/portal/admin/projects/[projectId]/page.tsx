@@ -11,6 +11,7 @@ import {
   Lightbulb,
   Plus,
   Send,
+  Sparkles,
   UserPlus,
 } from "lucide-react";
 import {
@@ -20,6 +21,7 @@ import {
   addTaskAction,
   addUpdateAction,
   assignCustomerAction,
+  runAiScanAction,
   updateIntelligenceAction,
   updateProjectOverviewAction,
 } from "@/app/actions/portal";
@@ -107,6 +109,8 @@ export default async function AdminProjectPage({
           {query.assigned === "0" &&
             " Kein passender registrierter Kunde gefunden."}
           {query.error === "file" && " Datei konnte nicht hochgeladen werden."}
+          {query.error === "ai" &&
+            " AI Scan konnte nicht gespeichert werden. Prüfen Sie Provider-Key und Modell."}
         </div>
       )}
 
@@ -460,6 +464,73 @@ export default async function AdminProjectPage({
                   </div>
                 </div>
               ))}
+            </div>
+          </PortalCard>
+
+          <PortalCard>
+            <PortalSectionTitle
+              eyebrow="External AI"
+              title="Multi-Provider Scan"
+            >
+              Nutzt konfigurierte Provider und speichert gute Ergebnisse als
+              interne Projektinsights.
+            </PortalSectionTitle>
+            <form action={runAiScanAction} className="mt-5 space-y-4">
+              <HiddenProjectFields locale={safe} projectId={projectId} />
+              <div className="grid gap-2 text-sm text-ink2">
+                <label className="flex items-center gap-2">
+                  <input
+                    name="provider_openai"
+                    type="checkbox"
+                    defaultChecked
+                    className="h-4 w-4 accent-[var(--color-copper)]"
+                  />
+                  OpenAI
+                </label>
+                <label className="flex items-center gap-2">
+                  <input
+                    name="provider_gemini"
+                    type="checkbox"
+                    className="h-4 w-4 accent-[var(--color-copper)]"
+                  />
+                  Gemini
+                </label>
+                <label className="flex items-center gap-2">
+                  <input
+                    name="provider_grok"
+                    type="checkbox"
+                    className="h-4 w-4 accent-[var(--color-copper)]"
+                  />
+                  Grok
+                </label>
+              </div>
+              <button
+                type="submit"
+                className="inline-flex w-full items-center justify-center gap-2 rounded-lg bg-copper px-4 py-2.5 text-sm font-medium text-oncopper transition-colors hover:bg-copper-hi"
+              >
+                <Sparkles className="h-4 w-4" />
+                Scan starten
+              </button>
+            </form>
+            <div className="mt-5 space-y-3">
+              {bundle.aiInsights.map((insight) => (
+                <article
+                  key={insight.id}
+                  className="rounded-lg border border-hairline bg-bg p-3"
+                >
+                  <div className="text-sm font-medium text-ink">
+                    {insight.title}
+                  </div>
+                  <p className="mt-2 whitespace-pre-line text-sm leading-relaxed text-ink2">
+                    {insight.body}
+                  </p>
+                </article>
+              ))}
+              {bundle.aiInsights.length === 0 && (
+                <p className="text-sm text-muted">
+                  Noch keine externen AI-Insights gespeichert.
+                </p>
+              )}
             </div>
           </PortalCard>
 
