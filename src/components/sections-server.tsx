@@ -12,7 +12,9 @@ import {
   UtensilsCrossed,
   type LucideIcon,
 } from "lucide-react";
+import Link from "next/link";
 import type { Dict } from "@/content";
+import { posts as blogPosts } from "@/blog/posts";
 import { Button, Container, Kicker, Section } from "./ui";
 import { Reveal } from "./motion";
 
@@ -181,7 +183,10 @@ export function Angebote({ t }: { t: Dict["angebote"] }) {
                   {t.methodLabel}: {s.methodik}
                 </span>
                 <h3 className="mt-3 font-serif text-xl text-ink">{s.product}</h3>
-                <p className="mt-3 flex-1 text-sm leading-relaxed text-ink2">
+                <div className="mt-1 text-lg font-medium text-copper">
+                  {s.price}
+                </div>
+                <p className="mt-4 flex-1 text-sm leading-relaxed text-ink2">
                   {s.purpose}
                 </p>
                 <a
@@ -319,9 +324,12 @@ export function Blog({ t }: { t: Dict["blog"] }) {
           <p className="mt-4 max-w-2xl text-base text-ink2">{t.intro}</p>
         </Reveal>
         <div className="mt-12 grid gap-5 md:grid-cols-2 lg:grid-cols-3">
-          {t.posts.map((p, i) => (
-            <Reveal key={p.title} delay={(i % 3) * 0.05}>
-              <div className="flex h-full flex-col rounded-xl border border-hairline bg-surface p-6 shadow-card">
+          {blogPosts.map((p, i) => (
+            <Reveal key={p.slug} delay={(i % 3) * 0.05}>
+              <Link
+                href={`/de/blog/${p.slug}`}
+                className="group flex h-full flex-col rounded-xl border border-hairline bg-surface p-6 shadow-card transition-colors hover:border-copper"
+              >
                 <span className="font-mono text-[10.5px] uppercase tracking-[0.12em] text-copper">
                   {p.category}
                 </span>
@@ -332,9 +340,10 @@ export function Blog({ t }: { t: Dict["blog"] }) {
                   {p.teaser}
                 </p>
                 <span className="mt-4 inline-flex items-center gap-1.5 text-[12px] text-muted">
-                  {t.readMore}
+                  {p.readingTimeMin} Min · {t.readMore}
+                  <ArrowRight className="h-3.5 w-3.5 text-copper transition-transform group-hover:translate-x-0.5" />
                 </span>
-              </div>
+              </Link>
             </Reveal>
           ))}
         </div>

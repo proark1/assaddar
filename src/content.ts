@@ -280,6 +280,7 @@ const de = {
       {
         product: "Assad Dar Basic",
         methodik: "ASDAR Snapshot",
+        price: "ab 490 €",
         purpose: "Schneller Einstieg und erste Potenziale.",
         cta: "Anfragen",
         featured: false,
@@ -287,6 +288,7 @@ const de = {
       {
         product: "Assad Dar Pro",
         methodik: "ASDAR Audit",
+        price: "ab 2.900 €",
         purpose: "Vollständige Analyse mit ASDAR Score und Roadmap.",
         cta: "Anfragen",
         featured: true,
@@ -294,6 +296,7 @@ const de = {
       {
         product: "Assad Dar Scale",
         methodik: "ASDAR Sprint",
+        price: "ab 5.900 €",
         purpose: "Umsetzung eines konkreten Use Cases.",
         cta: "Anfragen",
         featured: false,
@@ -301,6 +304,7 @@ const de = {
       {
         product: "Assad Dar Partner",
         methodik: "ASDAR Advisory",
+        price: "ab 2.500 €/Monat",
         purpose: "Laufende Begleitung und Optimierung.",
         cta: "Anfragen",
         featured: false,
@@ -386,7 +390,7 @@ const de = {
       "Wissen für bessere Prozesse, sinnvolle KI und digitale Effizienz.",
     intro:
       "Praktische Artikel zu KI, Automatisierung, digitaler Transformation und Prozessverbesserung. Keine Theorie, kein Tool-Hype — konkrete Beispiele, wie Unternehmen Zeit sparen und KI sinnvoll einsetzen.",
-    readMore: "Bald verfügbar",
+    readMore: "Artikel lesen",
     posts: [
       {
         title: "KI im Unternehmen einführen: Wo fängt man sinnvoll an?",
@@ -787,6 +791,7 @@ const en: Dict = {
       {
         product: "Assad Dar Basic",
         methodik: "ASDAR Snapshot",
+        price: "from €490",
         purpose: "A fast start and first potential.",
         cta: "Inquire",
         featured: false,
@@ -794,6 +799,7 @@ const en: Dict = {
       {
         product: "Assad Dar Pro",
         methodik: "ASDAR Audit",
+        price: "from €2,900",
         purpose: "A full analysis with ASDAR Score and roadmap.",
         cta: "Inquire",
         featured: true,
@@ -801,6 +807,7 @@ const en: Dict = {
       {
         product: "Assad Dar Scale",
         methodik: "ASDAR Sprint",
+        price: "from €5,900",
         purpose: "Implementation of one concrete use case.",
         cta: "Inquire",
         featured: false,
@@ -808,6 +815,7 @@ const en: Dict = {
       {
         product: "Assad Dar Partner",
         methodik: "ASDAR Advisory",
+        price: "from €2,500/month",
         purpose: "Ongoing guidance and optimization.",
         cta: "Inquire",
         featured: false,
@@ -893,7 +901,7 @@ const en: Dict = {
       "Insights for better processes, sensible AI, and digital efficiency.",
     intro:
       "Practical articles on AI, automation, digital transformation, and process improvement. No theory, no tool hype — concrete examples of how companies save time and use AI sensibly.",
-    readMore: "Coming soon",
+    readMore: "Read article",
     posts: [
       {
         title: "Introducing AI in your company: where do you sensibly start?",
