@@ -50,12 +50,12 @@ export function Nav({ t, locale }: { t: Dict["nav"]; locale: Locale }) {
             toLight={t.themeToLight}
             className="hidden sm:inline-flex"
           />
-          <a
-            href="#kontakt"
+          <Link
+            href={`/${locale}/termin`}
             className="hidden rounded-lg bg-copper px-4 py-2 text-[13px] font-medium text-oncopper transition-colors hover:bg-copper-hi sm:inline-flex"
           >
             {t.cta}
-          </a>
+          </Link>
           <button
             type="button"
             aria-label={open ? t.close : t.menu}
@@ -81,13 +81,13 @@ export function Nav({ t, locale }: { t: Dict["nav"]; locale: Locale }) {
                 {l.label}
               </a>
             ))}
-            <a
-              href="#kontakt"
+            <Link
+              href={`/${locale}/termin`}
               onClick={() => setOpen(false)}
               className="mt-2 inline-flex items-center justify-center rounded-lg bg-copper px-4 py-3 text-sm font-medium text-oncopper"
             >
               {t.cta}
-            </a>
+            </Link>
             <div className="mt-2 flex items-center justify-between px-2">
               <Link
                 href={`/${other}`}

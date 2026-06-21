@@ -7,6 +7,9 @@ export function isLocale(value: string): value is Locale {
 
 export const SITE_URL = "https://assad-dar.de";
 
+// Cal.com booking link, e.g. "assaddar/erstgespraech". Empty = booking button hidden.
+export const CAL_LINK = "";
+
 const MAILTO =
   "mailto:assad.dar@gmail.com?subject=ASDAR%20Analyse%20%E2%80%93%20Anfrage";
 
@@ -37,7 +40,7 @@ const de = {
     line2: "KI dort, wo sie echten Nutzen bringt.",
     sub: "Mit der ASDAR Method analysiert Assad Dar Ihre Abläufe, findet Automatisierungspotenziale und entwickelt eine klare Roadmap für digitale Effizienz — für Unternehmen mit gewachsenen Prozessen und dem Wunsch nach mehr Effizienz.",
     ctaPrimary: "ASDAR Analyse anfragen",
-    ctaPrimaryHref: "#kontakt",
+    ctaPrimaryHref: "/de/termin",
     ctaSecondary: "ASDAR Score berechnen",
     ctaSecondaryHref: "#score",
     ctaSecondaryHint: "5 Fragen, 1 Minute — Ihr KI-Reifegrad.",
@@ -510,6 +513,34 @@ const de = {
     reassure:
       "Antwort meist innerhalb eines Werktags — direkt von mir, nicht von einem Vertriebsteam.",
   },
+  termin: {
+    title: "Erstgespräch buchen",
+    intro:
+      "Schreiben Sie mir kurz, worum es geht — oder buchen Sie direkt einen Termin. 30 Minuten, keine Slides, kein Druck, auf Deutsch oder Englisch.",
+    formTitle: "Nachricht senden",
+    name: "Name",
+    email: "E-Mail",
+    company: "Unternehmen (optional)",
+    message: "Worum geht es?",
+    consent:
+      "Ich habe die Datenschutzerklärung gelesen und bin mit der Verarbeitung meiner Angaben zur Bearbeitung der Anfrage einverstanden.",
+    privacyLink: "Datenschutzerklärung",
+    submit: "Nachricht senden",
+    sending: "Wird gesendet …",
+    success:
+      "Danke! Ihre Nachricht ist angekommen — ich melde mich meist innerhalb eines Werktags.",
+    errorTitle: "Senden gerade nicht möglich",
+    fallback: "bitte schreiben Sie mir direkt an",
+    validation:
+      "Bitte füllen Sie Name, E-Mail und Nachricht aus und bestätigen Sie den Datenschutz.",
+    directTitle: "Lieber direkt?",
+    directNote: "Per E-Mail oder Telefon erreichen Sie mich am schnellsten.",
+    phone: "+49 173 8665472",
+    calTitle: "Online-Termin buchen",
+    calNote: "Öffnet die Terminbuchung bei Cal.com in einem neuen Tab.",
+    calCta: "Termin wählen",
+    backHome: "Zur Startseite",
+  },
   footer: {
     tagline: "KI und Automatisierung für effizientere Unternehmen.",
     legal: [
@@ -551,7 +582,7 @@ const en: Dict = {
     line2: "AI where it actually creates value.",
     sub: "With the ASDAR Method, Assad Dar analyzes your workflows, finds automation potential, and builds a clear roadmap for digital efficiency — for companies with grown-over processes that want to work more efficiently.",
     ctaPrimary: "Request an ASDAR analysis",
-    ctaPrimaryHref: "#kontakt",
+    ctaPrimaryHref: "/en/termin",
     ctaSecondary: "Calculate your ASDAR Score",
     ctaSecondaryHref: "#score",
     ctaSecondaryHint: "5 questions, 1 minute — your AI readiness.",
@@ -1016,6 +1047,34 @@ const en: Dict = {
     email: "assad.dar@gmail.com",
     reassure:
       "Usually a reply within one business day — directly from me, not a sales team.",
+  },
+  termin: {
+    title: "Book a call",
+    intro:
+      "Tell me briefly what it's about — or book a slot directly. 30 minutes, no slides, no pressure, in German or English.",
+    formTitle: "Send a message",
+    name: "Name",
+    email: "E-mail",
+    company: "Company (optional)",
+    message: "What's it about?",
+    consent:
+      "I have read the privacy policy and consent to the processing of my data to handle this request.",
+    privacyLink: "privacy policy",
+    submit: "Send message",
+    sending: "Sending …",
+    success:
+      "Thank you! Your message arrived — I usually reply within one business day.",
+    errorTitle: "Sending isn't possible right now",
+    fallback: "please write to me directly at",
+    validation:
+      "Please fill in name, e-mail and message, and confirm the privacy consent.",
+    directTitle: "Prefer direct?",
+    directNote: "E-mail or phone is the fastest way to reach me.",
+    phone: "+49 173 8665472",
+    calTitle: "Book online",
+    calNote: "Opens the booking page on Cal.com in a new tab.",
+    calCta: "Choose a slot",
+    backHome: "Back to home",
   },
   footer: {
     tagline: "AI and automation for more efficient companies.",

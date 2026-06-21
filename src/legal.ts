@@ -73,25 +73,31 @@ Diese Website verwendet **keine Cookies** und **keine Analyse-, Tracking- oder M
 
 Schriftarten werden lokal von unserem Server ausgeliefert. Es wird keine Verbindung zu Servern Dritter (etwa Google Fonts) aufgebaut; dabei werden keine personenbezogenen Daten an Dritte übertragen.
 
-## 6. Kontaktaufnahme
+## 6. Kontaktaufnahme und Kontaktformular
 
-Wenn Sie uns per E-Mail kontaktieren, verarbeiten wir Ihre Angaben (Name, E-Mail-Adresse, Inhalt der Nachricht) ausschließlich zur Bearbeitung Ihrer Anfrage. Rechtsgrundlage ist Art. 6 Abs. 1 lit. b DSGVO (vorvertragliche Maßnahmen bzw. Vertrag) sowie lit. f DSGVO (berechtigtes Interesse an der Beantwortung). Die Daten werden gelöscht, sobald sie für den Zweck nicht mehr erforderlich sind und keine gesetzlichen Aufbewahrungspflichten entgegenstehen.
+Wenn Sie uns per E-Mail oder über das Kontaktformular kontaktieren, verarbeiten wir Ihre Angaben (Name, E-Mail-Adresse, gegebenenfalls Unternehmen sowie den Inhalt der Nachricht) ausschließlich zur Bearbeitung Ihrer Anfrage. Rechtsgrundlage ist Art. 6 Abs. 1 lit. b DSGVO (vorvertragliche Maßnahmen bzw. Vertrag) sowie lit. f DSGVO (berechtigtes Interesse an der Beantwortung).
 
-## 7. Ihre Rechte
+Für den technischen Versand der über das Kontaktformular eingehenden Nachrichten setzen wir den Dienst Resend (Resend, Inc., USA) als Auftragsverarbeiter ein. Dabei kann eine Übermittlung in die USA stattfinden, die auf die EU-Standardvertragsklauseln gestützt wird; ein Auftragsverarbeitungsvertrag gemäß Art. 28 DSGVO ist abzuschließen. Die Daten werden gelöscht, sobald sie für den Zweck nicht mehr erforderlich sind und keine gesetzlichen Aufbewahrungspflichten entgegenstehen.
+
+## 7. Terminbuchung (Cal.com)
+
+Für die Buchung eines Erstgesprächs verlinken wir gegebenenfalls auf den externen Dienst Cal.com (Cal.com, Inc.). Inhalte von Cal.com werden nicht ungefragt auf dieser Website geladen. Erst wenn Sie den Buchungslink aktiv anklicken, werden Sie zu Cal.com weitergeleitet; eine Verarbeitung Ihrer Daten findet dann dort und nach den Datenschutzbestimmungen von Cal.com statt.
+
+## 8. Ihre Rechte
 
 Sie haben das Recht auf Auskunft (Art. 15 DSGVO), Berichtigung (Art. 16), Löschung (Art. 17), Einschränkung der Verarbeitung (Art. 18), Datenübertragbarkeit (Art. 20) sowie das Recht auf Widerspruch gegen die Verarbeitung (Art. 21 DSGVO). Wenden Sie sich hierzu an die oben genannte Adresse.
 
-## 8. Beschwerderecht
+## 9. Beschwerderecht
 
 Sie haben das Recht, sich bei einer Datenschutz-Aufsichtsbehörde zu beschweren, insbesondere im Mitgliedstaat Ihres Aufenthaltsorts oder des Orts des mutmaßlichen Verstoßes. Zuständig in Nordrhein-Westfalen ist die Landesbeauftragte für Datenschutz und Informationsfreiheit Nordrhein-Westfalen.
 
-## 9. SSL-/TLS-Verschlüsselung
+## 10. SSL-/TLS-Verschlüsselung
 
 Diese Website nutzt aus Sicherheitsgründen eine SSL-/TLS-Verschlüsselung. Eine verschlüsselte Verbindung erkennen Sie an „https://" und am Schloss-Symbol in Ihrer Browserzeile.
 
 ---
 
-_Hinweis: Diese Datenschutzerklärung ist ein sorgfältig erstellter Ausgangspunkt und ersetzt keine Rechtsberatung. Bei Änderungen am Funktionsumfang (z. B. Kontaktformular, Online-Terminbuchung, Analyse-Tools) ist sie entsprechend anzupassen._`;
+_Hinweis: Diese Datenschutzerklärung ist ein sorgfältig erstellter Ausgangspunkt und ersetzt keine Rechtsberatung. Sie berücksichtigt Kontaktformular und Terminverlinkung; bei weiteren Änderungen am Funktionsumfang (z. B. Analyse-Tools, eingebettete Buchung) ist sie anzupassen._`;
 
 const enImpressum = `**Information pursuant to § 5 DDG (German Digital Services Act)**
 
@@ -151,15 +157,19 @@ This website uses **no cookies** and **no analytics, tracking or marketing servi
 
 Fonts are served locally from our server. No connection to third-party servers (e.g. Google Fonts) is established, so no personal data is transmitted to third parties.
 
-## 6. Contact
+## 6. Contact and contact form
 
-If you contact us by e-mail, we process your details (name, e-mail address, message content) solely to handle your request. Legal basis: Art. 6 (1) (b) and (f) GDPR. The data is deleted once it is no longer required and no statutory retention obligations apply.
+If you contact us by e-mail or via the contact form, we process your details (name, e-mail address, optionally company, and the message content) solely to handle your request. Legal basis: Art. 6 (1) (b) and (f) GDPR. For the technical delivery of messages submitted through the contact form we use the service Resend (Resend, Inc., USA) as a processor; transfers to the USA are based on the EU Standard Contractual Clauses, and a data processing agreement pursuant to Art. 28 GDPR is to be concluded. The data is deleted once it is no longer required and no statutory retention obligations apply.
 
-## 7. Your rights
+## 7. Booking (Cal.com)
+
+For booking an introductory call we may link to the external service Cal.com (Cal.com, Inc.). Cal.com content is not loaded on this website without your action. Only when you actively click the booking link are you forwarded to Cal.com; your data is then processed there in accordance with Cal.com's privacy policy.
+
+## 8. Your rights
 
 You have the right to access (Art. 15 GDPR), rectification (Art. 16), erasure (Art. 17), restriction (Art. 18), data portability (Art. 20) and to object (Art. 21 GDPR). You also have the right to lodge a complaint with a supervisory authority.
 
-## 8. SSL/TLS encryption
+## 9. SSL/TLS encryption
 
 For security reasons this site uses SSL/TLS encryption, recognizable by "https://" and the lock icon in your browser.
 
