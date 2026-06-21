@@ -4,11 +4,16 @@ import { requireAdmin } from "@/lib/portal/auth";
 import { getBlogHeroMap } from "@/lib/blog-hero/store";
 import { defaultHeroPrompt } from "@/lib/blog-hero/prompts";
 import {
+  generateBlogHeroAction,
+  deleteBlogHeroAction,
+} from "@/app/actions/blog-hero";
+import {
+  Badge,
   PortalCard,
   PortalSectionTitle,
   PortalShell,
+  textareaClass,
 } from "@/components/portal/chrome";
-import { BlogHeroGenerator } from "@/components/portal/blog-hero-generator";
 
 export const dynamic = "force-dynamic";
 
@@ -53,11 +58,10 @@ export default async function BlogHeroAdminPage({
 
       <PortalCard className="mb-8">
         <PortalSectionTitle eyebrow="So funktioniert's" title="KI-Hero-Bilder pro Artikel">
-          Motiv prüfen oder anpassen, dann „Generieren". Stil, Format und
-          ASSADDAR-Farben werden automatisch erzwungen. Das Bild wird über die
-          konfigurierte Bild-API erzeugt, gespeichert und sofort auf der
-          Artikelseite ausgespielt. Ohne generiertes Bild zeigt der Artikel den
-          gebrandeten SVG-Hero.
+          Prompt prüfen oder anpassen, dann „Generieren". Das Bild wird über die
+          konfigurierte Bild-API (Standard: Gemini 3.1 Flash Image) erzeugt,
+          gespeichert und sofort auf der Artikelseite ausgespielt. Ohne
+          generiertes Bild zeigt der Artikel den gebrandeten SVG-Hero.
         </PortalSectionTitle>
       </PortalCard>
 
@@ -66,21 +70,65 @@ export default async function BlogHeroAdminPage({
           const existing = heroes[post.slug];
           const promptValue = existing?.prompt ?? defaultHeroPrompt(post.slug);
           return (
-            <BlogHeroGenerator
-              key={post.slug}
-              slug={post.slug}
-              title={post.title}
-              category={post.category}
-              initialPrompt={promptValue}
-              existing={
-                existing
-                  ? {
-                      alt: existing.alt,
-                      generatedAt: existing.generatedAt,
-                    }
-                  : undefined
-              }
-            />
+            <PortalCard key={post.slug}>
+              <div className="flex items-start justify-between gap-3">
+                <div>
+                  <Badge tone="copper">{post.category}</Badge>
+                  <h3 className="mt-2 font-serif text-lg text-ink">{post.title}</h3>
+                </div>
+                {existing && <Badge tone="green">Aktiv</Badge>}
+              </div>
+
+              {existing && (
+                <div className="mt-4 overflow-hidden rounded-lg border border-hairline">
+                  {/* eslint-disable-next-line @next/next/no-img-element */}
+                  <img
+                    src={`/api/blog/hero/${post.slug}?v=${encodeURIComponent(existing.generatedAt)}`}
+                    alt={existing.alt}
+                    className="aspect-[16/6] w-full object-cover"
+                  />
+                </div>
+              )}
+
+              <form action={generateBlogHeroAction} className="mt-4 space-y-3">
+                <input type="hidden" name="slug" value={post.slug} />
+                <label className="block">
+                  <span className="mb-1.5 block font-mono text-[10.5px] uppercase tracking-[0.14em] text-muted">
+                    Bild-Prompt
+                  </span>
+                  <textarea
+                    name="prompt"
+                    defaultValue={promptValue}
+                    className={textareaClass}
+                  />
+                </label>
+                <div className="flex flex-wrap items-center gap-3">
+                  <button
+                    type="submit"
+                    className="inline-flex items-center justify-center gap-2 rounded-lg bg-copper px-4 py-2.5 text-sm font-medium text-oncopper transition-colors hover:bg-copper-hi"
+                  >
+                    {existing ? "Neu generieren" : "Generieren"}
+                  </button>
+                  {existing && (
+                    <span className="text-[12px] text-muted">
+                      Zuletzt: {new Date(existing.generatedAt).toLocaleString("de-DE")}
+                    </span>
+                  )}
+                </div>
+              </form>
+
+              {existing && (
+                <form action={deleteBlogHeroAction} className="mt-3">
+                  <input type="hidden" name="slug" value={post.slug} />
+                  <button
+                    type="submit"
+                    className="text-[12px] text-muted underline-offset-2 transition-colors hover:text-critical hover:underline"
+                  >
+                    Hero-Bild entfernen
+                  </button>
+                </form>
+              )}
+            </PortalCard>
           );
         })}
       </div>

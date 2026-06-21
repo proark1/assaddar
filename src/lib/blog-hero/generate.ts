@@ -75,9 +75,9 @@ async function generateWithGemini(prompt: string): Promise<GeneratedImage> {
   if (!key) throw new Error("GEMINI_API_KEY is not configured.");
   const model = process.env.GEMINI_IMAGE_MODEL || "gemini-3.1-flash-image";
 
-  const endpoint = `https://generativelanguage.googleapis.com/v1/models/${encodeURIComponent(
+  const endpoint = `https://generativelanguage.googleapis.com/v1beta/models/${encodeURIComponent(
     model,
-  )}:generateContent`;
+  )}:generateContent?key=${encodeURIComponent(key)}`;
   const contents = [{ role: "user", parts: [{ text: prompt }] }];
 
   // Try the rich config (proper 16:9 hero); fall back to a minimal request if
@@ -98,32 +98,11 @@ async function generateWithGemini(prompt: string): Promise<GeneratedImage> {
 
   let lastError = "unknown error";
   for (const body of bodies) {
-    const controller = new AbortController();
-    const timeout = setTimeout(() => controller.abort(), 55_000);
-    let response: Response;
-    try {
-      response = await fetch(endpoint, {
-        method: "POST",
-        headers: {
-          "content-type": "application/json",
-          "x-goog-api-key": key,
-        },
-        signal: controller.signal,
-        body: JSON.stringify(body),
-      });
-    } catch (error) {
-      const timedOut = error instanceof DOMException && error.name === "AbortError";
-      lastError = timedOut
-        ? "Gemini request timed out"
-        : error instanceof Error
-          ? error.message
-          : "Gemini request failed";
-      if (timedOut) break;
-      continue;
-    } finally {
-      clearTimeout(timeout);
-    }
-
+    const response = await fetch(endpoint, {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify(body),
+    });
     if (!response.ok) {
       lastError = `${response.status}: ${(await response.text().catch(() => "")).slice(0, 200)}`;
       continue;
