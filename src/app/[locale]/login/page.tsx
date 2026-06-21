@@ -2,7 +2,6 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import { redirect } from "next/navigation";
 import { LogIn } from "lucide-react";
-import { loginAction } from "@/app/actions/auth";
 import { getCurrentUser } from "@/lib/portal/auth";
 import { fieldClass } from "@/components/portal/chrome";
 import { isLocale, type Locale } from "@/content";
@@ -53,7 +52,7 @@ export default async function LoginPage({
           zu sehen.
         </p>
 
-        <form action={loginAction} className="mt-7 space-y-4">
+        <form action="/api/portal/login" method="post" className="mt-7 space-y-4">
           <input type="hidden" name="locale" value={safe} />
           <input type="hidden" name="next" value={query.next ?? ""} />
           <div>

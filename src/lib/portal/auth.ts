@@ -43,6 +43,22 @@ function encodeSession(payload: SessionPayload) {
   return `${body}.${sign(body)}`;
 }
 
+export function createSessionCookie(userId: string) {
+  const expiresAt = Date.now() + ONE_WEEK_SECONDS * 1000;
+
+  return {
+    name: COOKIE_NAME,
+    value: encodeSession({ userId, expiresAt }),
+    options: {
+      httpOnly: true,
+      sameSite: "lax",
+      secure: process.env.NODE_ENV === "production",
+      path: "/",
+      maxAge: ONE_WEEK_SECONDS,
+    } as const,
+  };
+}
+
 function decodeSession(value?: string): SessionPayload | null {
   if (!value) return null;
   const [body, signature] = value.split(".");
@@ -69,15 +85,8 @@ function decodeSession(value?: string): SessionPayload | null {
 
 export async function setSession(userId: string) {
   const jar = await cookies();
-  const expiresAt = Date.now() + ONE_WEEK_SECONDS * 1000;
-
-  jar.set(COOKIE_NAME, encodeSession({ userId, expiresAt }), {
-    httpOnly: true,
-    sameSite: "lax",
-    secure: process.env.NODE_ENV === "production",
-    path: "/",
-    maxAge: ONE_WEEK_SECONDS,
-  });
+  const session = createSessionCookie(userId);
+  jar.set(session.name, session.value, session.options);
 }
 
 export async function clearSession() {
