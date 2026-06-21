@@ -2,7 +2,7 @@
 
 import { redirect } from "next/navigation";
 import { isLocale, type Locale } from "@/content";
-import { clearSession, setSession } from "@/lib/portal/auth";
+import { clearSession, getCurrentUser, setSession } from "@/lib/portal/auth";
 import { appUrl, requireEmailVerification } from "@/lib/portal/config";
 import { sendPortalEmail } from "@/lib/portal/email";
 import { findUserByEmail, id, mutateStore, readStore } from "@/lib/portal/store";
@@ -179,4 +179,60 @@ export async function verifyEmailAction(formData: FormData) {
 
   if (!ok) redirect(`/${locale}/verify-email?error=token`);
   redirect(`/${locale}/login?verified=1`);
+}
+
+export async function changePasswordAction(formData: FormData) {
+  const locale = safeLocale(formData.get("locale"));
+  const currentPassword = String(formData.get("currentPassword") || "");
+  const password = String(formData.get("password") || "");
+  const confirm = String(formData.get("confirm") || "");
+  const current = await getCurrentUser();
+
+  if (!current) redirect(`/${locale}/login`);
+  if (password.length < 8 || password !== confirm) {
+    redirect(`/${locale}/portal/settings?error=password`);
+  }
+
+  const ok = await mutateStore((store) => {
+    const user = store.users.find((entry) => entry.id === current.id);
+    if (!user || !verifyPassword(currentPassword, user.passwordHash)) {
+      return false;
+    }
+
+    user.passwordHash = hashPassword(password);
+    user.emailVerifiedAt = user.emailVerifiedAt ?? new Date().toISOString();
+    return true;
+  });
+
+  if (!ok) redirect(`/${locale}/portal/settings?error=current`);
+  await setSession(current.id);
+  redirect(`/${locale}/portal/settings?saved=password`);
+}
+
+export async function acceptInviteAction(formData: FormData) {
+  const locale = safeLocale(formData.get("locale"));
+  const rawToken = String(formData.get("token") || "");
+  const password = String(formData.get("password") || "");
+  const confirm = String(formData.get("confirm") || "");
+
+  if (!rawToken || password.length < 8 || password !== confirm) {
+    redirect(`/${locale}/invite?token=${encodeURIComponent(rawToken)}&error=invalid`);
+  }
+
+  const result = await mutateStore((store) => {
+    const token = findConsumableAuthToken(store, rawToken, "project_invite");
+    if (!token) return null;
+    const user = store.users.find((entry) => entry.id === token.userId);
+    if (!user || user.role !== "customer") return null;
+
+    const now = new Date().toISOString();
+    user.passwordHash = hashPassword(password);
+    user.emailVerifiedAt = now;
+    token.consumedAt = now;
+    return { userId: user.id };
+  });
+
+  if (!result) redirect(`/${locale}/invite?error=token`);
+  await setSession(result.userId);
+  redirect(`/${locale}/portal?invited=1`);
 }

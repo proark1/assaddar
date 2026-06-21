@@ -5,6 +5,7 @@ import {
   FileText,
   LayoutDashboard,
   LogOut,
+  Settings,
   ShieldCheck,
 } from "lucide-react";
 import type { Locale } from "@/content";
@@ -116,6 +117,9 @@ export function PortalShell({
                 Admin
               </Link>
             )}
+            <Link href={`/${locale}/portal/settings`} className="hover:text-ink">
+              Settings
+            </Link>
           </nav>
           <div className="flex items-center gap-3">
             <div className="hidden text-right sm:block">
@@ -124,6 +128,13 @@ export function PortalShell({
             </div>
             <form action={logoutAction}>
               <input type="hidden" name="locale" value={locale} />
+              <Link
+                href={`/${locale}/portal/settings`}
+                aria-label="Settings"
+                className="mr-2 inline-flex h-9 w-9 items-center justify-center rounded-lg border border-hairline text-ink2 transition-colors hover:border-copper hover:text-copper md:hidden"
+              >
+                <Settings className="h-4 w-4" />
+              </Link>
               <button
                 type="submit"
                 aria-label="Logout"

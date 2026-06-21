@@ -65,6 +65,43 @@ export default async function CustomerProjectPage({
   const invoices = bundle.invoices.filter(
     (invoice) => invoice.status !== "draft",
   );
+  const timeline = [
+    ...updates.map((update) => ({
+      id: update.id,
+      date: update.createdAt,
+      type: "Update",
+      title: update.title,
+      body: update.body,
+    })),
+    ...tasks.map((task) => ({
+      id: task.id,
+      date: task.createdAt,
+      type: "Aufgabe",
+      title: task.title,
+      body: `Owner: ${task.owner === "assad" ? "Assad" : "Kunde"} · ${task.status}`,
+    })),
+    ...milestones.map((milestone) => ({
+      id: milestone.id,
+      date: milestone.createdAt,
+      type: "Meilenstein",
+      title: milestone.title,
+      body: `${milestone.status} · ${formatDate(milestone.dueDate)}`,
+    })),
+    ...files.map((file) => ({
+      id: file.id,
+      date: file.uploadedAt,
+      type: "Datei",
+      title: file.name,
+      body: file.description || "Neue Datei im Portal",
+    })),
+    ...invoices.map((invoice) => ({
+      id: invoice.id,
+      date: invoice.createdAt,
+      type: "Rechnung",
+      title: invoice.number,
+      body: `${formatCurrency(invoice.amountCents, invoice.currency)} · ${invoice.status}`,
+    })),
+  ].sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
 
   return (
     <PortalShell
@@ -99,6 +136,47 @@ export default async function CustomerProjectPage({
               <p className="mt-2 text-sm leading-relaxed text-ink2">
                 {bundle.project.nextStep || "Der nächste Schritt wird vorbereitet."}
               </p>
+            </div>
+          </PortalCard>
+
+          <PortalCard>
+            <PortalSectionTitle
+              eyebrow="Timeline"
+              title="Was gerade im Projekt passiert"
+            >
+              Eine chronologische Sicht auf freigegebene Updates, Aufgaben,
+              Dateien, Meilensteine und Rechnungen.
+            </PortalSectionTitle>
+            <div className="mt-5 space-y-4">
+              {timeline.length === 0 ? (
+                <EmptyState title="Noch keine Aktivität">
+                  Sobald im Projekt etwas für Sie freigegeben wird, erscheint
+                  es hier.
+                </EmptyState>
+              ) : (
+                timeline.slice(0, 12).map((item) => (
+                  <article
+                    key={`${item.type}-${item.id}`}
+                    className="flex gap-4 rounded-lg border border-hairline bg-bg p-4"
+                  >
+                    <div className="mt-1 h-2.5 w-2.5 shrink-0 rounded-full bg-copper" />
+                    <div>
+                      <div className="flex flex-wrap items-center gap-2">
+                        <Badge>{item.type}</Badge>
+                        <span className="text-[12px] text-muted">
+                          {formatDate(item.date)}
+                        </span>
+                      </div>
+                      <h3 className="mt-2 text-sm font-medium text-ink">
+                        {item.title}
+                      </h3>
+                      <p className="mt-1 line-clamp-3 whitespace-pre-line text-sm leading-relaxed text-ink2">
+                        {item.body}
+                      </p>
+                    </div>
+                  </article>
+                ))
+              )}
             </div>
           </PortalCard>
 

@@ -1,9 +1,12 @@
 "use server";
+import { randomBytes } from "crypto";
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { isLocale, type Locale } from "@/content";
 import { requireAdmin } from "@/lib/portal/auth";
 import { requestExternalAiInsight } from "@/lib/portal/ai-providers";
+import { appUrl } from "@/lib/portal/config";
+import { sendPortalEmail } from "@/lib/portal/email";
 import {
   findUserByEmail,
   getProjectBundle,
@@ -13,6 +16,7 @@ import {
   upsertIntelligence,
 } from "@/lib/portal/store";
 import { createInvoiceCheckoutUrl } from "@/lib/portal/payments";
+import { hashPassword } from "@/lib/portal/password";
 import { savePortalFile } from "@/lib/portal/storage";
 import {
   buildTemplatePrompt,
@@ -26,6 +30,7 @@ import type {
   ProjectStatus,
   Visibility,
 } from "@/lib/portal/types";
+import { createAuthToken } from "@/lib/portal/tokens";
 
 function safeLocale(value: FormDataEntryValue | null): Locale {
   const raw = String(value || "de");
@@ -86,6 +91,46 @@ function safeFilename(value: string) {
 
 function adminProjectPath(locale: Locale, projectId: string) {
   return `/${locale}/portal/admin/projects/${projectId}`;
+}
+
+function randomTemporaryPassword() {
+  return `${randomBytes(18).toString("base64url")}!7`;
+}
+
+async function notifyProjectCustomers({
+  locale,
+  projectId,
+  subject,
+  body,
+}: {
+  locale: Locale;
+  projectId: string;
+  subject: string;
+  body: string;
+}) {
+  const store = await readStore();
+  const bundle = getProjectBundle(store, projectId);
+  if (!bundle || bundle.customerUsers.length === 0) return;
+
+  const projectUrl = `${appUrl()}/${locale}/portal/projects/${projectId}`;
+  await Promise.all(
+    bundle.customerUsers.map((customer) =>
+      sendPortalEmail({
+        to: customer.email,
+        subject,
+        text: [
+          `Hallo ${customer.name},`,
+          "",
+          body,
+          "",
+          `Projekt öffnen: ${projectUrl}`,
+          "",
+          "Viele Grüße",
+          "Assad Dar",
+        ].join("\n"),
+      }),
+    ),
+  );
 }
 
 export async function createProjectAction(formData: FormData) {
@@ -227,6 +272,89 @@ export async function assignCustomerAction(formData: FormData) {
 
   revalidatePath(adminProjectPath(locale, projectId));
   redirect(`${adminProjectPath(locale, projectId)}?assigned=${assigned ? "1" : "0"}`);
+}
+
+export async function inviteCustomerAction(formData: FormData) {
+  const locale = safeLocale(formData.get("locale"));
+  await requireAdmin(locale);
+  const projectId = text(formData, "projectId");
+  const email = text(formData, "email").toLowerCase();
+  const name = text(formData, "name") || email;
+
+  if (!email.includes("@")) {
+    redirect(`${adminProjectPath(locale, projectId)}?assigned=0`);
+  }
+
+  const result = await mutateStore((store) => {
+    const bundle = getProjectBundle(store, projectId);
+    if (!bundle) return null;
+
+    const now = new Date().toISOString();
+    let customer = findUserByEmail(store, email);
+    if (customer && customer.role !== "customer") return null;
+
+    if (!customer) {
+      customer = {
+        id: id("user"),
+        name,
+        email,
+        passwordHash: hashPassword(randomTemporaryPassword()),
+        role: "customer",
+        createdAt: now,
+      };
+      store.users.push(customer);
+    } else if (name && customer.name === customer.email) {
+      customer.name = name;
+    }
+
+    const exists = store.projectMembers.some(
+      (member) => member.projectId === projectId && member.userId === customer.id,
+    );
+    if (!exists) {
+      store.projectMembers.push({
+        id: id("member"),
+        projectId,
+        userId: customer.id,
+        role: "client_owner",
+        createdAt: now,
+      });
+    }
+
+    const token = createAuthToken(customer.id, "project_invite", 60 * 24 * 7);
+    store.authTokens.push(token.record);
+    return {
+      rawToken: token.rawToken,
+      email: customer.email,
+      name: customer.name,
+      projectName: bundle.project.name,
+      company: bundle.organization.name,
+    };
+  });
+
+  if (!result) redirect(`${adminProjectPath(locale, projectId)}?assigned=0`);
+
+  const inviteUrl = `${appUrl()}/${locale}/invite?token=${encodeURIComponent(
+    result.rawToken,
+  )}`;
+  await sendPortalEmail({
+    to: result.email,
+    subject: `Einladung zum Assad Dar Portal: ${result.projectName}`,
+    text: [
+      `Hallo ${result.name},`,
+      "",
+      `Assad Dar hat Sie zum Projektportal für ${result.company} eingeladen.`,
+      "Bitte legen Sie über diesen Link Ihr Passwort fest:",
+      inviteUrl,
+      "",
+      "Der Link ist 7 Tage gültig.",
+      "",
+      "Viele Grüße",
+      "Assad Dar",
+    ].join("\n"),
+  });
+
+  revalidatePath(adminProjectPath(locale, projectId));
+  redirect(`${adminProjectPath(locale, projectId)}?saved=invite`);
 }
 
 export async function updateProjectOverviewAction(formData: FormData) {
@@ -390,24 +518,265 @@ export async function applyConsultingTemplateAction(formData: FormData) {
   redirect(`${adminProjectPath(locale, projectId)}?saved=template`);
 }
 
+export async function completeSetupWizardAction(formData: FormData) {
+  const locale = safeLocale(formData.get("locale"));
+  const user = await requireAdmin(locale);
+  const projectId = text(formData, "projectId");
+  const process = text(formData, "process");
+  const bottleneck = text(formData, "bottleneck");
+  const metric = text(formData, "metric");
+  const decisionMakers = text(formData, "decisionMakers");
+  const firstPilot = text(formData, "firstPilot");
+
+  await mutateStore((store) => {
+    const bundle = getProjectBundle(store, projectId);
+    if (!bundle) return;
+
+    const now = new Date().toISOString();
+    const project = store.projects.find((entry) => entry.id === projectId);
+    if (project) {
+      project.status = "analysis";
+      project.asdarStage = "analyse";
+      project.nextStep =
+        firstPilot || "Pilotprozess finalisieren und erste Umsetzung planen.";
+      project.updatedAt = now;
+    }
+
+    upsertIntelligence(store, projectId, {
+      companyContext: [
+        bundle.intelligence.companyContext,
+        process && `Wichtiger Prozess: ${process}`,
+      ]
+        .filter(Boolean)
+        .join("\n\n"),
+      stakeholders: [
+        bundle.intelligence.stakeholders,
+        decisionMakers && `Entscheider/Stakeholder: ${decisionMakers}`,
+      ]
+        .filter(Boolean)
+        .join("\n\n"),
+      issues: [bundle.intelligence.issues, bottleneck && `Engpass: ${bottleneck}`]
+        .filter(Boolean)
+        .join("\n\n"),
+      goals: [bundle.intelligence.goals, metric && `Messziel: ${metric}`]
+        .filter(Boolean)
+        .join("\n\n"),
+      currentTools: bundle.intelligence.currentTools,
+      dataSituation: bundle.intelligence.dataSituation,
+      constraints: bundle.intelligence.constraints,
+      opportunities: [
+        bundle.intelligence.opportunities,
+        firstPilot && `Erster Pilot: ${firstPilot}`,
+      ]
+        .filter(Boolean)
+        .join("\n\n"),
+      internalNotes: [
+        bundle.intelligence.internalNotes,
+        "Setup Wizard abgeschlossen. Im naechsten Termin Pilotumfang, Datenzugang und Erfolgsmessung finalisieren.",
+      ]
+        .filter(Boolean)
+        .join("\n\n"),
+    });
+
+    store.tasks.push({
+      id: id("task"),
+      projectId,
+      title: firstPilot
+        ? `Pilot vorbereiten: ${firstPilot}`
+        : "Pilotprozess konkretisieren",
+      owner: "assad",
+      status: "todo",
+      visibleToCustomer: true,
+      createdAt: now,
+    });
+
+    store.milestones.push({
+      id: id("milestone"),
+      projectId,
+      title: "Projekt-Setup und erster Pilot definiert",
+      status: "active",
+      visibleToCustomer: true,
+      createdAt: now,
+    });
+
+    store.updates.push({
+      id: id("update"),
+      projectId,
+      title: "Projekt-Setup abgeschlossen",
+      body:
+        firstPilot || metric
+          ? `Das Projekt-Setup ist abgeschlossen. Fokus: ${firstPilot || process}. Erfolgsmessung: ${metric || "wird im nächsten Schritt konkretisiert"}.`
+          : "Das Projekt-Setup ist abgeschlossen. Der nächste Schritt ist die konkrete Auswahl und Vorbereitung des ersten Piloten.",
+      visibility: "customer",
+      asdarStage: "analyse",
+      createdBy: user.id,
+      createdAt: now,
+    });
+  });
+
+  await notifyProjectCustomers({
+    locale,
+    projectId,
+    subject: "Assad Dar Portal: Projekt-Setup abgeschlossen",
+    body: "Das Projekt-Setup wurde aktualisiert. Der nächste Schritt ist jetzt im Portal sichtbar.",
+  });
+  revalidatePath(adminProjectPath(locale, projectId));
+  revalidatePath(`/${locale}/portal/projects/${projectId}`);
+  redirect(`${adminProjectPath(locale, projectId)}?saved=setup`);
+}
+
+export async function addMeetingNoteAction(formData: FormData) {
+  const locale = safeLocale(formData.get("locale"));
+  const user = await requireAdmin(locale);
+  const projectId = text(formData, "projectId");
+  const meetingTitle = text(formData, "meetingTitle") || "Meeting Notes";
+  const notes = text(formData, "notes");
+  const decisions = text(formData, "decisions");
+  const nextActions = text(formData, "nextActions");
+  const customerSummary = text(formData, "customerSummary");
+  const publishSummary = checkbox(formData, "publishSummary");
+
+  await mutateStore((store) => {
+    if (!getProjectBundle(store, projectId)) return;
+    const now = new Date().toISOString();
+
+    store.updates.push({
+      id: id("update"),
+      projectId,
+      title: meetingTitle,
+      body: [
+        notes && `Notizen:\n${notes}`,
+        decisions && `Entscheidungen:\n${decisions}`,
+        nextActions && `Naechste Aktionen:\n${nextActions}`,
+      ]
+        .filter(Boolean)
+        .join("\n\n"),
+      visibility: "internal",
+      asdarStage: asdar(text(formData, "asdarStage")),
+      createdBy: user.id,
+      createdAt: now,
+    });
+
+    if (nextActions) {
+      for (const entry of nextActions.split("\n").map((line) => line.trim())) {
+        if (!entry) continue;
+        store.tasks.push({
+          id: id("task"),
+          projectId,
+          title: entry.replace(/^[-*]\s*/, ""),
+          owner: "assad",
+          status: "todo",
+          visibleToCustomer: false,
+          createdAt: now,
+        });
+      }
+    }
+
+    if (publishSummary && customerSummary) {
+      store.updates.push({
+        id: id("update"),
+        projectId,
+        title: "Meeting-Zusammenfassung",
+        body: customerSummary,
+        visibility: "customer",
+        asdarStage: asdar(text(formData, "asdarStage")),
+        createdBy: user.id,
+        createdAt: now,
+      });
+    }
+  });
+
+  if (publishSummary && customerSummary) {
+    await notifyProjectCustomers({
+      locale,
+      projectId,
+      subject: "Assad Dar Portal: Neue Meeting-Zusammenfassung",
+      body: customerSummary,
+    });
+  }
+
+  revalidatePath(adminProjectPath(locale, projectId));
+  revalidatePath(`/${locale}/portal/projects/${projectId}`);
+  redirect(`${adminProjectPath(locale, projectId)}?saved=meeting`);
+}
+
+export async function saveKnowledgeSnapshotAction(formData: FormData) {
+  const locale = safeLocale(formData.get("locale"));
+  await requireAdmin(locale);
+  const projectId = text(formData, "projectId");
+  const store = await readStore();
+  const bundle = getProjectBundle(store, projectId);
+  if (!bundle) redirect(`/${locale}/portal/admin`);
+
+  const template = matchConsultingTemplate(bundle.organization.industry);
+  const similar = store.projects
+    .filter((project) => project.id !== projectId)
+    .slice(0, 3)
+    .map((project) => project.name);
+
+  await mutateStore((nextStore) => {
+    if (!getProjectBundle(nextStore, projectId)) return;
+    nextStore.aiInsights.push({
+      id: id("insight"),
+      projectId,
+      title: `Knowledge Snapshot: ${template.label}`,
+      body: [
+        `Industrie: ${bundle.organization.industry}`,
+        `Template: ${template.label}`,
+        "",
+        "Quick Wins:",
+        ...template.quickWins.map((item) => `- ${item}`),
+        "",
+        "Risiken:",
+        ...template.risks.map((item) => `- ${item}`),
+        "",
+        "Naechste Fragen:",
+        ...template.discoveryQuestions.map((item) => `- ${item}`),
+        "",
+        similar.length > 0
+          ? `Aehnliche Projektbasis: ${similar.join(", ")}`
+          : "Aehnliche Projektbasis: noch zu wenig Projekthistorie",
+      ].join("\n"),
+      kind: "guidance",
+      createdAt: new Date().toISOString(),
+    });
+  });
+
+  revalidatePath(adminProjectPath(locale, projectId));
+  redirect(`${adminProjectPath(locale, projectId)}?saved=knowledge`);
+}
+
 export async function addUpdateAction(formData: FormData) {
   const locale = safeLocale(formData.get("locale"));
   const user = await requireAdmin(locale);
   const projectId = text(formData, "projectId");
+  const updateVisibility = visibility(text(formData, "visibility"));
+  const title = text(formData, "title") || "Projektupdate";
+  const body = text(formData, "body");
+  const stage = asdar(text(formData, "asdarStage"));
 
   await mutateStore((store) => {
     if (!getProjectBundle(store, projectId)) return;
     store.updates.push({
       id: id("update"),
       projectId,
-      title: text(formData, "title") || "Projektupdate",
-      body: text(formData, "body"),
-      visibility: visibility(text(formData, "visibility")),
-      asdarStage: asdar(text(formData, "asdarStage")),
+      title,
+      body,
+      visibility: updateVisibility,
+      asdarStage: stage,
       createdBy: user.id,
       createdAt: new Date().toISOString(),
     });
   });
+
+  if (updateVisibility === "customer") {
+    await notifyProjectCustomers({
+      locale,
+      projectId,
+      subject: `Assad Dar Portal: ${title}`,
+      body: body || "Es gibt ein neues Projektupdate im Portal.",
+    });
+  }
 
   revalidatePath(adminProjectPath(locale, projectId));
   revalidatePath(`/${locale}/portal/projects/${projectId}`);
@@ -418,13 +787,15 @@ export async function addTaskAction(formData: FormData) {
   const locale = safeLocale(formData.get("locale"));
   await requireAdmin(locale);
   const projectId = text(formData, "projectId");
+  const title = text(formData, "title") || "Neue Aufgabe";
+  const visibleToCustomer = checkbox(formData, "visibleToCustomer");
 
   await mutateStore((store) => {
     if (!getProjectBundle(store, projectId)) return;
     store.tasks.push({
       id: id("task"),
       projectId,
-      title: text(formData, "title") || "Neue Aufgabe",
+      title,
       owner: text(formData, "owner") === "customer" ? "customer" : "assad",
       status:
         text(formData, "status") === "done"
@@ -433,10 +804,19 @@ export async function addTaskAction(formData: FormData) {
             ? "doing"
             : "todo",
       dueDate: text(formData, "dueDate") || undefined,
-      visibleToCustomer: checkbox(formData, "visibleToCustomer"),
+      visibleToCustomer,
       createdAt: new Date().toISOString(),
     });
   });
+
+  if (visibleToCustomer) {
+    await notifyProjectCustomers({
+      locale,
+      projectId,
+      subject: "Assad Dar Portal: Neue Aufgabe",
+      body: `Neue Aufgabe im Projekt: ${title}`,
+    });
+  }
 
   revalidatePath(adminProjectPath(locale, projectId));
   revalidatePath(`/${locale}/portal/projects/${projectId}`);
@@ -447,13 +827,15 @@ export async function addMilestoneAction(formData: FormData) {
   const locale = safeLocale(formData.get("locale"));
   await requireAdmin(locale);
   const projectId = text(formData, "projectId");
+  const title = text(formData, "title") || "Neuer Meilenstein";
+  const visibleToCustomer = checkbox(formData, "visibleToCustomer");
 
   await mutateStore((store) => {
     if (!getProjectBundle(store, projectId)) return;
     store.milestones.push({
       id: id("milestone"),
       projectId,
-      title: text(formData, "title") || "Neuer Meilenstein",
+      title,
       status:
         text(formData, "status") === "done"
           ? "done"
@@ -461,10 +843,19 @@ export async function addMilestoneAction(formData: FormData) {
             ? "active"
             : "planned",
       dueDate: text(formData, "dueDate") || undefined,
-      visibleToCustomer: checkbox(formData, "visibleToCustomer"),
+      visibleToCustomer,
       createdAt: new Date().toISOString(),
     });
   });
+
+  if (visibleToCustomer) {
+    await notifyProjectCustomers({
+      locale,
+      projectId,
+      subject: "Assad Dar Portal: Neuer Meilenstein",
+      body: `Ein neuer Meilenstein wurde im Projekt hinzugefügt: ${title}`,
+    });
+  }
 
   revalidatePath(adminProjectPath(locale, projectId));
   revalidatePath(`/${locale}/portal/projects/${projectId}`);
@@ -486,6 +877,8 @@ export async function addFileAction(formData: FormData) {
 
   const fileId = id("file");
   const safeName = safeFilename(upload.name || "upload.bin");
+  const fileVisibility = visibility(text(formData, "visibility"));
+  const displayName = text(formData, "name") || upload.name || "Datei";
   const buffer = Buffer.from(await upload.arrayBuffer());
   const storagePath = await savePortalFile({
     projectId,
@@ -500,16 +893,25 @@ export async function addFileAction(formData: FormData) {
     store.files.push({
       id: fileId,
       projectId,
-      name: text(formData, "name") || upload.name || "Datei",
+      name: displayName,
       description: text(formData, "description"),
       storagePath,
       mimeType: upload.type || "application/octet-stream",
       size: upload.size,
-      visibility: visibility(text(formData, "visibility")),
+      visibility: fileVisibility,
       uploadedBy: user.id,
       uploadedAt: new Date().toISOString(),
     });
   });
+
+  if (fileVisibility === "customer") {
+    await notifyProjectCustomers({
+      locale,
+      projectId,
+      subject: "Assad Dar Portal: Neue Datei",
+      body: `Eine neue Datei wurde im Projektportal bereitgestellt: ${displayName}`,
+    });
+  }
 
   revalidatePath(adminProjectPath(locale, projectId));
   revalidatePath(`/${locale}/portal/projects/${projectId}`);
@@ -549,9 +951,124 @@ export async function addInvoiceAction(formData: FormData) {
     store.invoices.push(invoice);
   });
 
+  if (invoice.status !== "draft") {
+    await notifyProjectCustomers({
+      locale,
+      projectId,
+      subject: `Assad Dar Portal: Rechnung ${invoice.number}`,
+      body: `Eine Rechnung wurde im Projektportal bereitgestellt: ${invoice.description || invoice.number}`,
+    });
+  }
+
   revalidatePath(adminProjectPath(locale, projectId));
   revalidatePath(`/${locale}/portal/projects/${projectId}`);
   redirect(`${adminProjectPath(locale, projectId)}?saved=invoice`);
+}
+
+export async function generateProposalAction(formData: FormData) {
+  const locale = safeLocale(formData.get("locale"));
+  const user = await requireAdmin(locale);
+  const projectId = text(formData, "projectId");
+  const scope = text(formData, "scope");
+  const outcomes = text(formData, "outcomes");
+  const timeline = text(formData, "timeline");
+  const amount = text(formData, "amount");
+  const createInvoice = checkbox(formData, "createInvoice");
+  const sourceStore = await readStore();
+  const bundle = getProjectBundle(sourceStore, projectId);
+  if (!bundle) redirect(`/${locale}/portal/admin`);
+
+  const now = new Date();
+  const proposalId = id("proposal");
+  const proposalNumber = `AD-P-${now.getFullYear()}-${now
+    .getTime()
+    .toString()
+    .slice(-5)}`;
+  const amountCents = cents(amount);
+  const proposalText = [
+    "Assad Dar - AI & Digitalisierung",
+    `Proposal: ${proposalNumber}`,
+    "",
+    `Kunde: ${bundle.organization.name}`,
+    `Projekt: ${bundle.project.name}`,
+    `Branche: ${bundle.organization.industry}`,
+    "",
+    "Ausgangslage",
+    bundle.project.summary || bundle.intelligence.companyContext || "Wird im Projekt konkretisiert.",
+    "",
+    "Leistungsumfang",
+    scope || "ASDAR Analyse, Prozessstrukturierung und Pilotdefinition.",
+    "",
+    "Erwartete Ergebnisse",
+    outcomes || "Konkrete Automatisierungshebel, priorisierte Roadmap und naechste Umsetzungsschritte.",
+    "",
+    "Zeitrahmen",
+    timeline || "Nach Abstimmung.",
+    "",
+    amountCents > 0 ? `Budget: ${amount}` : "Budget: nach Abstimmung",
+  ].join("\n");
+
+  const buffer = Buffer.from(proposalText, "utf8");
+  const storagePath = await savePortalFile({
+    projectId,
+    fileId: proposalId,
+    filename: `${proposalNumber}.txt`,
+    bytes: buffer,
+    contentType: "text/plain; charset=utf-8",
+  });
+
+  await mutateStore((store) => {
+    if (!getProjectBundle(store, projectId)) return;
+    const createdAt = now.toISOString();
+    store.files.push({
+      id: proposalId,
+      projectId,
+      name: `Proposal ${proposalNumber}`,
+      description: "Kundenangebot aus dem Portal",
+      storagePath,
+      mimeType: "text/plain; charset=utf-8",
+      size: buffer.length,
+      visibility: "customer",
+      uploadedBy: user.id,
+      uploadedAt: createdAt,
+    });
+
+    store.updates.push({
+      id: id("update"),
+      projectId,
+      title: "Proposal bereitgestellt",
+      body: "Das Angebot wurde im Projektportal bereitgestellt.",
+      visibility: "customer",
+      asdarStage: bundle.project.asdarStage,
+      createdBy: user.id,
+      createdAt,
+    });
+
+    if (createInvoice && amountCents > 0) {
+      store.invoices.push({
+        id: id("invoice"),
+        projectId,
+        number: proposalNumber.replace("AD-P", "AD"),
+        description: scope || "ASDAR Consulting",
+        amountCents,
+        currency: "EUR",
+        status: "sent",
+        issuedAt: createdAt.slice(0, 10),
+        dueDate: undefined,
+        createdAt,
+      });
+    }
+  });
+
+  await notifyProjectCustomers({
+    locale,
+    projectId,
+    subject: "Assad Dar Portal: Proposal bereitgestellt",
+    body: "Ein neues Angebot wurde im Projektportal bereitgestellt.",
+  });
+  revalidatePath(adminProjectPath(locale, projectId));
+  revalidatePath(`/${locale}/portal/projects/${projectId}`);
+  redirect(`${adminProjectPath(locale, projectId)}?saved=proposal`);
 }
 
 export async function runAiScanAction(formData: FormData) {

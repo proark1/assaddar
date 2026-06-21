@@ -26,7 +26,12 @@ import {
   addUpdateAction,
   applyConsultingTemplateAction,
   assignCustomerAction,
+  completeSetupWizardAction,
+  generateProposalAction,
+  inviteCustomerAction,
+  addMeetingNoteAction,
   runAiScanAction,
+  saveKnowledgeSnapshotAction,
   updateIntelligenceAction,
   updateProjectOverviewAction,
 } from "@/app/actions/portal";
@@ -254,6 +259,76 @@ export default async function AdminProjectPage({
               >
                 <CheckCircle2 className="h-4 w-4" />
                 Basis speichern
+              </button>
+            </form>
+          </PortalCard>
+
+          <PortalCard>
+            <PortalSectionTitle
+              eyebrow="Setup Wizard"
+              title="5-Minuten Projekt-Setup"
+            >
+              Nutzt die wichtigsten Intake-Antworten, um interne Notizen,
+              Kundenupdate, erste Aufgabe und Meilenstein anzulegen.
+            </PortalSectionTitle>
+            <form action={completeSetupWizardAction} className="mt-5 space-y-4">
+              <HiddenProjectFields locale={safe} projectId={projectId} />
+              <div>
+                <label className="mb-1.5 block text-sm text-ink2">
+                  Wichtigster Prozess
+                </label>
+                <input
+                  name="process"
+                  placeholder="z.B. Anfrage bis Angebot, Ticket bis Lösung, Auftrag bis Lieferung"
+                  className={fieldClass}
+                />
+              </div>
+              <div className="grid gap-4 md:grid-cols-2">
+                <div>
+                  <label className="mb-1.5 block text-sm text-ink2">
+                    Hauptengpass
+                  </label>
+                  <textarea
+                    name="bottleneck"
+                    placeholder="Wo verliert das Team Zeit, Qualität oder Transparenz?"
+                    className={textareaClass}
+                  />
+                </div>
+                <div>
+                  <label className="mb-1.5 block text-sm text-ink2">
+                    Messbares Ziel
+                  </label>
+                  <textarea
+                    name="metric"
+                    placeholder="z.B. 30% weniger manuelle E-Mail-Zeit, schnellere Angebotsdauer"
+                    className={textareaClass}
+                  />
+                </div>
+              </div>
+              <div className="grid gap-4 md:grid-cols-2">
+                <div>
+                  <label className="mb-1.5 block text-sm text-ink2">
+                    Entscheider und Stakeholder
+                  </label>
+                  <textarea name="decisionMakers" className={textareaClass} />
+                </div>
+                <div>
+                  <label className="mb-1.5 block text-sm text-ink2">
+                    Erster Pilot
+                  </label>
+                  <textarea
+                    name="firstPilot"
+                    placeholder="Welcher kleine Pilot soll zuerst umgesetzt werden?"
+                    className={textareaClass}
+                  />
+                </div>
+              </div>
+              <button
+                type="submit"
+                className="inline-flex items-center gap-2 rounded-lg bg-copper px-4 py-2.5 text-sm font-medium text-oncopper transition-colors hover:bg-copper-hi"
+              >
+                <CheckCircle2 className="h-4 w-4" />
+                Setup speichern und Projekt starten
               </button>
             </form>
           </PortalCard>
@@ -542,6 +617,60 @@ export default async function AdminProjectPage({
               Nutze diese Punkte live im Termin, um schneller von Problem zu
               Pilot zu kommen.
             </PortalSectionTitle>
+            <form action={addMeetingNoteAction} className="mt-5 space-y-3">
+              <HiddenProjectFields locale={safe} projectId={projectId} />
+              <input
+                name="meetingTitle"
+                placeholder="Meeting-Titel"
+                className={fieldClass}
+              />
+              <select
+                name="asdarStage"
+                defaultValue={bundle.project.asdarStage}
+                className={fieldClass}
+              >
+                {asdarStages.map((stage) => (
+                  <option key={stage.value} value={stage.value}>
+                    {stage.label}
+                  </option>
+                ))}
+              </select>
+              <textarea
+                name="notes"
+                placeholder="Live-Notizen, Beobachtungen, Zitate"
+                className={textareaClass}
+              />
+              <textarea
+                name="decisions"
+                placeholder="Entscheidungen und offene Punkte"
+                className={textareaClass}
+              />
+              <textarea
+                name="nextActions"
+                placeholder="Nächste Aktionen, je Zeile eine Aufgabe"
+                className={textareaClass}
+              />
+              <textarea
+                name="customerSummary"
+                placeholder="Kurze kundenfreundliche Zusammenfassung"
+                className={textareaClass}
+              />
+              <label className="flex items-center gap-2 text-sm text-ink2">
+                <input
+                  name="publishSummary"
+                  type="checkbox"
+                  className="h-4 w-4 accent-[var(--color-copper)]"
+                />
+                Zusammenfassung im Kundenportal veröffentlichen
+              </label>
+              <button
+                type="submit"
+                className="inline-flex w-full items-center justify-center gap-2 rounded-lg bg-copper px-4 py-2.5 text-sm font-medium text-oncopper transition-colors hover:bg-copper-hi"
+              >
+                <MessagesSquare className="h-4 w-4" />
+                Meeting speichern
+              </button>
+            </form>
             <div className="mt-5 space-y-5">
               <div>
                 <div className="flex items-center gap-2 text-sm font-medium text-ink">
@@ -691,6 +820,16 @@ export default async function AdminProjectPage({
                 Scan starten
               </button>
             </form>
+            <form action={saveKnowledgeSnapshotAction} className="mt-3">
+              <HiddenProjectFields locale={safe} projectId={projectId} />
+              <button
+                type="submit"
+                className="inline-flex w-full items-center justify-center gap-2 rounded-lg border border-hairline px-4 py-2.5 text-sm font-medium text-ink transition-colors hover:border-copper hover:text-copper"
+              >
+                <BrainCircuit className="h-4 w-4" />
+                Knowledge Snapshot speichern
+              </button>
+            </form>
             <div className="mt-5 space-y-3">
               {bundle.aiInsights.map((insight) => (
                 <article
@@ -782,6 +921,33 @@ export default async function AdminProjectPage({
               >
                 <UserPlus className="h-4 w-4" />
                 Kunde zuordnen
+              </button>
+            </form>
+            <form action={inviteCustomerAction} className="mt-5 space-y-3">
+              <HiddenProjectFields locale={safe} projectId={projectId} />
+              <div className="border-t border-hairline pt-5">
+                <div className="text-sm font-medium text-ink">
+                  Neuen Kunden einladen
+                </div>
+                <p className="mt-1 text-[12px] leading-relaxed text-muted">
+                  Erstellt bei Bedarf ein Kundenkonto, ordnet es diesem Projekt
+                  zu und sendet einen Passwort-Link.
+                </p>
+              </div>
+              <input name="name" placeholder="Name" className={fieldClass} />
+              <input
+                name="email"
+                type="email"
+                required
+                placeholder="kunde@example.com"
+                className={fieldClass}
+              />
+              <button
+                type="submit"
+                className="inline-flex w-full items-center justify-center gap-2 rounded-lg bg-copper px-4 py-2.5 text-sm font-medium text-oncopper transition-colors hover:bg-copper-hi"
+              >
+                <UserPlus className="h-4 w-4" />
+                Einladung senden
               </button>
             </form>
           </PortalCard>
@@ -943,7 +1109,54 @@ export default async function AdminProjectPage({
 
           <PortalCard>
             <PortalSectionTitle eyebrow="Rechnungen" title="Payment" />
+            <form action={generateProposalAction} className="mt-5 space-y-3">
+              <div className="rounded-lg border border-copper/25 bg-copper/10 p-3">
+                <div className="text-sm font-medium text-ink">
+                  Proposal Generator
+                </div>
+                <p className="mt-1 text-[12px] leading-relaxed text-ink2">
+                  Erstellt ein kunden sichtbares Angebot als Datei und optional
+                  eine Rechnung.
+                </p>
+              </div>
+              <HiddenProjectFields locale={safe} projectId={projectId} />
+              <textarea
+                name="scope"
+                placeholder="Leistungsumfang"
+                className={textareaClass}
+              />
+              <textarea
+                name="outcomes"
+                placeholder="Ergebnisse / Deliverables"
+                className={textareaClass}
+              />
+              <input
+                name="timeline"
+                placeholder="Zeitrahmen"
+                className={fieldClass}
+              />
+              <input name="amount" placeholder="2900,00" className={fieldClass} />
+              <label className="flex items-center gap-2 text-sm text-ink2">
+                <input
+                  name="createInvoice"
+                  type="checkbox"
+                  className="h-4 w-4 accent-[var(--color-copper)]"
+                />
+                Rechnung aus Proposal erzeugen
+              </label>
+              <button
+                type="submit"
+                className="inline-flex w-full items-center justify-center gap-2 rounded-lg border border-hairline px-4 py-2.5 text-sm font-medium text-ink transition-colors hover:border-copper hover:text-copper"
+              >
+                <FileUp className="h-4 w-4" />
+                Proposal erstellen
+              </button>
+            </form>
+
             <form action={addInvoiceAction} className="mt-5 space-y-3">
+              <div className="border-t border-hairline pt-5 text-sm font-medium text-ink">
+                Rechnung manuell hinzufügen
+              </div>
               <HiddenProjectFields locale={safe} projectId={projectId} />
               <input
                 name="number"
