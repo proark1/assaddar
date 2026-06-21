@@ -44,6 +44,32 @@ function detectImageSize(bytes: Buffer): { width: number; height: number } {
   return { width: 0, height: 0 };
 }
 
+type GeminiPart = {
+  inlineData?: { data?: string; mimeType?: string };
+  inline_data?: { data?: string; mime_type?: string };
+};
+
+function extractGeminiImage(data: unknown): GeneratedImage | null {
+  const parts =
+    (data as { candidates?: Array<{ content?: { parts?: GeminiPart[] } }> })
+      .candidates?.[0]?.content?.parts ?? [];
+  for (const part of parts) {
+    const inline = part.inlineData ?? part.inline_data;
+    if (inline?.data) {
+      const bytes = Buffer.from(inline.data, "base64");
+      const size = detectImageSize(bytes);
+      return {
+        bytes,
+        contentType: part.inlineData?.mimeType ?? part.inline_data?.mime_type ?? "image/png",
+        width: size.width,
+        height: size.height,
+        provider: "gemini",
+      };
+    }
+  }
+  return null;
+}
+
 async function generateWithGemini(prompt: string): Promise<GeneratedImage> {
   const key = process.env.GEMINI_API_KEY;
   if (!key) throw new Error("GEMINI_API_KEY is not configured.");
@@ -52,49 +78,40 @@ async function generateWithGemini(prompt: string): Promise<GeneratedImage> {
   const endpoint = `https://generativelanguage.googleapis.com/v1beta/models/${encodeURIComponent(
     model,
   )}:generateContent?key=${encodeURIComponent(key)}`;
-  const response = await fetch(endpoint, {
-    method: "POST",
-    headers: { "content-type": "application/json" },
-    body: JSON.stringify({
-      contents: [{ role: "user", parts: [{ text: prompt }] }],
-      generationConfig: { responseModalities: ["IMAGE"] },
-    }),
-  });
+  const contents = [{ role: "user", parts: [{ text: prompt }] }];
 
-  if (!response.ok) {
-    const detail = await response.text().catch(() => "");
-    throw new Error(
-      `Gemini image failed (${response.status}): ${detail.slice(0, 200)}`,
-    );
-  }
+  // Try the rich config (proper 16:9 hero); fall back to a minimal request if
+  // the model/version rejects responseFormat, so a generation still succeeds.
+  const bodies = [
+    {
+      contents,
+      generationConfig: {
+        responseModalities: ["TEXT", "IMAGE"],
+        responseFormat: { image: { aspectRatio: "16:9", imageSize: "2K" } },
+      },
+    },
+    {
+      contents,
+      generationConfig: { responseModalities: ["TEXT", "IMAGE"] },
+    },
+  ];
 
-  const data = (await response.json()) as {
-    candidates?: Array<{
-      content?: {
-        parts?: Array<{
-          inlineData?: { data?: string; mimeType?: string };
-          inline_data?: { data?: string; mime_type?: string };
-        }>;
-      };
-    }>;
-  };
-
-  const parts = data.candidates?.[0]?.content?.parts ?? [];
-  let b64: string | undefined;
-  let mime = "image/png";
-  for (const part of parts) {
-    const inline = part.inlineData ?? part.inline_data;
-    if (inline?.data) {
-      b64 = inline.data;
-      mime = part.inlineData?.mimeType ?? part.inline_data?.mime_type ?? mime;
-      break;
+  let lastError = "unknown error";
+  for (const body of bodies) {
+    const response = await fetch(endpoint, {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify(body),
+    });
+    if (!response.ok) {
+      lastError = `${response.status}: ${(await response.text().catch(() => "")).slice(0, 200)}`;
+      continue;
     }
+    const image = extractGeminiImage(await response.json());
+    if (image) return image;
+    lastError = "response contained no image data";
   }
-  if (!b64) throw new Error("Gemini returned no image data.");
-
-  const bytes = Buffer.from(b64, "base64");
-  const size = detectImageSize(bytes);
-  return { bytes, contentType: mime, width: size.width, height: size.height, provider: "gemini" };
+  throw new Error(`Gemini image failed (${lastError})`);
 }
 
 async function generateWithOpenAI(prompt: string): Promise<GeneratedImage> {
