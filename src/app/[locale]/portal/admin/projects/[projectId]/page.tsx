@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import {
+  Archive,
   BrainCircuit,
   BookOpen,
   CheckCircle2,
@@ -25,6 +26,7 @@ import {
   addTaskAction,
   addUpdateAction,
   applyConsultingTemplateAction,
+  archiveProjectAction,
   assignCustomerAction,
   completeSetupWizardAction,
   generateProposalAction,
@@ -33,7 +35,9 @@ import {
   runAiScanAction,
   saveKnowledgeSnapshotAction,
   updateIntelligenceAction,
+  updateMilestoneStatusAction,
   updateProjectOverviewAction,
+  updateTaskStatusAction,
 } from "@/app/actions/portal";
 import { isLocale, type Locale } from "@/content";
 import { requireAdmin } from "@/lib/portal/auth";
@@ -99,6 +103,12 @@ export default async function AdminProjectPage({
   const guidance = buildConsultantGuidance(bundle);
   const similar = findSimilarProjects(store, bundle);
   const template = matchConsultingTemplate(bundle.organization.industry);
+  const auditUpdates = bundle.updates.filter((update) =>
+    update.title.startsWith("Audit:"),
+  );
+  const projectUpdates = bundle.updates.filter(
+    (update) => !update.title.startsWith("Audit:"),
+  );
 
   return (
     <PortalShell
@@ -126,6 +136,8 @@ export default async function AdminProjectPage({
           {query.error === "file" && " Datei konnte nicht hochgeladen werden."}
           {query.error === "ai" &&
             " AI Scan konnte nicht gespeichert werden. Prüfen Sie Provider-Key und Modell."}
+          {query.error === "archive" &&
+            " Zum Archivieren bitte ARCHIVIEREN exakt eingeben."}
         </div>
       )}
 
@@ -260,6 +272,35 @@ export default async function AdminProjectPage({
                 <CheckCircle2 className="h-4 w-4" />
                 Basis speichern
               </button>
+            </form>
+            <form
+              action={archiveProjectAction}
+              className="mt-6 border-t border-hairline pt-5"
+            >
+              <HiddenProjectFields locale={safe} projectId={projectId} />
+              <div className="rounded-lg border border-critical/25 bg-critical/10 p-4">
+                <div className="text-sm font-medium text-ink">
+                  Projekt sicher archivieren
+                </div>
+                <p className="mt-1 text-[12px] leading-relaxed text-ink2">
+                  Setzt das Projekt auf abgeschlossen. Kunden behalten Zugriff
+                  auf bestehende Updates, Dateien und Rechnungen.
+                </p>
+                <div className="mt-3 grid gap-3 sm:grid-cols-[1fr_auto]">
+                  <input
+                    name="confirmation"
+                    placeholder="ARCHIVIEREN"
+                    className={fieldClass}
+                  />
+                  <button
+                    type="submit"
+                    className="inline-flex items-center justify-center gap-2 rounded-lg border border-critical/40 px-4 py-2.5 text-sm font-medium text-critical transition-colors hover:bg-critical/10"
+                  >
+                    <Archive className="h-4 w-4" />
+                    Archivieren
+                  </button>
+                </div>
+              </div>
             </form>
           </PortalCard>
 
@@ -504,7 +545,7 @@ export default async function AdminProjectPage({
             </form>
 
             <div className="mt-6 space-y-4">
-              {bundle.updates.map((update) => (
+              {projectUpdates.map((update) => (
                 <article
                   key={update.id}
                   className="rounded-lg border border-hairline bg-bg p-4"
@@ -524,6 +565,11 @@ export default async function AdminProjectPage({
                   </p>
                 </article>
               ))}
+              {projectUpdates.length === 0 && (
+                <p className="text-sm text-muted">
+                  Noch keine Projektupdates gespeichert.
+                </p>
+              )}
             </div>
           </PortalCard>
         </div>
@@ -890,6 +936,39 @@ export default async function AdminProjectPage({
           </PortalCard>
 
           <PortalCard>
+            <PortalSectionTitle eyebrow="Audit" title="Interner Verlauf">
+              Automatische Spur der wichtigsten Admin-Aktionen in diesem
+              Projekt.
+            </PortalSectionTitle>
+            <div className="mt-5 space-y-3">
+              {auditUpdates.slice(0, 12).map((update) => (
+                <article
+                  key={update.id}
+                  className="rounded-lg border border-hairline bg-bg p-3"
+                >
+                  <div className="flex flex-wrap items-center gap-2">
+                    <Badge>{formatStage(update.asdarStage)}</Badge>
+                    <span className="text-[12px] text-muted">
+                      {formatDate(update.createdAt)}
+                    </span>
+                  </div>
+                  <h3 className="mt-2 text-sm font-medium text-ink">
+                    {update.title.replace(/^Audit:\s*/, "")}
+                  </h3>
+                  <p className="mt-1 text-sm leading-relaxed text-ink2">
+                    {update.body}
+                  </p>
+                </article>
+              ))}
+              {auditUpdates.length === 0 && (
+                <p className="text-sm text-muted">
+                  Noch keine Audit-Einträge vorhanden.
+                </p>
+              )}
+            </div>
+          </PortalCard>
+
+          <PortalCard>
             <PortalSectionTitle eyebrow="Kunden" title="Zugriff verwalten" />
             <div className="mt-4 space-y-2">
               {bundle.customerUsers.map((customer) => (
@@ -1047,10 +1126,37 @@ export default async function AdminProjectPage({
                   key={task.id}
                   className="rounded-lg border border-hairline bg-bg p-3 text-sm"
                 >
-                  <div className="font-medium text-ink">{task.title}</div>
-                  <div className="mt-1 text-[12px] text-muted">
-                    {task.owner} · {task.status} · {formatDate(task.dueDate)} ·{" "}
-                    {task.visibleToCustomer ? "Kunde" : "Intern"}
+                  <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+                    <div>
+                      <div className="font-medium text-ink">{task.title}</div>
+                      <div className="mt-1 text-[12px] text-muted">
+                        {task.owner} · {formatDate(task.dueDate)} ·{" "}
+                        {task.visibleToCustomer ? "Kunde" : "Intern"}
+                      </div>
+                    </div>
+                    <form
+                      action={updateTaskStatusAction}
+                      className="flex items-center gap-2"
+                    >
+                      <HiddenProjectFields locale={safe} projectId={projectId} />
+                      <input type="hidden" name="taskId" value={task.id} />
+                      <select
+                        name="status"
+                        defaultValue={task.status}
+                        className={`${fieldClass} min-w-28`}
+                      >
+                        <option value="todo">Todo</option>
+                        <option value="doing">Doing</option>
+                        <option value="done">Done</option>
+                      </select>
+                      <button
+                        type="submit"
+                        aria-label="Aufgabenstatus speichern"
+                        className="inline-flex h-9 w-9 shrink-0 items-center justify-center rounded-lg border border-hairline text-ink2 transition-colors hover:border-copper hover:text-copper"
+                      >
+                        <CheckCircle2 className="h-4 w-4" />
+                      </button>
+                    </form>
                   </div>
                 </div>
               ))}
@@ -1097,10 +1203,43 @@ export default async function AdminProjectPage({
                   key={milestone.id}
                   className="rounded-lg border border-hairline bg-bg p-3 text-sm"
                 >
-                  <div className="font-medium text-ink">{milestone.title}</div>
-                  <div className="mt-1 text-[12px] text-muted">
-                    {milestone.status} · {formatDate(milestone.dueDate)} ·{" "}
-                    {milestone.visibleToCustomer ? "Kunde" : "Intern"}
+                  <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+                    <div>
+                      <div className="font-medium text-ink">
+                        {milestone.title}
+                      </div>
+                      <div className="mt-1 text-[12px] text-muted">
+                        {formatDate(milestone.dueDate)} ·{" "}
+                        {milestone.visibleToCustomer ? "Kunde" : "Intern"}
+                      </div>
+                    </div>
+                    <form
+                      action={updateMilestoneStatusAction}
+                      className="flex items-center gap-2"
+                    >
+                      <HiddenProjectFields locale={safe} projectId={projectId} />
+                      <input
+                        type="hidden"
+                        name="milestoneId"
+                        value={milestone.id}
+                      />
+                      <select
+                        name="status"
+                        defaultValue={milestone.status}
+                        className={`${fieldClass} min-w-32`}
+                      >
+                        <option value="planned">Planned</option>
+                        <option value="active">Active</option>
+                        <option value="done">Done</option>
+                      </select>
+                      <button
+                        type="submit"
+                        aria-label="Meilensteinstatus speichern"
+                        className="inline-flex h-9 w-9 shrink-0 items-center justify-center rounded-lg border border-hairline text-ink2 transition-colors hover:border-copper hover:text-copper"
+                      >
+                        <CheckCircle2 className="h-4 w-4" />
+                      </button>
+                    </form>
                   </div>
                 </div>
               ))}

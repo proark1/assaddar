@@ -1,11 +1,15 @@
 import type { Metadata } from "next";
 import Link from "next/link";
-import { ArrowRight, BookOpen, Plus } from "lucide-react";
+import { ArrowRight, BookOpen, Plus, Search, Users } from "lucide-react";
 import { createProjectAction } from "@/app/actions/portal";
 import { isLocale, type Locale } from "@/content";
 import { requireAdmin } from "@/lib/portal/auth";
 import { getProjectBundle, readStore } from "@/lib/portal/store";
-import { formatStage, formatStatus } from "@/lib/portal/format";
+import {
+  formatStage,
+  formatStatus,
+  projectStatuses,
+} from "@/lib/portal/format";
 import { consultingTemplates } from "@/lib/portal/templates";
 import {
   Badge,
@@ -28,16 +32,43 @@ export default async function AdminPage({
   searchParams,
 }: {
   params: Promise<{ locale: string }>;
-  searchParams: Promise<{ error?: string }>;
+  searchParams: Promise<{
+    error?: string;
+    q?: string;
+    status?: string;
+    health?: string;
+  }>;
 }) {
   const { locale } = await params;
   const safe: Locale = isLocale(locale) ? locale : "de";
   const user = await requireAdmin(safe);
   const store = await readStore();
   const query = await searchParams;
-  const bundles = store.projects
+  const projectQuery = query.q?.trim().toLowerCase() ?? "";
+  const statusFilter = query.status ?? "all";
+  const healthFilter = query.health ?? "all";
+  const allBundles = store.projects
     .map((project) => getProjectBundle(store, project.id))
     .filter((bundle): bundle is NonNullable<typeof bundle> => Boolean(bundle));
+  const bundles = allBundles.filter((bundle) => {
+    const matchesQuery =
+      !projectQuery ||
+      [
+        bundle.project.name,
+        bundle.project.summary,
+        bundle.organization.name,
+        bundle.organization.industry,
+      ]
+        .join(" ")
+        .toLowerCase()
+        .includes(projectQuery);
+    const matchesStatus =
+      statusFilter === "all" || bundle.project.status === statusFilter;
+    const matchesHealth =
+      healthFilter === "all" || bundle.project.health === healthFilter;
+
+    return matchesQuery && matchesStatus && matchesHealth;
+  });
 
   return (
     <PortalShell
@@ -46,6 +77,15 @@ export default async function AdminPage({
       eyebrow="Admin"
       title="Consulting Cockpit"
       backHref={`/${safe}/portal`}
+      actions={
+        <Link
+          href={`/${safe}/portal/admin/customers`}
+          className="inline-flex items-center gap-2 rounded-lg border border-hairline px-4 py-2.5 text-sm font-medium text-ink transition-colors hover:border-copper hover:text-copper"
+        >
+          <Users className="h-4 w-4" />
+          Kunden
+        </Link>
+      }
     >
       <div className="grid gap-6 lg:grid-cols-[1.35fr_0.85fr]">
         <div className="space-y-5">
@@ -79,6 +119,70 @@ export default async function AdminPage({
                   </div>
                 </div>
               ))}
+            </div>
+          </PortalCard>
+
+          <PortalCard>
+            <PortalSectionTitle
+              eyebrow="Projektübersicht"
+              title="Suchen und filtern"
+            >
+              Schneller Zugriff auf aktive, pausierte oder abgeschlossene
+              Mandate.
+            </PortalSectionTitle>
+            <form
+              action={`/${safe}/portal/admin`}
+              method="get"
+              className="mt-5 grid gap-3 md:grid-cols-[1fr_180px_150px_auto]"
+            >
+              <input
+                name="q"
+                defaultValue={query.q ?? ""}
+                placeholder="Projekt, Kunde, Branche..."
+                className={fieldClass}
+              />
+              <select
+                name="status"
+                defaultValue={statusFilter}
+                className={fieldClass}
+              >
+                <option value="all">Alle Status</option>
+                {projectStatuses.map((entry) => (
+                  <option key={entry.value} value={entry.value}>
+                    {entry.label}
+                  </option>
+                ))}
+              </select>
+              <select
+                name="health"
+                defaultValue={healthFilter}
+                className={fieldClass}
+              >
+                <option value="all">Alle Health</option>
+                <option value="green">Green</option>
+                <option value="amber">Amber</option>
+                <option value="red">Red</option>
+              </select>
+              <button
+                type="submit"
+                className="inline-flex items-center justify-center gap-2 rounded-lg bg-copper px-4 py-2.5 text-sm font-medium text-oncopper transition-colors hover:bg-copper-hi"
+              >
+                <Search className="h-4 w-4" />
+                Filtern
+              </button>
+            </form>
+            <div className="mt-3 flex items-center justify-between gap-3 text-sm text-muted">
+              <span>
+                {bundles.length} von {allBundles.length} Projekten
+              </span>
+              {(projectQuery || statusFilter !== "all" || healthFilter !== "all") && (
+                <Link
+                  href={`/${safe}/portal/admin`}
+                  className="text-copper hover:underline"
+                >
+                  Filter zurücksetzen
+                </Link>
+              )}
             </div>
           </PortalCard>
 
@@ -126,7 +230,13 @@ export default async function AdminPage({
                   <div className="text-muted">Kunden</div>
                 </div>
                 <div>
-                  <div className="font-medium text-ink">{bundle.updates.length}</div>
+                  <div className="font-medium text-ink">
+                    {
+                      bundle.updates.filter(
+                        (update) => !update.title.startsWith("Audit:"),
+                      ).length
+                    }
+                  </div>
                   <div className="text-muted">Updates</div>
                 </div>
                 <div>
@@ -142,6 +252,13 @@ export default async function AdminPage({
               </div>
             </Link>
           ))}
+          {bundles.length === 0 && (
+            <PortalCard>
+              <p className="text-sm text-muted">
+                Keine Projekte passen zu diesen Filtern.
+              </p>
+            </PortalCard>
+          )}
         </div>
 
         <PortalCard>

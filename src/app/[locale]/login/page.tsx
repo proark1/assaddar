@@ -34,6 +34,7 @@ export default async function LoginPage({
   const query = await searchParams;
   const invalid = query.error === "invalid";
   const needsVerification = query.error === "verify";
+  const rateLimited = query.error === "rate";
 
   return (
     <main className="flex min-h-screen items-center justify-center bg-bg px-5 py-12">
@@ -90,6 +91,12 @@ export default async function LoginPage({
           {needsVerification && (
             <p className="rounded-md border border-critical/30 bg-critical/10 px-3 py-2 text-sm text-critical">
               Bitte bestätigen Sie zuerst Ihre E-Mail-Adresse.
+            </p>
+          )}
+          {rateLimited && (
+            <p className="rounded-md border border-critical/30 bg-critical/10 px-3 py-2 text-sm text-critical">
+              Zu viele Login-Versuche. Bitte versuchen Sie es in einigen Minuten
+              erneut.
             </p>
           )}
           {query.verify === "sent" && (

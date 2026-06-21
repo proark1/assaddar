@@ -100,6 +100,12 @@ export default async function RegisterPage({
               Für diese E-Mail existiert bereits ein Konto.
             </p>
           )}
+          {query.error === "rate" && (
+            <p className="rounded-md border border-critical/30 bg-critical/10 px-3 py-2 text-sm text-critical">
+              Zu viele Registrierungsversuche. Bitte versuchen Sie es später
+              erneut.
+            </p>
+          )}
 
           <button
             type="submit"

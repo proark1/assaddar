@@ -1,6 +1,6 @@
 import { promises as fs } from "fs";
 import path from "path";
-import { randomUUID } from "crypto";
+import { randomBytes, randomUUID } from "crypto";
 import { hashPassword } from "./password";
 import { isPostgresBackendEnabled } from "./config";
 import {
@@ -23,6 +23,12 @@ export const UPLOAD_DIR = path.join(DATA_DIR, "uploads");
 
 function now() {
   return new Date().toISOString();
+}
+
+function bootstrapAdminPassword() {
+  const configured = process.env.PORTAL_ADMIN_BOOTSTRAP_PASSWORD?.trim();
+  if (configured && configured.length >= 12) return configured;
+  return `${randomBytes(24).toString("base64url")}!7`;
 }
 
 export function id(prefix: string) {
@@ -58,7 +64,7 @@ function buildSeedStore(): PortalStore {
         id: adminId,
         name: "Assad Dar",
         email: "admin@assad-dar.de",
-        passwordHash: hashPassword("AssadDemo2026!"),
+        passwordHash: hashPassword(bootstrapAdminPassword()),
         role: "admin",
         emailVerifiedAt: createdAt,
         createdAt,

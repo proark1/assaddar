@@ -7,6 +7,7 @@ import {
   LogOut,
   Settings,
   ShieldCheck,
+  Users,
 } from "lucide-react";
 import type { Locale } from "@/content";
 import { logoutAction } from "@/app/actions/auth";
@@ -113,9 +114,18 @@ export function PortalShell({
               Dashboard
             </Link>
             {user.role === "admin" && (
-              <Link href={`/${locale}/portal/admin`} className="hover:text-ink">
-                Admin
-              </Link>
+              <>
+                <Link href={`/${locale}/portal/admin`} className="hover:text-ink">
+                  Admin
+                </Link>
+                <Link
+                  href={`/${locale}/portal/admin/customers`}
+                  className="inline-flex items-center gap-1.5 hover:text-ink"
+                >
+                  <Users className="h-3.5 w-3.5" />
+                  Kunden
+                </Link>
+              </>
             )}
             <Link href={`/${locale}/portal/settings`} className="hover:text-ink">
               Settings

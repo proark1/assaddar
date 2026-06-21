@@ -1,12 +1,14 @@
 "use server";
 
 import { redirect } from "next/navigation";
+import { headers } from "next/headers";
 import { isLocale, type Locale } from "@/content";
 import { clearSession, getCurrentUser, setSession } from "@/lib/portal/auth";
 import { appUrl, requireEmailVerification } from "@/lib/portal/config";
 import { sendPortalEmail } from "@/lib/portal/email";
 import { findUserByEmail, id, mutateStore, readStore } from "@/lib/portal/store";
 import { hashPassword, verifyPassword } from "@/lib/portal/password";
+import { checkRateLimit, clientIpFromHeaders } from "@/lib/portal/rate-limit";
 import { createAuthToken, findConsumableAuthToken } from "@/lib/portal/tokens";
 
 function safeLocale(value: FormDataEntryValue | null): Locale {
@@ -47,6 +49,17 @@ export async function registerAction(formData: FormData) {
 
   if (!name || !email.includes("@") || password.length < 8) {
     redirect(`/${locale}/register?error=invalid`);
+  }
+
+  const requestHeaders = await headers();
+  const rateLimit = checkRateLimit(
+    `register:${clientIpFromHeaders(requestHeaders)}:${email}`,
+    4,
+    60 * 60 * 1000,
+  );
+
+  if (!rateLimit.allowed) {
+    redirect(`/${locale}/register?error=rate`);
   }
 
   const result = await mutateStore((store) => {

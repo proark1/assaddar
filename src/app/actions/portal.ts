@@ -27,7 +27,10 @@ import {
 import type {
   AsdarStage,
   Invoice,
+  PortalStore,
+  ProjectMilestone,
   ProjectStatus,
+  ProjectTask,
   Visibility,
 } from "@/lib/portal/types";
 import { createAuthToken } from "@/lib/portal/tokens";
@@ -73,6 +76,46 @@ function status(value: string): ProjectStatus {
     return value;
   }
   return "discovery";
+}
+
+function taskStatus(value: string): ProjectTask["status"] {
+  if (value === "done" || value === "doing" || value === "todo") return value;
+  return "todo";
+}
+
+function milestoneStatus(value: string): ProjectMilestone["status"] {
+  if (value === "done" || value === "active" || value === "planned") {
+    return value;
+  }
+  return "planned";
+}
+
+function addAuditUpdate({
+  store,
+  projectId,
+  userId,
+  title,
+  body,
+}: {
+  store: PortalStore;
+  projectId: string;
+  userId: string;
+  title: string;
+  body: string;
+}) {
+  const project = store.projects.find((entry) => entry.id === projectId);
+  if (!project) return;
+
+  store.updates.push({
+    id: id("update"),
+    projectId,
+    title: `Audit: ${title}`,
+    body,
+    visibility: "internal",
+    asdarStage: project.asdarStage,
+    createdBy: userId,
+    createdAt: new Date().toISOString(),
+  });
 }
 
 function cents(value: string) {
@@ -237,6 +280,14 @@ export async function createProjectAction(formData: FormData) {
       });
     }
 
+    addAuditUpdate({
+      store,
+      projectId: nextProjectId,
+      userId: user.id,
+      title: "Projekt erstellt",
+      body: `Projekt "${projectName}" für ${company} wurde angelegt.`,
+    });
+
     return nextProjectId;
   });
 
@@ -246,7 +297,7 @@ export async function createProjectAction(formData: FormData) {
 
 export async function assignCustomerAction(formData: FormData) {
   const locale = safeLocale(formData.get("locale"));
-  await requireAdmin(locale);
+  const user = await requireAdmin(locale);
   const projectId = text(formData, "projectId");
   const email = text(formData, "email").toLowerCase();
 
@@ -267,6 +318,13 @@ export async function assignCustomerAction(formData: FormData) {
         createdAt: new Date().toISOString(),
       });
     }
+    addAuditUpdate({
+      store,
+      projectId,
+      userId: user.id,
+      title: "Kunde zugeordnet",
+      body: `${customer.email} wurde dem Projekt zugeordnet.`,
+    });
     return true;
   });
 
@@ -276,7 +334,7 @@ export async function assignCustomerAction(formData: FormData) {
 
 export async function inviteCustomerAction(formData: FormData) {
   const locale = safeLocale(formData.get("locale"));
-  await requireAdmin(locale);
+  const user = await requireAdmin(locale);
   const projectId = text(formData, "projectId");
   const email = text(formData, "email").toLowerCase();
   const name = text(formData, "name") || email;
@@ -322,6 +380,13 @@ export async function inviteCustomerAction(formData: FormData) {
 
     const token = createAuthToken(customer.id, "project_invite", 60 * 24 * 7);
     store.authTokens.push(token.record);
+    addAuditUpdate({
+      store,
+      projectId,
+      userId: user.id,
+      title: "Kundeneinladung gesendet",
+      body: `${customer.email} wurde eingeladen und dem Projekt zugeordnet.`,
+    });
     return {
       rawToken: token.rawToken,
       email: customer.email,
@@ -359,7 +424,7 @@ export async function inviteCustomerAction(formData: FormData) {
 
 export async function updateProjectOverviewAction(formData: FormData) {
   const locale = safeLocale(formData.get("locale"));
-  await requireAdmin(locale);
+  const user = await requireAdmin(locale);
   const projectId = text(formData, "projectId");
 
   await mutateStore((store) => {
@@ -386,6 +451,14 @@ export async function updateProjectOverviewAction(formData: FormData) {
       org.industry = text(formData, "industry") || org.industry;
       org.website = text(formData, "website") || undefined;
     }
+
+    addAuditUpdate({
+      store,
+      projectId,
+      userId: user.id,
+      title: "Projektbasis geändert",
+      body: "Projektstatus, ASDAR-Phase, Health oder Stammdaten wurden aktualisiert.",
+    });
   });
 
   revalidatePath(adminProjectPath(locale, projectId));
@@ -395,7 +468,7 @@ export async function updateProjectOverviewAction(formData: FormData) {
 
 export async function updateIntelligenceAction(formData: FormData) {
   const locale = safeLocale(formData.get("locale"));
-  await requireAdmin(locale);
+  const user = await requireAdmin(locale);
   const projectId = text(formData, "projectId");
 
   await mutateStore((store) => {
@@ -409,6 +482,13 @@ export async function updateIntelligenceAction(formData: FormData) {
       constraints: text(formData, "constraints"),
       opportunities: text(formData, "opportunities"),
       internalNotes: text(formData, "internalNotes"),
+    });
+    addAuditUpdate({
+      store,
+      projectId,
+      userId: user.id,
+      title: "Private Intelligence aktualisiert",
+      body: "ASDAR Intake und interne Beratungsnotizen wurden gespeichert.",
     });
   });
 
@@ -511,6 +591,14 @@ export async function applyConsultingTemplateAction(formData: FormData) {
         createdAt: now,
       });
     }
+
+    addAuditUpdate({
+      store,
+      projectId,
+      userId: user.id,
+      title: "Industrie-Template angewendet",
+      body: `${template.label} wurde angewendet und fehlende Aufgaben/Meilensteine wurden ergänzt.`,
+    });
   });
 
   revalidatePath(adminProjectPath(locale, projectId));
@@ -612,6 +700,14 @@ export async function completeSetupWizardAction(formData: FormData) {
       createdBy: user.id,
       createdAt: now,
     });
+
+    addAuditUpdate({
+      store,
+      projectId,
+      userId: user.id,
+      title: "Setup Wizard abgeschlossen",
+      body: "Projekt-Setup, erste Aufgabe, Meilenstein und Kundenupdate wurden erzeugt.",
+    });
   });
 
   await notifyProjectCustomers({
@@ -684,6 +780,14 @@ export async function addMeetingNoteAction(formData: FormData) {
         createdAt: now,
       });
     }
+
+    addAuditUpdate({
+      store,
+      projectId,
+      userId: user.id,
+      title: "Meeting gespeichert",
+      body: `${meetingTitle} wurde als interne Meeting-Notiz gespeichert.`,
+    });
   });
 
   if (publishSummary && customerSummary) {
@@ -702,7 +806,7 @@ export async function addMeetingNoteAction(formData: FormData) {
 
 export async function saveKnowledgeSnapshotAction(formData: FormData) {
   const locale = safeLocale(formData.get("locale"));
-  await requireAdmin(locale);
+  const user = await requireAdmin(locale);
   const projectId = text(formData, "projectId");
   const store = await readStore();
   const bundle = getProjectBundle(store, projectId);
@@ -740,6 +844,13 @@ export async function saveKnowledgeSnapshotAction(formData: FormData) {
       kind: "guidance",
       createdAt: new Date().toISOString(),
     });
+    addAuditUpdate({
+      store: nextStore,
+      projectId,
+      userId: user.id,
+      title: "Knowledge Snapshot gespeichert",
+      body: `Branchen-Snapshot für ${template.label} wurde erzeugt.`,
+    });
   });
 
   revalidatePath(adminProjectPath(locale, projectId));
@@ -767,6 +878,13 @@ export async function addUpdateAction(formData: FormData) {
       createdBy: user.id,
       createdAt: new Date().toISOString(),
     });
+    addAuditUpdate({
+      store,
+      projectId,
+      userId: user.id,
+      title: "Projektupdate erstellt",
+      body: `${updateVisibility === "customer" ? "Kundenupdate" : "Internes Update"} "${title}" wurde gespeichert.`,
+    });
   });
 
   if (updateVisibility === "customer") {
@@ -785,7 +903,7 @@ export async function addUpdateAction(formData: FormData) {
 
 export async function addTaskAction(formData: FormData) {
   const locale = safeLocale(formData.get("locale"));
-  await requireAdmin(locale);
+  const user = await requireAdmin(locale);
   const projectId = text(formData, "projectId");
   const title = text(formData, "title") || "Neue Aufgabe";
   const visibleToCustomer = checkbox(formData, "visibleToCustomer");
@@ -807,6 +925,13 @@ export async function addTaskAction(formData: FormData) {
       visibleToCustomer,
       createdAt: new Date().toISOString(),
     });
+    addAuditUpdate({
+      store,
+      projectId,
+      userId: user.id,
+      title: "Aufgabe erstellt",
+      body: `"${title}" wurde angelegt (${visibleToCustomer ? "kundensichtbar" : "intern"}).`,
+    });
   });
 
   if (visibleToCustomer) {
@@ -825,7 +950,7 @@ export async function addTaskAction(formData: FormData) {
 
 export async function addMilestoneAction(formData: FormData) {
   const locale = safeLocale(formData.get("locale"));
-  await requireAdmin(locale);
+  const user = await requireAdmin(locale);
   const projectId = text(formData, "projectId");
   const title = text(formData, "title") || "Neuer Meilenstein";
   const visibleToCustomer = checkbox(formData, "visibleToCustomer");
@@ -846,6 +971,13 @@ export async function addMilestoneAction(formData: FormData) {
       visibleToCustomer,
       createdAt: new Date().toISOString(),
     });
+    addAuditUpdate({
+      store,
+      projectId,
+      userId: user.id,
+      title: "Meilenstein erstellt",
+      body: `"${title}" wurde angelegt (${visibleToCustomer ? "kundensichtbar" : "intern"}).`,
+    });
   });
 
   if (visibleToCustomer) {
@@ -860,6 +992,119 @@ export async function addMilestoneAction(formData: FormData) {
   revalidatePath(adminProjectPath(locale, projectId));
   revalidatePath(`/${locale}/portal/projects/${projectId}`);
   redirect(`${adminProjectPath(locale, projectId)}?saved=milestone`);
+}
+
+export async function updateTaskStatusAction(formData: FormData) {
+  const locale = safeLocale(formData.get("locale"));
+  const user = await requireAdmin(locale);
+  const projectId = text(formData, "projectId");
+  const taskId = text(formData, "taskId");
+  const nextStatus = taskStatus(text(formData, "status"));
+
+  await mutateStore((store) => {
+    const task = store.tasks.find(
+      (entry) => entry.id === taskId && entry.projectId === projectId,
+    );
+    if (!task || !getProjectBundle(store, projectId)) return;
+
+    const previousStatus = task.status;
+    task.status = nextStatus;
+    addAuditUpdate({
+      store,
+      projectId,
+      userId: user.id,
+      title: "Aufgabenstatus geändert",
+      body: `"${task.title}" wurde von ${previousStatus} auf ${nextStatus} gesetzt.`,
+    });
+  });
+
+  revalidatePath(adminProjectPath(locale, projectId));
+  revalidatePath(`/${locale}/portal/projects/${projectId}`);
+  redirect(`${adminProjectPath(locale, projectId)}?saved=task-status`);
+}
+
+export async function updateMilestoneStatusAction(formData: FormData) {
+  const locale = safeLocale(formData.get("locale"));
+  const user = await requireAdmin(locale);
+  const projectId = text(formData, "projectId");
+  const milestoneId = text(formData, "milestoneId");
+  const nextStatus = milestoneStatus(text(formData, "status"));
+
+  await mutateStore((store) => {
+    const milestone = store.milestones.find(
+      (entry) => entry.id === milestoneId && entry.projectId === projectId,
+    );
+    if (!milestone || !getProjectBundle(store, projectId)) return;
+
+    const previousStatus = milestone.status;
+    milestone.status = nextStatus;
+    addAuditUpdate({
+      store,
+      projectId,
+      userId: user.id,
+      title: "Meilensteinstatus geändert",
+      body: `"${milestone.title}" wurde von ${previousStatus} auf ${nextStatus} gesetzt.`,
+    });
+  });
+
+  revalidatePath(adminProjectPath(locale, projectId));
+  revalidatePath(`/${locale}/portal/projects/${projectId}`);
+  redirect(`${adminProjectPath(locale, projectId)}?saved=milestone-status`);
+}
+
+export async function archiveProjectAction(formData: FormData) {
+  const locale = safeLocale(formData.get("locale"));
+  const user = await requireAdmin(locale);
+  const projectId = text(formData, "projectId");
+  const confirmation = text(formData, "confirmation");
+
+  if (confirmation !== "ARCHIVIEREN") {
+    redirect(`${adminProjectPath(locale, projectId)}?error=archive`);
+  }
+
+  await mutateStore((store) => {
+    const bundle = getProjectBundle(store, projectId);
+    if (!bundle) return;
+
+    const now = new Date().toISOString();
+    const project = store.projects.find((entry) => entry.id === projectId);
+    if (!project) return;
+
+    project.status = "completed";
+    project.health = "green";
+    project.nextStep =
+      "Projekt archiviert. Bestehende Updates, Dateien und Rechnungen bleiben sichtbar.";
+    project.updatedAt = now;
+
+    store.updates.push({
+      id: id("update"),
+      projectId,
+      title: "Projekt abgeschlossen",
+      body: "Das Projekt wurde abgeschlossen. Bestehende Updates, Dateien und Rechnungen bleiben im Portal sichtbar.",
+      visibility: "customer",
+      asdarStage: project.asdarStage,
+      createdBy: user.id,
+      createdAt: now,
+    });
+
+    addAuditUpdate({
+      store,
+      projectId,
+      userId: user.id,
+      title: "Projekt archiviert",
+      body: `${bundle.project.name} wurde sicher archiviert und auf abgeschlossen gesetzt.`,
+    });
+  });
+
+  await notifyProjectCustomers({
+    locale,
+    projectId,
+    subject: "Assad Dar Portal: Projekt abgeschlossen",
+    body: "Das Projekt wurde abgeschlossen. Der Projektstand bleibt im Portal weiterhin sichtbar.",
+  });
+  revalidatePath(adminProjectPath(locale, projectId));
+  revalidatePath(`/${locale}/portal/projects/${projectId}`);
+  redirect(`${adminProjectPath(locale, projectId)}?saved=archive`);
 }
 
 export async function addFileAction(formData: FormData) {
@@ -902,6 +1147,13 @@ export async function addFileAction(formData: FormData) {
       uploadedBy: user.id,
       uploadedAt: new Date().toISOString(),
     });
+    addAuditUpdate({
+      store,
+      projectId,
+      userId: user.id,
+      title: "Datei hochgeladen",
+      body: `"${displayName}" wurde hochgeladen (${fileVisibility === "customer" ? "kundensichtbar" : "intern"}).`,
+    });
   });
 
   if (fileVisibility === "customer") {
@@ -920,7 +1172,7 @@ export async function addFileAction(formData: FormData) {
 
 export async function addInvoiceAction(formData: FormData) {
   const locale = safeLocale(formData.get("locale"));
-  await requireAdmin(locale);
+  const user = await requireAdmin(locale);
   const projectId = text(formData, "projectId");
   const invoiceId = id("invoice");
   const invoice: Invoice = {
@@ -949,6 +1201,13 @@ export async function addInvoiceAction(formData: FormData) {
   await mutateStore((store) => {
     if (!getProjectBundle(store, projectId)) return;
     store.invoices.push(invoice);
+    addAuditUpdate({
+      store,
+      projectId,
+      userId: user.id,
+      title: "Rechnung erstellt",
+      body: `Rechnung ${invoice.number} wurde mit Status ${invoice.status} gespeichert.`,
+    });
   });
 
   if (invoice.status !== "draft") {
@@ -1058,6 +1317,14 @@ export async function generateProposalAction(formData: FormData) {
         createdAt,
       });
     }
+
+    addAuditUpdate({
+      store,
+      projectId,
+      userId: user.id,
+      title: "Proposal erstellt",
+      body: `${proposalNumber} wurde als kundensichtbare Datei gespeichert${createInvoice && amountCents > 0 ? " und eine Rechnung wurde erzeugt" : ""}.`,
+    });
   });
 
   await notifyProjectCustomers({
@@ -1073,7 +1340,7 @@ export async function generateProposalAction(formData: FormData) {
 
 export async function runAiScanAction(formData: FormData) {
   const locale = safeLocale(formData.get("locale"));
-  await requireAdmin(locale);
+  const user = await requireAdmin(locale);
   const projectId = text(formData, "projectId");
   const providers = [
     formData.get("provider_openai") === "on" ? "openai" : "",
@@ -1127,6 +1394,15 @@ export async function runAiScanAction(formData: FormData) {
         body: result.text,
         kind: "guidance",
         createdAt: now,
+      });
+    }
+    if (okResults.length > 0) {
+      addAuditUpdate({
+        store,
+        projectId,
+        userId: user.id,
+        title: "AI Scan gespeichert",
+        body: `Provider: ${okResults.map((result) => result.provider).join(", ")}.`,
       });
     }
     return okResults.length;

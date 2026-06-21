@@ -2,6 +2,7 @@ import { NextResponse, type NextRequest } from "next/server";
 import { isLocale, type Locale } from "@/content";
 import { createSessionCookie } from "@/lib/portal/auth";
 import { requireEmailVerification } from "@/lib/portal/config";
+import { checkRateLimit, clientIpFromHeaders } from "@/lib/portal/rate-limit";
 import { findUserByEmailForLogin } from "@/lib/portal/store";
 import { verifyPassword } from "@/lib/portal/password";
 
@@ -28,6 +29,15 @@ export async function POST(request: NextRequest) {
   const locale = safeLocale(formData.get("locale"));
   const email = String(formData.get("email") || "").trim().toLowerCase();
   const password = String(formData.get("password") || "");
+  const rateLimit = checkRateLimit(
+    `login:${clientIpFromHeaders(request.headers)}:${email || "unknown"}`,
+    8,
+    10 * 60 * 1000,
+  );
+
+  if (!rateLimit.allowed) {
+    return redirectTo(request, `/${locale}/login?error=rate`);
+  }
 
   const user = await findUserByEmailForLogin(email);
 
