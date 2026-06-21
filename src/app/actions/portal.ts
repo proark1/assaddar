@@ -14,6 +14,12 @@ import {
 } from "@/lib/portal/store";
 import { createInvoiceCheckoutUrl } from "@/lib/portal/payments";
 import { savePortalFile } from "@/lib/portal/storage";
+import {
+  buildTemplatePrompt,
+  getConsultingTemplate,
+  matchConsultingTemplate,
+  mergeTemplateIntake,
+} from "@/lib/portal/templates";
 import type {
   AsdarStage,
   Invoice,
@@ -84,12 +90,15 @@ function adminProjectPath(locale: Locale, projectId: string) {
 
 export async function createProjectAction(formData: FormData) {
   const locale = safeLocale(formData.get("locale"));
-  await requireAdmin(locale);
+  const user = await requireAdmin(locale);
 
   const company = text(formData, "company");
-  const industry = text(formData, "industry") || "Noch nicht gesetzt";
-  const projectName = text(formData, "projectName") || "Neues ASDAR Projekt";
-  const summary = text(formData, "summary");
+  const template = getConsultingTemplate(text(formData, "templateId"));
+  const industry =
+    text(formData, "industry") || template?.industryLabel || "Noch nicht gesetzt";
+  const projectName =
+    text(formData, "projectName") || template?.projectName || "Neues ASDAR Projekt";
+  const summary = text(formData, "summary") || template?.summary || "";
   const customerEmail = text(formData, "customerEmail").toLowerCase();
 
   if (!company) redirect(`/${locale}/portal/admin?error=company`);
@@ -114,22 +123,23 @@ export async function createProjectAction(formData: FormData) {
       status: "discovery",
       asdarStage: "analyse",
       health: "green",
-      nextStep: "Kickoff vorbereiten und Intake vervollständigen.",
+      nextStep:
+        template?.kickoffGoal || "Kickoff vorbereiten und Intake vervollständigen.",
       createdAt,
       updatedAt: createdAt,
     });
 
     store.projectIntelligence.push({
       projectId: nextProjectId,
-      companyContext: "",
-      stakeholders: "",
-      issues: "",
-      goals: "",
-      currentTools: "",
-      dataSituation: "",
-      constraints: "",
-      opportunities: "",
-      internalNotes: "",
+      companyContext: template?.intake.companyContext ?? "",
+      stakeholders: template?.intake.stakeholders ?? "",
+      issues: template?.intake.issues ?? "",
+      goals: template?.intake.goals ?? "",
+      currentTools: template?.intake.currentTools ?? "",
+      dataSituation: template?.intake.dataSituation ?? "",
+      constraints: template?.intake.constraints ?? "",
+      opportunities: template?.intake.opportunities ?? "",
+      internalNotes: template?.intake.internalNotes ?? "",
       updatedAt: createdAt,
     });
 
@@ -144,6 +154,42 @@ export async function createProjectAction(formData: FormData) {
           createdAt,
         });
       }
+    }
+
+    if (template) {
+      for (const task of template.seedTasks) {
+        store.tasks.push({
+          id: id("task"),
+          projectId: nextProjectId,
+          title: task.title,
+          owner: task.owner,
+          status: "todo",
+          visibleToCustomer: task.visibleToCustomer,
+          createdAt,
+        });
+      }
+
+      for (const milestone of template.seedMilestones) {
+        store.milestones.push({
+          id: id("milestone"),
+          projectId: nextProjectId,
+          title: milestone.title,
+          status: "planned",
+          visibleToCustomer: milestone.visibleToCustomer,
+          createdAt,
+        });
+      }
+
+      store.updates.push({
+        id: id("update"),
+        projectId: nextProjectId,
+        title: template.customerKickoffUpdate.title,
+        body: template.customerKickoffUpdate.body,
+        visibility: "customer",
+        asdarStage: "analyse",
+        createdBy: user.id,
+        createdAt,
+      });
     }
 
     return nextProjectId;
@@ -240,6 +286,108 @@ export async function updateIntelligenceAction(formData: FormData) {
 
   revalidatePath(adminProjectPath(locale, projectId));
   redirect(`${adminProjectPath(locale, projectId)}?saved=intelligence`);
+}
+
+export async function applyConsultingTemplateAction(formData: FormData) {
+  const locale = safeLocale(formData.get("locale"));
+  const user = await requireAdmin(locale);
+  const projectId = text(formData, "projectId");
+  const template =
+    getConsultingTemplate(text(formData, "templateId")) ??
+    matchConsultingTemplate(text(formData, "industry"));
+
+  await mutateStore((store) => {
+    const bundle = getProjectBundle(store, projectId);
+    if (!bundle) return;
+
+    const now = new Date().toISOString();
+    const project = store.projects.find((entry) => entry.id === projectId);
+    const organization = store.organizations.find(
+      (entry) => entry.id === project?.organizationId,
+    );
+    const intelligence = store.projectIntelligence.find(
+      (entry) => entry.projectId === projectId,
+    );
+
+    if (organization && organization.industry === "Noch nicht gesetzt") {
+      organization.industry = template.industryLabel;
+    }
+
+    if (project) {
+      if (!project.summary) project.summary = template.summary;
+      project.nextStep = template.kickoffGoal;
+      project.updatedAt = now;
+    }
+
+    if (intelligence) {
+      Object.assign(intelligence, mergeTemplateIntake(intelligence, template), {
+        updatedAt: now,
+      });
+    } else {
+      store.projectIntelligence.push({
+        projectId,
+        ...template.intake,
+        updatedAt: now,
+      });
+    }
+
+    const existingTasks = new Set(
+      store.tasks
+        .filter((task) => task.projectId === projectId)
+        .map((task) => task.title.toLowerCase()),
+    );
+    for (const task of template.seedTasks) {
+      if (existingTasks.has(task.title.toLowerCase())) continue;
+      store.tasks.push({
+        id: id("task"),
+        projectId,
+        title: task.title,
+        owner: task.owner,
+        status: "todo",
+        visibleToCustomer: task.visibleToCustomer,
+        createdAt: now,
+      });
+    }
+
+    const existingMilestones = new Set(
+      store.milestones
+        .filter((milestone) => milestone.projectId === projectId)
+        .map((milestone) => milestone.title.toLowerCase()),
+    );
+    for (const milestone of template.seedMilestones) {
+      if (existingMilestones.has(milestone.title.toLowerCase())) continue;
+      store.milestones.push({
+        id: id("milestone"),
+        projectId,
+        title: milestone.title,
+        status: "planned",
+        visibleToCustomer: milestone.visibleToCustomer,
+        createdAt: now,
+      });
+    }
+
+    const hasKickoffUpdate = store.updates.some(
+      (update) =>
+        update.projectId === projectId &&
+        update.title === template.customerKickoffUpdate.title,
+    );
+    if (!hasKickoffUpdate) {
+      store.updates.push({
+        id: id("update"),
+        projectId,
+        title: template.customerKickoffUpdate.title,
+        body: template.customerKickoffUpdate.body,
+        visibility: "customer",
+        asdarStage: "analyse",
+        createdBy: user.id,
+        createdAt: now,
+      });
+    }
+  });
+
+  revalidatePath(adminProjectPath(locale, projectId));
+  revalidatePath(`/${locale}/portal/projects/${projectId}`);
+  redirect(`${adminProjectPath(locale, projectId)}?saved=template`);
 }
 
 export async function addUpdateAction(formData: FormData) {
@@ -435,6 +583,8 @@ export async function runAiScanAction(formData: FormData) {
     `Data situation: ${bundle.intelligence.dataSituation}`,
     `Constraints: ${bundle.intelligence.constraints}`,
     `Opportunities: ${bundle.intelligence.opportunities}`,
+    "",
+    buildTemplatePrompt(bundle, matchConsultingTemplate(bundle.organization.industry)),
     "",
     "Return concise consulting ideas for Assad as the consultant. Focus on practical next steps, automation opportunities, risks, and what to ask the customer next. Do not write a customer-facing strategy.",
   ].join("\n");

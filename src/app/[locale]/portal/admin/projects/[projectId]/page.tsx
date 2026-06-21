@@ -3,16 +3,20 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 import {
   BrainCircuit,
+  BookOpen,
   CheckCircle2,
+  ClipboardList,
   CreditCard,
   Download,
   Eye,
   FileUp,
   Lightbulb,
+  MessagesSquare,
   Plus,
   Send,
   Sparkles,
   UserPlus,
+  WandSparkles,
 } from "lucide-react";
 import {
   addFileAction,
@@ -20,6 +24,7 @@ import {
   addMilestoneAction,
   addTaskAction,
   addUpdateAction,
+  applyConsultingTemplateAction,
   assignCustomerAction,
   runAiScanAction,
   updateIntelligenceAction,
@@ -29,6 +34,10 @@ import { isLocale, type Locale } from "@/content";
 import { requireAdmin } from "@/lib/portal/auth";
 import { buildConsultantGuidance, findSimilarProjects } from "@/lib/portal/ai";
 import { getProjectBundle, readStore } from "@/lib/portal/store";
+import {
+  consultingTemplates,
+  matchConsultingTemplate,
+} from "@/lib/portal/templates";
 import {
   asdarStages,
   formatCurrency,
@@ -84,6 +93,7 @@ export default async function AdminProjectPage({
   const query = await searchParams;
   const guidance = buildConsultantGuidance(bundle);
   const similar = findSimilarProjects(store, bundle);
+  const template = matchConsultingTemplate(bundle.organization.industry);
 
   return (
     <PortalShell
@@ -444,6 +454,175 @@ export default async function AdminProjectPage({
         </div>
 
         <aside className="space-y-6">
+          <PortalCard>
+            <PortalSectionTitle
+              eyebrow="Industry Playbook"
+              title="Template fuer dieses Projekt"
+            >
+              Branchenbezogene Diagnose, Quick Wins und ASDAR-Schritte fuer
+              den Beratungsablauf.
+            </PortalSectionTitle>
+            <form action={applyConsultingTemplateAction} className="mt-5 space-y-3">
+              <HiddenProjectFields locale={safe} projectId={projectId} />
+              <input
+                type="hidden"
+                name="industry"
+                value={bundle.organization.industry}
+              />
+              <select
+                name="templateId"
+                defaultValue={template.id}
+                className={fieldClass}
+              >
+                {consultingTemplates.map((entry) => (
+                  <option key={entry.id} value={entry.id}>
+                    {entry.label}
+                  </option>
+                ))}
+              </select>
+              <button
+                type="submit"
+                className="inline-flex w-full items-center justify-center gap-2 rounded-lg bg-copper px-4 py-2.5 text-sm font-medium text-oncopper transition-colors hover:bg-copper-hi"
+              >
+                <WandSparkles className="h-4 w-4" />
+                Playbook anwenden
+              </button>
+            </form>
+
+            <div className="mt-5 space-y-4">
+              <div className="rounded-lg border border-hairline bg-bg p-3">
+                <div className="flex items-center gap-2">
+                  <BookOpen className="h-4 w-4 text-copper" />
+                  <div className="text-sm font-medium text-ink">
+                    {template.label}
+                  </div>
+                </div>
+                <p className="mt-2 text-sm leading-relaxed text-ink2">
+                  {template.bestFor}
+                </p>
+                <p className="mt-3 text-sm leading-relaxed text-ink">
+                  <span className="font-medium">Kickoff-Ziel:</span>{" "}
+                  {template.kickoffGoal}
+                </p>
+              </div>
+
+              <div>
+                <h3 className="text-sm font-medium text-ink">Quick Wins</h3>
+                <ul className="mt-2 space-y-2 text-sm leading-relaxed text-ink2">
+                  {template.quickWins.map((item) => (
+                    <li key={item} className="flex gap-2">
+                      <span className="mt-2 h-1.5 w-1.5 shrink-0 rounded-full bg-copper" />
+                      <span>{item}</span>
+                    </li>
+                  ))}
+                </ul>
+              </div>
+
+              <div>
+                <h3 className="text-sm font-medium text-ink">
+                  Automatisierungsideen
+                </h3>
+                <ul className="mt-2 space-y-2 text-sm leading-relaxed text-ink2">
+                  {template.automationIdeas.map((item) => (
+                    <li key={item} className="flex gap-2">
+                      <span className="mt-2 h-1.5 w-1.5 shrink-0 rounded-full bg-copper" />
+                      <span>{item}</span>
+                    </li>
+                  ))}
+                </ul>
+              </div>
+            </div>
+          </PortalCard>
+
+          <PortalCard>
+            <PortalSectionTitle
+              eyebrow="Meeting Copilot"
+              title="Call- und Workshop-Guidance"
+            >
+              Nutze diese Punkte live im Termin, um schneller von Problem zu
+              Pilot zu kommen.
+            </PortalSectionTitle>
+            <div className="mt-5 space-y-5">
+              <div>
+                <div className="flex items-center gap-2 text-sm font-medium text-ink">
+                  <ClipboardList className="h-4 w-4 text-copper" />
+                  Agenda
+                </div>
+                <ol className="mt-2 space-y-2 text-sm leading-relaxed text-ink2">
+                  {template.callAgenda.map((item, index) => (
+                    <li key={item} className="flex gap-2">
+                      <span className="font-mono text-[12px] text-copper">
+                        {index + 1}
+                      </span>
+                      <span>{item}</span>
+                    </li>
+                  ))}
+                </ol>
+              </div>
+
+              <div>
+                <div className="flex items-center gap-2 text-sm font-medium text-ink">
+                  <MessagesSquare className="h-4 w-4 text-copper" />
+                  Diagnosefragen
+                </div>
+                <ul className="mt-2 space-y-2 text-sm leading-relaxed text-ink2">
+                  {template.discoveryQuestions.map((item) => (
+                    <li key={item} className="flex gap-2">
+                      <span className="text-copper">?</span>
+                      <span>{item}</span>
+                    </li>
+                  ))}
+                </ul>
+              </div>
+
+              <div>
+                <h3 className="text-sm font-medium text-ink">
+                  Meeting-Moves fuer Assad
+                </h3>
+                <ul className="mt-2 space-y-2 text-sm leading-relaxed text-ink2">
+                  {template.meetingMoves.map((item) => (
+                    <li key={item} className="flex gap-2">
+                      <span className="mt-2 h-1.5 w-1.5 shrink-0 rounded-full bg-copper" />
+                      <span>{item}</span>
+                    </li>
+                  ))}
+                </ul>
+              </div>
+            </div>
+          </PortalCard>
+
+          <PortalCard>
+            <PortalSectionTitle
+              eyebrow="Branchen-ASDAR"
+              title="Phasenplan aus dem Template"
+            />
+            <div className="mt-5 space-y-4">
+              {asdarStages.map((stage) => (
+                <div key={stage.value} className="rounded-lg border border-hairline bg-bg p-3">
+                  <div className="flex items-center gap-2">
+                    <Badge
+                      tone={
+                        bundle.project.asdarStage === stage.value
+                          ? "copper"
+                          : "neutral"
+                      }
+                    >
+                      {stage.letter}
+                    </Badge>
+                    <div className="text-sm font-medium text-ink">
+                      {stage.label}
+                    </div>
+                  </div>
+                  <ul className="mt-2 space-y-1.5 text-sm leading-relaxed text-ink2">
+                    {template.asdarPlan[stage.value].map((item) => (
+                      <li key={item}>- {item}</li>
+                    ))}
+                  </ul>
+                </div>
+              ))}
+            </div>
+          </PortalCard>
+
           <PortalCard>
             <PortalSectionTitle
               eyebrow="ASDAR Guidance"
