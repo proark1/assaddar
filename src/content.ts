@@ -513,8 +513,8 @@ const de = {
   footer: {
     tagline: "KI und Automatisierung für effizientere Unternehmen.",
     legal: [
-      { label: "Impressum", href: "#" },
-      { label: "Datenschutz", href: "#" },
+      { label: "Impressum", href: "/impressum" },
+      { label: "Datenschutz", href: "/datenschutz" },
     ],
     linkedin: "LinkedIn",
     linkedinHref: "https://linkedin.com/in/assaddar",
@@ -1020,8 +1020,8 @@ const en: Dict = {
   footer: {
     tagline: "AI and automation for more efficient companies.",
     legal: [
-      { label: "Imprint", href: "#" },
-      { label: "Privacy", href: "#" },
+      { label: "Imprint", href: "/impressum" },
+      { label: "Privacy", href: "/datenschutz" },
     ],
     linkedin: "LinkedIn",
     linkedinHref: "https://linkedin.com/in/assaddar",

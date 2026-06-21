@@ -34,13 +34,13 @@ export function Footer({ t, locale }: { t: Dict["footer"]; locale: Locale }) {
           </div>
           <div className="flex flex-col gap-2">
             {t.legal.map((l) => (
-              <a
+              <Link
                 key={l.label}
-                href={l.href}
+                href={`/${locale}${l.href}`}
                 className="text-ink2 transition-colors hover:text-ink"
               >
                 {l.label}
-              </a>
+              </Link>
             ))}
           </div>
         </div>
