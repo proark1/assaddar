@@ -42,6 +42,24 @@ export default function sitemap(): MetadataRoute.Sitemap {
       lastModified: LAST_MODIFIED,
       changeFrequency: "monthly",
       priority: 0.7,
+      alternates: {
+        languages: {
+          de: `${SITE}/de/ueber-mich`,
+          en: `${SITE}/en/ueber-mich`,
+        },
+      },
+    },
+    {
+      url: `${SITE}/en/ueber-mich`,
+      lastModified: LAST_MODIFIED,
+      changeFrequency: "monthly",
+      priority: 0.7,
+      alternates: {
+        languages: {
+          de: `${SITE}/de/ueber-mich`,
+          en: `${SITE}/en/ueber-mich`,
+        },
+      },
     },
     ...blog,
   ];

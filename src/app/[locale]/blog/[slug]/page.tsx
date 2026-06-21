@@ -179,10 +179,12 @@ export default async function BlogArticle({
         type="application/ld+json"
         dangerouslySetInnerHTML={{ __html: JSON.stringify(breadcrumbLd) }}
       />
-      <script
-        type="application/ld+json"
-        dangerouslySetInnerHTML={{ __html: JSON.stringify(faqLd) }}
-      />
+      {post.faq.length > 0 && (
+        <script
+          type="application/ld+json"
+          dangerouslySetInnerHTML={{ __html: JSON.stringify(faqLd) }}
+        />
+      )}
 
       <ReadingProgress />
       <Nav t={t.nav} locale="de" subpage />
@@ -244,7 +246,7 @@ export default async function BlogArticle({
               <figure className="overflow-hidden rounded-2xl border border-hairline">
                 <div className="relative aspect-[16/6] w-full">
                   <Image
-                    src={`/api/blog/hero/${post.slug}`}
+                    src={`/api/blog/hero/${post.slug}?v=${encodeURIComponent(generatedHero.generatedAt)}`}
                     alt={generatedHero.alt}
                     fill
                     sizes="(max-width: 768px) 100vw, 760px"

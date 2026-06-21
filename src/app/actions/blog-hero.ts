@@ -3,6 +3,7 @@
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { requireAdmin } from "@/lib/portal/auth";
+import { portalFileStorage } from "@/lib/portal/config";
 import { id } from "@/lib/portal/store";
 import { savePortalFile } from "@/lib/portal/storage";
 import { getPost } from "@/blog/posts";
@@ -20,6 +21,14 @@ export async function generateBlogHeroAction(formData: FormData) {
 
   if (!post || prompt.length < 10) {
     redirect(`${ADMIN_PATH}?error=input`);
+  }
+
+  if (process.env.NODE_ENV === "production" && portalFileStorage() !== "supabase") {
+    redirect(
+      `${ADMIN_PATH}?error=${encodeURIComponent(
+        "Bildspeicher nicht konfiguriert. Setze PORTAL_FILE_STORAGE=supabase und die SUPABASE_*-Variablen in Vercel.",
+      )}`,
+    );
   }
 
   try {

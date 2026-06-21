@@ -51,7 +51,7 @@ type GeminiPart = {
 
 function extractGeminiImage(data: unknown): GeneratedImage | null {
   const parts =
-    (data as { candidates?: Array<{ content?: { parts?: GeminiPart[] } }> })
+    ((data ?? {}) as { candidates?: Array<{ content?: { parts?: GeminiPart[] } }> })
       .candidates?.[0]?.content?.parts ?? [];
   for (const part of parts) {
     const inline = part.inlineData ?? part.inline_data;
@@ -61,8 +61,8 @@ function extractGeminiImage(data: unknown): GeneratedImage | null {
       return {
         bytes,
         contentType: part.inlineData?.mimeType ?? part.inline_data?.mime_type ?? "image/png",
-        width: size.width,
-        height: size.height,
+        width: size.width || 1536,
+        height: size.height || 1024,
         provider: "gemini",
       };
     }
@@ -144,7 +144,11 @@ async function generateWithOpenAI(prompt: string): Promise<GeneratedImage> {
   if (first?.b64_json) {
     bytes = Buffer.from(first.b64_json, "base64");
   } else if (first?.url) {
-    bytes = Buffer.from(await (await fetch(first.url)).arrayBuffer());
+    const download = await fetch(first.url);
+    if (!download.ok) {
+      throw new Error(`OpenAI image URL fetch failed (${download.status}).`);
+    }
+    bytes = Buffer.from(await download.arrayBuffer());
   } else {
     throw new Error("OpenAI returned no image data.");
   }
