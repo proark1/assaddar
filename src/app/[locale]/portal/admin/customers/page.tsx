@@ -9,7 +9,7 @@ import {
 } from "lucide-react";
 import { isLocale, type Locale } from "@/content";
 import { requireAdmin } from "@/lib/portal/auth";
-import { getProjectBundle, readStore } from "@/lib/portal/store";
+import { listCustomersWithProjectBundles } from "@/lib/portal/store";
 import { formatDate, formatStatus } from "@/lib/portal/format";
 import {
   Badge,
@@ -33,18 +33,7 @@ export default async function AdminCustomersPage({
   const { locale } = await params;
   const safe: Locale = isLocale(locale) ? locale : "de";
   const user = await requireAdmin(safe);
-  const store = await readStore();
-  const customers = store.users
-    .filter((entry) => entry.role === "customer")
-    .map((customer) => {
-      const projectBundles = store.projectMembers
-        .filter((member) => member.userId === customer.id)
-        .map((member) => getProjectBundle(store, member.projectId))
-        .filter((bundle): bundle is NonNullable<typeof bundle> => Boolean(bundle));
-
-      return { customer, projectBundles };
-    })
-    .sort((a, b) => a.customer.name.localeCompare(b.customer.name));
+  const customers = await listCustomersWithProjectBundles();
   const assignedCount = customers.filter(
     (entry) => entry.projectBundles.length > 0,
   ).length;

@@ -12,7 +12,7 @@ import { createProjectAction } from "@/app/actions/portal";
 import { isLocale, type Locale } from "@/content";
 import { buildAttentionItems } from "@/lib/portal/automation";
 import { requireAdmin } from "@/lib/portal/auth";
-import { getProjectBundle, readStore } from "@/lib/portal/store";
+import { listProjectBundlesForUser } from "@/lib/portal/store";
 import {
   formatStage,
   formatStatus,
@@ -50,14 +50,11 @@ export default async function AdminPage({
   const { locale } = await params;
   const safe: Locale = isLocale(locale) ? locale : "de";
   const user = await requireAdmin(safe);
-  const store = await readStore();
   const query = await searchParams;
   const projectQuery = query.q?.trim().toLowerCase() ?? "";
   const statusFilter = query.status ?? "all";
   const healthFilter = query.health ?? "all";
-  const allBundles = store.projects
-    .map((project) => getProjectBundle(store, project.id))
-    .filter((bundle): bundle is NonNullable<typeof bundle> => Boolean(bundle));
+  const allBundles = await listProjectBundlesForUser(user);
   const attentionItems = allBundles.flatMap(buildAttentionItems);
   const bundles = allBundles.filter((bundle) => {
     const matchesQuery =

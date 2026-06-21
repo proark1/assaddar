@@ -77,6 +77,36 @@ export function buildConsultantGuidance(bundle: ProjectBundle) {
 }
 
 export function findSimilarProjects(store: PortalStore, bundle: ProjectBundle) {
+  return findSimilarProjectBundles(
+    store.projects
+      .map((project) => {
+        const organization = store.organizations.find(
+          (entry) => entry.id === project.organizationId,
+        );
+        if (!organization) return null;
+        return {
+          project,
+          organization,
+          intelligence:
+            store.projectIntelligence.find(
+              (entry) => entry.projectId === project.id,
+            ) ?? bundle.intelligence,
+        };
+      })
+      .filter(
+        (
+          entry,
+        ): entry is Pick<ProjectBundle, "project" | "organization" | "intelligence"> =>
+          Boolean(entry),
+      ),
+    bundle,
+  );
+}
+
+export function findSimilarProjectBundles(
+  bundles: Array<Pick<ProjectBundle, "project" | "organization" | "intelligence">>,
+  bundle: ProjectBundle,
+) {
   const sourceText = [
     bundle.organization.industry,
     bundle.intelligence.issues,
@@ -85,20 +115,14 @@ export function findSimilarProjects(store: PortalStore, bundle: ProjectBundle) {
   ].join(" ");
   const sourceWords = words(sourceText);
 
-  return store.projects
-    .filter((project) => project.id !== bundle.project.id)
-    .map((project) => {
-      const org = store.organizations.find(
-        (entry) => entry.id === project.organizationId,
-      );
-      const intelligence = store.projectIntelligence.find(
-        (entry) => entry.projectId === project.id,
-      );
+  return bundles
+    .filter((candidate) => candidate.project.id !== bundle.project.id)
+    .map((candidate) => {
       const candidateText = [
-        org?.industry,
-        intelligence?.issues,
-        intelligence?.goals,
-        intelligence?.opportunities,
+        candidate.organization.industry,
+        candidate.intelligence.issues,
+        candidate.intelligence.goals,
+        candidate.intelligence.opportunities,
       ].join(" ");
       const candidateWords = words(candidateText);
       const overlap = [...sourceWords].filter((word) =>
@@ -106,8 +130,8 @@ export function findSimilarProjects(store: PortalStore, bundle: ProjectBundle) {
       );
 
       return {
-        project,
-        organization: org,
+        project: candidate.project,
+        organization: candidate.organization,
         score: overlap.length,
         overlap: overlap.slice(0, 5),
       };

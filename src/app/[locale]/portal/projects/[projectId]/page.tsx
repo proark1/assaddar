@@ -1,6 +1,6 @@
 import type { Metadata } from "next";
 import Link from "next/link";
-import { notFound, redirect } from "next/navigation";
+import { redirect } from "next/navigation";
 import {
   CheckCircle2,
   Clock3,
@@ -30,11 +30,7 @@ import {
   isReminder,
   isStructuredUpdate,
 } from "@/lib/portal/automation";
-import {
-  getProjectAccess,
-  getProjectBundle,
-  readStore,
-} from "@/lib/portal/store";
+import { getProjectBundleForUser } from "@/lib/portal/store";
 import {
   formatCurrency,
   formatDate,
@@ -72,10 +68,8 @@ export default async function CustomerProjectPage({
     redirect(`/${safe}/portal/admin/projects/${projectId}`);
   }
 
-  const store = await readStore();
-  if (!getProjectAccess(store, user.id, projectId)) redirect(`/${safe}/portal`);
-  const bundle = getProjectBundle(store, projectId);
-  if (!bundle) notFound();
+  const bundle = await getProjectBundleForUser(user, projectId);
+  if (!bundle) redirect(`/${safe}/portal`);
 
   const query = await searchParams;
   const allCustomerUpdates = bundle.updates.filter(

@@ -46,7 +46,10 @@ import {
 } from "@/app/actions/portal";
 import { isLocale, type Locale } from "@/content";
 import { requireAdmin } from "@/lib/portal/auth";
-import { buildConsultantGuidance, findSimilarProjects } from "@/lib/portal/ai";
+import {
+  buildConsultantGuidance,
+  findSimilarProjectBundles,
+} from "@/lib/portal/ai";
 import {
   isApproval,
   isCustomerComment,
@@ -54,7 +57,7 @@ import {
   isReminder,
   isStructuredUpdate,
 } from "@/lib/portal/automation";
-import { getProjectBundle, readStore } from "@/lib/portal/store";
+import { listProjectBundlesForUser } from "@/lib/portal/store";
 import {
   consultingTemplates,
   matchConsultingTemplate,
@@ -107,13 +110,13 @@ export default async function AdminProjectPage({
   const { locale, projectId } = await params;
   const safe: Locale = isLocale(locale) ? locale : "de";
   const user = await requireAdmin(safe);
-  const store = await readStore();
-  const bundle = getProjectBundle(store, projectId);
+  const bundles = await listProjectBundlesForUser(user);
+  const bundle = bundles.find((entry) => entry.project.id === projectId);
   if (!bundle) notFound();
 
   const query = await searchParams;
   const guidance = buildConsultantGuidance(bundle);
-  const similar = findSimilarProjects(store, bundle);
+  const similar = findSimilarProjectBundles(bundles, bundle);
   const template = matchConsultingTemplate(bundle.organization.industry);
   const auditUpdates = bundle.updates.filter((update) =>
     update.title.startsWith("Audit:"),

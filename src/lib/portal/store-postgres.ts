@@ -298,21 +298,10 @@ export async function findPostgresUserById(userId: string) {
   return row ? toUser(row) : null;
 }
 
-export async function readPostgresProjectBundlesForUser(
-  user: User,
+async function readPostgresProjectBundles(
+  projects: Project[],
 ): Promise<ProjectBundle[]> {
   const sql = getSql();
-  const projectRows =
-    user.role === "admin"
-      ? await sql`select * from portal_projects order by created_at asc`
-      : await sql`
-          select p.*
-          from portal_projects p
-          inner join portal_project_members pm on pm.project_id = p.id
-          where pm.user_id = ${user.id}
-          order by p.created_at asc
-        `;
-  const projects = (projectRows as Row[]).map(toProject);
   const projectIds = projects.map((project) => project.id);
   if (projectIds.length === 0) return [];
 
@@ -330,15 +319,15 @@ export async function readPostgresProjectBundlesForUser(
     invoiceRows,
     aiInsightRows,
   ] = await Promise.all([
-    sql`select * from portal_organizations where id = any(${sql(organizationIds)})`,
-    sql`select * from portal_project_members where project_id = any(${sql(projectIds)}) order by created_at asc`,
-    sql`select * from portal_project_intelligence where project_id = any(${sql(projectIds)}) order by updated_at desc`,
-    sql`select * from portal_project_updates where project_id = any(${sql(projectIds)}) order by created_at desc`,
-    sql`select * from portal_project_tasks where project_id = any(${sql(projectIds)}) order by created_at asc`,
-    sql`select * from portal_project_milestones where project_id = any(${sql(projectIds)}) order by created_at asc`,
-    sql`select * from portal_project_files where project_id = any(${sql(projectIds)}) order by uploaded_at desc`,
-    sql`select * from portal_invoices where project_id = any(${sql(projectIds)}) order by created_at desc`,
-    sql`select * from portal_ai_insights where project_id = any(${sql(projectIds)}) order by created_at desc`,
+    sql`select * from portal_organizations where id in ${sql(organizationIds)}`,
+    sql`select * from portal_project_members where project_id in ${sql(projectIds)} order by created_at asc`,
+    sql`select * from portal_project_intelligence where project_id in ${sql(projectIds)} order by updated_at desc`,
+    sql`select * from portal_project_updates where project_id in ${sql(projectIds)} order by created_at desc`,
+    sql`select * from portal_project_tasks where project_id in ${sql(projectIds)} order by created_at asc`,
+    sql`select * from portal_project_milestones where project_id in ${sql(projectIds)} order by created_at asc`,
+    sql`select * from portal_project_files where project_id in ${sql(projectIds)} order by uploaded_at desc`,
+    sql`select * from portal_invoices where project_id in ${sql(projectIds)} order by created_at desc`,
+    sql`select * from portal_ai_insights where project_id in ${sql(projectIds)} order by created_at desc`,
   ]);
 
   const organizations = new Map(
@@ -351,7 +340,7 @@ export async function readPostgresProjectBundlesForUser(
   const memberUserIds = [...new Set(members.map((member) => member.userId))];
   const userRows =
     memberUserIds.length > 0
-      ? await sql`select id, name, email, password_hash, role, email_verified_at, created_at from portal_users where id = any(${sql(memberUserIds)})`
+      ? await sql`select id, name, email, password_hash, role, email_verified_at, created_at from portal_users where id in ${sql(memberUserIds)}`
       : [];
   const users = new Map(
     (userRows as Row[]).map((row) => {
@@ -407,6 +396,72 @@ export async function readPostgresProjectBundlesForUser(
       },
     ];
   });
+}
+
+export async function readPostgresProjectBundlesForUser(
+  user: User,
+): Promise<ProjectBundle[]> {
+  const sql = getSql();
+  const projectRows =
+    user.role === "admin"
+      ? await sql`select * from portal_projects order by created_at asc`
+      : await sql`
+          select p.*
+          from portal_projects p
+          inner join portal_project_members pm on pm.project_id = p.id
+          where pm.user_id = ${user.id}
+          order by p.created_at asc
+        `;
+  return readPostgresProjectBundles((projectRows as Row[]).map(toProject));
+}
+
+export async function readPostgresProjectBundleForUser(
+  user: User,
+  projectId: string,
+): Promise<ProjectBundle | null> {
+  const sql = getSql();
+  const projectRows =
+    user.role === "admin"
+      ? await sql`select * from portal_projects where id = ${projectId} limit 1`
+      : await sql`
+          select p.*
+          from portal_projects p
+          inner join portal_project_members pm on pm.project_id = p.id
+          where p.id = ${projectId} and pm.user_id = ${user.id}
+          limit 1
+        `;
+  const bundles = await readPostgresProjectBundles(
+    (projectRows as Row[]).map(toProject),
+  );
+  return bundles[0] ?? null;
+}
+
+export async function readPostgresCustomersWithProjectBundles(): Promise<
+  Array<{ customer: User; projectBundles: ProjectBundle[] }>
+> {
+  const sql = getSql();
+  const customerRows = await sql`
+    select id, name, email, password_hash, role, email_verified_at, created_at
+    from portal_users
+    where role = 'customer'
+    order by name asc
+  `;
+  const customers = (customerRows as Row[]).map(toUser);
+  const bundles = await readPostgresProjectBundlesForUser({
+    id: "__admin_all_projects__",
+    name: "Admin",
+    email: "",
+    passwordHash: "",
+    role: "admin",
+    createdAt: new Date().toISOString(),
+  });
+
+  return customers.map((customer) => ({
+    customer,
+    projectBundles: bundles.filter((bundle) =>
+      bundle.members.some((member) => member.userId === customer.id),
+    ),
+  }));
 }
 
 export async function readPostgresStore(): Promise<PortalStore> {

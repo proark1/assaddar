@@ -6,6 +6,8 @@ import { isPostgresBackendEnabled } from "./config";
 import {
   findPostgresUserByEmail,
   findPostgresUserById,
+  readPostgresCustomersWithProjectBundles,
+  readPostgresProjectBundleForUser,
   readPostgresProjectBundlesForUser,
   readPostgresStore,
   writePostgresStore,
@@ -18,6 +20,11 @@ import type {
   ProjectIntelligence,
   User,
 } from "./types";
+
+export type CustomerProjectBundles = {
+  customer: User;
+  projectBundles: ProjectBundle[];
+};
 
 const DATA_DIR = path.join(process.cwd(), ".portal-data");
 const STORE_PATH = path.join(DATA_DIR, "store.json");
@@ -402,6 +409,40 @@ export async function listProjectBundlesForUser(
   return listProjectsForUser(store, user.id)
     .map((project) => getProjectBundle(store, project.id))
     .filter((bundle): bundle is ProjectBundle => Boolean(bundle));
+}
+
+export async function getProjectBundleForUser(
+  user: User,
+  projectId: string,
+): Promise<ProjectBundle | null> {
+  if (isPostgresBackendEnabled()) {
+    return readPostgresProjectBundleForUser(user, projectId);
+  }
+
+  const store = await readStore();
+  if (!getProjectAccess(store, user.id, projectId)) return null;
+  return getProjectBundle(store, projectId);
+}
+
+export async function listCustomersWithProjectBundles(): Promise<
+  CustomerProjectBundles[]
+> {
+  if (isPostgresBackendEnabled()) {
+    return readPostgresCustomersWithProjectBundles();
+  }
+
+  const store = await readStore();
+  return store.users
+    .filter((entry) => entry.role === "customer")
+    .map((customer) => {
+      const projectBundles = store.projectMembers
+        .filter((member) => member.userId === customer.id)
+        .map((member) => getProjectBundle(store, member.projectId))
+        .filter((bundle): bundle is ProjectBundle => Boolean(bundle));
+
+      return { customer, projectBundles };
+    })
+    .sort((a, b) => a.customer.name.localeCompare(b.customer.name));
 }
 
 export function upsertIntelligence(
