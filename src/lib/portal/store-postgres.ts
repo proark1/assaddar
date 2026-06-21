@@ -48,6 +48,30 @@ function boolean(value: unknown) {
   return value === true || value === "true";
 }
 
+function toUser(row: Row): User {
+  return {
+    id: value(row.id),
+    name: value(row.name),
+    email: value(row.email),
+    passwordHash: value(row.password_hash),
+    role: value(row.role) === "admin" ? "admin" : "customer",
+    emailVerifiedAt: optionalIso(row.email_verified_at),
+    createdAt: iso(row.created_at),
+  };
+}
+
+export async function findPostgresUserByEmail(email: string) {
+  const sql = getSql();
+  const rows = await sql`
+    select id, name, email, password_hash, role, email_verified_at, created_at
+    from portal_users
+    where lower(email) = lower(${email})
+    limit 1
+  `;
+  const row = (rows as Row[])[0];
+  return row ? toUser(row) : null;
+}
+
 export async function readPostgresStore(): Promise<PortalStore> {
   const sql = getSql();
   const [
@@ -79,17 +103,7 @@ export async function readPostgresStore(): Promise<PortalStore> {
   ]);
 
   return {
-    users: (users as Row[]).map(
-      (row): User => ({
-        id: value(row.id),
-        name: value(row.name),
-        email: value(row.email),
-        passwordHash: value(row.password_hash),
-        role: value(row.role) === "admin" ? "admin" : "customer",
-        emailVerifiedAt: optionalIso(row.email_verified_at),
-        createdAt: iso(row.created_at),
-      }),
-    ),
+    users: (users as Row[]).map(toUser),
     organizations: (organizations as Row[]).map(
       (row): Organization => ({
         id: value(row.id),

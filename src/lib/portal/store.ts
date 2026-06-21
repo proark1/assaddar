@@ -3,13 +3,18 @@ import path from "path";
 import { randomUUID } from "crypto";
 import { hashPassword } from "./password";
 import { isPostgresBackendEnabled } from "./config";
-import { readPostgresStore, writePostgresStore } from "./store-postgres";
+import {
+  findPostgresUserByEmail,
+  readPostgresStore,
+  writePostgresStore,
+} from "./store-postgres";
 import type {
   AsdarStage,
   PortalStore,
   Project,
   ProjectBundle,
   ProjectIntelligence,
+  User,
 } from "./types";
 
 const DATA_DIR = path.join(process.cwd(), ".portal-data");
@@ -279,6 +284,18 @@ export async function mutateStore<T>(
 export function findUserByEmail(store: PortalStore, email: string) {
   const normalized = email.trim().toLowerCase();
   return store.users.find((user) => user.email.toLowerCase() === normalized);
+}
+
+export async function findUserByEmailForLogin(
+  email: string,
+): Promise<User | null> {
+  const normalized = email.trim().toLowerCase();
+  if (isPostgresBackendEnabled()) {
+    return findPostgresUserByEmail(normalized);
+  }
+
+  const store = await readStore();
+  return findUserByEmail(store, normalized) ?? null;
 }
 
 export function getProjectAccess(

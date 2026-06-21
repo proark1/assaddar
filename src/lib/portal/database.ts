@@ -14,6 +14,7 @@ export function getSql() {
       idle_timeout: 20,
       connect_timeout: 10,
       prepare: false,
+      ssl: "require",
     });
   }
   return client;

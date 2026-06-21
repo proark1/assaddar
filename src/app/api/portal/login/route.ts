@@ -2,10 +2,11 @@ import { NextResponse, type NextRequest } from "next/server";
 import { isLocale, type Locale } from "@/content";
 import { createSessionCookie } from "@/lib/portal/auth";
 import { requireEmailVerification } from "@/lib/portal/config";
-import { findUserByEmail, readStore } from "@/lib/portal/store";
+import { findUserByEmailForLogin } from "@/lib/portal/store";
 import { verifyPassword } from "@/lib/portal/password";
 
 export const dynamic = "force-dynamic";
+export const runtime = "nodejs";
 
 function safeLocale(value: FormDataEntryValue | null): Locale {
   const raw = String(value || "de");
@@ -28,8 +29,7 @@ export async function POST(request: NextRequest) {
   const email = String(formData.get("email") || "").trim().toLowerCase();
   const password = String(formData.get("password") || "");
 
-  const store = await readStore();
-  const user = findUserByEmail(store, email);
+  const user = await findUserByEmailForLogin(email);
 
   if (!user || !verifyPassword(password, user.passwordHash)) {
     return redirectTo(request, `/${locale}/login?error=invalid`);
