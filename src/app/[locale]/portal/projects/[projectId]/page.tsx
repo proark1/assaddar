@@ -56,6 +56,15 @@ export const metadata: Metadata = {
 
 type CustomerView = "overview" | "input" | "actions" | "files" | "messages";
 
+const intakeAnswerAliases: Record<string, string[]> = {
+  companyContext: ["Unternehmenskontext"],
+  issues: ["Probleme und Engpaesse", "Probleme", "Engpaesse"],
+  goals: ["Ziele"],
+  currentTools: ["Aktuelle Tools", "Tools", "Systeme"],
+  dataSituation: ["Daten und Dokumente", "Daten", "Dokumente"],
+  constraints: ["Rahmenbedingungen", "Einschraenkungen", "Constraints"],
+};
+
 function customerView(value?: string): CustomerView | null {
   return value === "overview" ||
     value === "input" ||
@@ -64,6 +73,74 @@ function customerView(value?: string): CustomerView | null {
     value === "messages"
     ? value
     : null;
+}
+
+function normalizeIntakeLabel(value: string) {
+  return value
+    .toLowerCase()
+    .replace(/ä/g, "ae")
+    .replace(/ö/g, "oe")
+    .replace(/ü/g, "ue")
+    .replace(/ß/g, "ss")
+    .normalize("NFKD")
+    .replace(/[\u0300-\u036f]/g, "")
+    .replace(/[^a-z0-9]+/g, " ")
+    .trim();
+}
+
+function latestIntakeDefaults(
+  updates: Array<{ title: string; body: string; createdAt: string }>,
+  questions: Array<{ id: string; prompt: string }>,
+) {
+  const lookup = new Map<string, string>();
+  for (const [field, aliases] of Object.entries(intakeAnswerAliases)) {
+    for (const alias of aliases) lookup.set(normalizeIntakeLabel(alias), field);
+  }
+  for (const question of questions) {
+    if (question.id.startsWith("template_")) {
+      lookup.set(normalizeIntakeLabel(question.prompt), question.id);
+    }
+  }
+
+  const intake = updates
+    .filter((update) => isCustomerIntake(update.title))
+    .sort(
+      (a, b) =>
+        new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime(),
+    )[0];
+  if (!intake) return {};
+
+  const answers: Record<string, string> = {};
+  let activeField = "";
+  let buffer: string[] = [];
+  const flush = () => {
+    if (!activeField) return;
+    const value = buffer.join("\n").trim();
+    if (value) answers[activeField] = value;
+    buffer = [];
+  };
+
+  for (const line of intake.body.split(/\r?\n/)) {
+    const trimmed = line.trim();
+    const separator = trimmed.indexOf(":");
+    const key =
+      separator >= 0
+        ? lookup.get(normalizeIntakeLabel(trimmed.slice(0, separator)))
+        : undefined;
+
+    if (key) {
+      flush();
+      activeField = key;
+      buffer = trimmed.slice(separator + 1).trim()
+        ? [trimmed.slice(separator + 1).trim()]
+        : [];
+    } else if (activeField) {
+      buffer.push(line);
+    }
+  }
+  flush();
+
+  return answers;
 }
 
 export default async function CustomerProjectPage({
@@ -103,6 +180,10 @@ export default async function CustomerProjectPage({
     isCustomerIntake(update.title),
   );
   const intakeQuestions = buildIntakeQuestions(bundle);
+  const intakeDefaults = latestIntakeDefaults(
+    allCustomerUpdates,
+    intakeQuestions,
+  );
   const tasks = bundle.tasks.filter((task) => task.visibleToCustomer);
   const milestones = bundle.milestones.filter(
     (milestone) => milestone.visibleToCustomer,
@@ -370,6 +451,7 @@ export default async function CustomerProjectPage({
                       <textarea
                         name="questionAnswer"
                         placeholder={question.placeholder}
+                        defaultValue={intakeDefaults[question.id] ?? ""}
                         className={textareaClass}
                       />
                     </div>
@@ -384,6 +466,7 @@ export default async function CustomerProjectPage({
                       <textarea
                         name={question.id}
                         placeholder={question.placeholder}
+                        defaultValue={intakeDefaults[question.id] ?? ""}
                         className={textareaClass}
                       />
                     </div>

@@ -522,8 +522,11 @@ export async function submitCustomerIntakeAction(formData: FormData) {
       id: id("update"),
       projectId,
       title: "Intake: Kundenantworten eingereicht",
-      body:
+      body: [
         "Der gefuehrte Fragebogen wurde eingereicht. Assad nutzt die Antworten fuer Analyse, Empfehlungen und naechste Schritte.",
+        "",
+        answerBlock,
+      ].join("\n"),
       visibility: "customer",
       asdarStage: bundle.project.asdarStage,
       createdBy: user.id,
