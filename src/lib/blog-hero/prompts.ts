@@ -1,11 +1,16 @@
 import { posts } from "@/blog/posts";
 
 // Shared brand style for every generated hero. English (image models follow it best).
+export const HERO_BRAND_PALETTE =
+  "Use only the ASSADDAR brand palette: warm cream background #f7f5f1, white/shell highlights #ffffff, " +
+  "deep ink charcoal #16191e, muted grey #5f6671, restrained slate #3e5573, and one refined copper accent #a66e2f. ";
+
 export const HERO_STYLE =
-  "Abstract editorial brand illustration for a premium, senior AI- and process-consulting blog. " +
-  "Wide 16:9 banner composition. Calm, sophisticated, lots of negative space. " +
-  "Muted warm paper-and-charcoal palette with a single refined copper accent (#a66e2f). " +
+  "Strict ASSADDAR brand hero image. Abstract editorial illustration for a premium, senior AI- and process-consulting blog. " +
+  "Wide website banner composition, safe for a 16:6 crop, with the main motif centered and lots of negative space. " +
+  HERO_BRAND_PALETTE +
   "Clean geometric line-art, subtle connected nodes and flowing lines, soft depth, flat and modern. " +
+  "Consistent restrained consulting aesthetic across every article; not stock-photo, not photorealistic, not cartoonish. " +
   "Absolutely no text, no words, no letters, no numbers, no logos, no UI, no people, no faces, " +
   "no literal robots, no sci-fi neon clichés. Understated and elegant.";
 
@@ -44,13 +49,32 @@ const SUBJECTS: Record<string, string> = {
     "an agency studio — briefs turning into content and campaigns through an organized creative pipeline",
 };
 
-/** A ready-to-edit default image prompt for an article's hero. */
-export function defaultHeroPrompt(slug: string): string {
+export function heroSubject(slug: string): string {
   const post = posts.find((p) => p.slug === slug);
-  const subject =
+  return (
     SUBJECTS[slug] ??
     (post
       ? `an abstract motif evoking the theme: ${post.title}`
-      : "an abstract process-and-AI motif");
-  return `${HERO_STYLE} Subject: ${subject}.`;
+      : "an abstract process-and-AI motif")
+  );
+}
+
+/** A ready-to-edit default image prompt for an article's hero. */
+export function defaultHeroPrompt(slug: string): string {
+  return `Subject: ${heroSubject(slug)}.`;
+}
+
+export function buildHeroGenerationPrompt(slug: string, adminPrompt: string): string {
+  const post = posts.find((p) => p.slug === slug);
+  return [
+    HERO_STYLE,
+    post ? `Article title: ${post.title}.` : "",
+    `Required subject: ${heroSubject(slug)}.`,
+    adminPrompt.trim()
+      ? `Additional direction from admin, while preserving the locked ASSADDAR style: ${adminPrompt.trim()}`
+      : "",
+    "Final output must feel like one coherent branded image system with the other ASSADDAR blog hero images.",
+  ]
+    .filter(Boolean)
+    .join(" ");
 }

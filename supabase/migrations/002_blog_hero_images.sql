@@ -7,7 +7,7 @@ create table if not exists blog_hero_images (
   storage_path text not null,
   mime_type text not null default 'image/png',
   width integer not null default 1536,
-  height integer not null default 1024,
+  height integer not null default 864,
   alt text not null default '',
   caption text,
   prompt text not null default '',
