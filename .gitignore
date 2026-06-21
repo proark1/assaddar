@@ -16,3 +16,4 @@ next-env.d.ts
 
 # internal strategy doc — kept out of the public repo
 docs/
+.vercel
