@@ -43,6 +43,10 @@ function encodeSession(payload: SessionPayload) {
   return `${body}.${sign(body)}`;
 }
 
+function cookieDomain() {
+  return process.env.AUTH_COOKIE_DOMAIN?.trim() || undefined;
+}
+
 export function createSessionCookie(userId: string) {
   const expiresAt = Date.now() + ONE_WEEK_SECONDS * 1000;
 
@@ -50,6 +54,7 @@ export function createSessionCookie(userId: string) {
     name: COOKIE_NAME,
     value: encodeSession({ userId, expiresAt }),
     options: {
+      domain: cookieDomain(),
       httpOnly: true,
       sameSite: "lax",
       secure: process.env.NODE_ENV === "production",

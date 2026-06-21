@@ -1,0 +1,68 @@
+import { NextResponse, type NextRequest } from "next/server";
+import { isLocale, type Locale } from "@/content";
+import { createSessionCookie } from "@/lib/portal/auth";
+import { requireEmailVerification } from "@/lib/portal/config";
+import { checkRateLimit, clientIpFromHeaders } from "@/lib/portal/rate-limit";
+import { findUserByEmailForLogin } from "@/lib/portal/store";
+import { verifyPassword } from "@/lib/portal/password";
+
+export const dynamic = "force-dynamic";
+export const runtime = "nodejs";
+
+function safeLocale(value: unknown): Locale {
+  const raw = String(value || "de");
+  return isLocale(raw) ? raw : "de";
+}
+
+function nextPath(locale: Locale, value: unknown) {
+  const raw = String(value || "");
+  if (raw.startsWith(`/${locale}/`) && !raw.includes("//")) return raw;
+  return `/${locale}/portal`;
+}
+
+function jsonError(message: string, status = 400) {
+  return NextResponse.json({ ok: false, message }, { status });
+}
+
+export async function POST(request: NextRequest) {
+  let payload: { locale?: string; email?: string; password?: string; next?: string };
+  try {
+    payload = await request.json();
+  } catch {
+    return jsonError("Die Login-Anfrage konnte nicht gelesen werden.");
+  }
+
+  const locale = safeLocale(payload.locale);
+  const email = String(payload.email || "").trim().toLowerCase();
+  const password = String(payload.password || "");
+  const rateLimit = checkRateLimit(
+    `login:${clientIpFromHeaders(request.headers)}:${email || "unknown"}`,
+    8,
+    10 * 60 * 1000,
+  );
+
+  if (!rateLimit.allowed) {
+    return jsonError(
+      "Zu viele Login-Versuche. Bitte versuchen Sie es in einigen Minuten erneut.",
+      429,
+    );
+  }
+
+  const user = await findUserByEmailForLogin(email);
+
+  if (!user || !verifyPassword(password, user.passwordHash)) {
+    return jsonError("Login nicht moeglich. Bitte pruefen Sie E-Mail und Passwort.", 401);
+  }
+
+  if (requireEmailVerification() && !user.emailVerifiedAt) {
+    return jsonError("Bitte bestaetigen Sie zuerst Ihre E-Mail-Adresse.", 403);
+  }
+
+  const response = NextResponse.json({
+    ok: true,
+    redirectTo: nextPath(locale, payload.next),
+  });
+  const session = createSessionCookie(user.id);
+  response.cookies.set(session.name, session.value, session.options);
+  return response;
+}

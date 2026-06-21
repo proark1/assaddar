@@ -1,9 +1,8 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 import { redirect } from "next/navigation";
-import { LogIn } from "lucide-react";
 import { getCurrentUser } from "@/lib/portal/auth";
-import { fieldClass } from "@/components/portal/chrome";
+import { PortalLoginForm } from "@/components/portal/login-form";
 import { isLocale, type Locale } from "@/content";
 
 export const dynamic = "force-dynamic";
@@ -35,6 +34,13 @@ export default async function LoginPage({
   const invalid = query.error === "invalid";
   const needsVerification = query.error === "verify";
   const rateLimited = query.error === "rate";
+  const hasNotice =
+    invalid ||
+    needsVerification ||
+    rateLimited ||
+    query.verify === "sent" ||
+    query.verified === "1" ||
+    query.reset === "1";
 
   return (
     <main className="flex min-h-screen items-center justify-center bg-bg px-5 py-12">
@@ -53,76 +59,43 @@ export default async function LoginPage({
           zu sehen.
         </p>
 
-        <form action="/api/portal/login" method="post" className="mt-7 space-y-4">
-          <input type="hidden" name="locale" value={safe} />
-          <input type="hidden" name="next" value={query.next ?? ""} />
-          <div>
-            <label htmlFor="email" className="mb-1.5 block text-sm text-ink2">
-              E-Mail
-            </label>
-            <input
-              id="email"
-              name="email"
-              type="email"
-              required
-              autoComplete="email"
-              className={fieldClass}
-            />
+        {hasNotice && (
+          <div className="mt-7 space-y-4">
+            {invalid && (
+              <p className="rounded-md border border-critical/30 bg-critical/10 px-3 py-2 text-sm text-critical">
+                Login nicht möglich. Bitte prüfen Sie E-Mail und Passwort.
+              </p>
+            )}
+            {needsVerification && (
+              <p className="rounded-md border border-critical/30 bg-critical/10 px-3 py-2 text-sm text-critical">
+                Bitte bestätigen Sie zuerst Ihre E-Mail-Adresse.
+              </p>
+            )}
+            {rateLimited && (
+              <p className="rounded-md border border-critical/30 bg-critical/10 px-3 py-2 text-sm text-critical">
+                Zu viele Login-Versuche. Bitte versuchen Sie es in einigen
+                Minuten erneut.
+              </p>
+            )}
+            {query.verify === "sent" && (
+              <p className="rounded-md border border-success/30 bg-success/10 px-3 py-2 text-sm text-success">
+                Bitte prüfen Sie Ihr Postfach und bestätigen Sie Ihre E-Mail.
+              </p>
+            )}
+            {query.verified === "1" && (
+              <p className="rounded-md border border-success/30 bg-success/10 px-3 py-2 text-sm text-success">
+                E-Mail bestätigt. Sie können sich jetzt anmelden.
+              </p>
+            )}
+            {query.reset === "1" && (
+              <p className="rounded-md border border-success/30 bg-success/10 px-3 py-2 text-sm text-success">
+                Passwort geändert. Sie können sich jetzt anmelden.
+              </p>
+            )}
           </div>
-          <div>
-            <label htmlFor="password" className="mb-1.5 block text-sm text-ink2">
-              Passwort
-            </label>
-            <input
-              id="password"
-              name="password"
-              type="password"
-              required
-              autoComplete="current-password"
-              className={fieldClass}
-            />
-          </div>
+        )}
 
-          {invalid && (
-            <p className="rounded-md border border-critical/30 bg-critical/10 px-3 py-2 text-sm text-critical">
-              Login nicht möglich. Bitte prüfen Sie E-Mail und Passwort.
-            </p>
-          )}
-          {needsVerification && (
-            <p className="rounded-md border border-critical/30 bg-critical/10 px-3 py-2 text-sm text-critical">
-              Bitte bestätigen Sie zuerst Ihre E-Mail-Adresse.
-            </p>
-          )}
-          {rateLimited && (
-            <p className="rounded-md border border-critical/30 bg-critical/10 px-3 py-2 text-sm text-critical">
-              Zu viele Login-Versuche. Bitte versuchen Sie es in einigen Minuten
-              erneut.
-            </p>
-          )}
-          {query.verify === "sent" && (
-            <p className="rounded-md border border-success/30 bg-success/10 px-3 py-2 text-sm text-success">
-              Bitte prüfen Sie Ihr Postfach und bestätigen Sie Ihre E-Mail.
-            </p>
-          )}
-          {query.verified === "1" && (
-            <p className="rounded-md border border-success/30 bg-success/10 px-3 py-2 text-sm text-success">
-              E-Mail bestätigt. Sie können sich jetzt anmelden.
-            </p>
-          )}
-          {query.reset === "1" && (
-            <p className="rounded-md border border-success/30 bg-success/10 px-3 py-2 text-sm text-success">
-              Passwort geändert. Sie können sich jetzt anmelden.
-            </p>
-          )}
-
-          <button
-            type="submit"
-            className="inline-flex w-full items-center justify-center gap-2 rounded-lg bg-copper px-5 py-3 text-sm font-medium text-oncopper shadow-[0_2px_8px_rgba(166,110,47,0.25)] transition-colors hover:bg-copper-hi"
-          >
-            <LogIn className="h-4 w-4" />
-            Einloggen
-          </button>
-        </form>
+        <PortalLoginForm locale={safe} next={query.next ?? ""} />
 
         <p className="mt-6 text-sm text-ink2">
           Noch kein Konto?{" "}
