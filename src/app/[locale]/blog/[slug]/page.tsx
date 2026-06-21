@@ -132,6 +132,7 @@ export default async function BlogArticle({
     articleSection: post.category,
     keywords: post.keywords.join(", "),
     mainEntityOfPage: articleUrl,
+    image: `${articleUrl}/opengraph-image`,
     author: {
       "@type": "Person",
       "@id": personId,

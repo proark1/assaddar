@@ -45,7 +45,9 @@ export default async function Home({
     },
     founder: {
       "@type": "Person",
+      "@id": `${SITE_URL}/#assad-dar`,
       name: "Assad Dar",
+      url: `${SITE_URL}/${safe}/ueber-mich`,
       jobTitle:
         safe === "de"
           ? "KI- & Transformationsberater"
