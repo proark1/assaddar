@@ -12,6 +12,7 @@ import {
   Market,
   MethodSection,
   Proof,
+  ProductsPreview,
 } from "@/components/sections-server";
 import { AiExamples } from "@/components/examples";
 import { AsdarScore } from "@/components/asdar-score";
@@ -101,6 +102,7 @@ export default async function Home({
         <Branchen t={t.branchen} />
         <Proof t={t.proof} />
         <About t={t.about} locale={safe} />
+        <ProductsPreview locale={safe} />
         <Blog t={t.blog} />
         <Faq t={t.faq} />
         <FinalCta t={t.finalCta} />

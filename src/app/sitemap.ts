@@ -2,7 +2,7 @@ import type { MetadataRoute } from "next";
 import { posts } from "@/blog/posts";
 
 const SITE = "https://assad-dar.de";
-const LAST_MODIFIED = new Date("2026-06-21");
+const LAST_MODIFIED = new Date("2026-06-22");
 
 export default function sitemap(): MetadataRoute.Sitemap {
   const languages = { de: `${SITE}/de`, en: `${SITE}/en` };
@@ -21,6 +21,38 @@ export default function sitemap(): MetadataRoute.Sitemap {
       priority: 0.7,
     })),
   ];
+
+  const detailPages: MetadataRoute.Sitemap = [
+    "asdar-method",
+    "angebote",
+    "branchen",
+    "meine-produkte",
+  ].flatMap((slug) => [
+    {
+      url: `${SITE}/de/${slug}`,
+      lastModified: LAST_MODIFIED,
+      changeFrequency: "monthly" as const,
+      priority: 0.8,
+      alternates: {
+        languages: {
+          de: `${SITE}/de/${slug}`,
+          en: `${SITE}/en/${slug}`,
+        },
+      },
+    },
+    {
+      url: `${SITE}/en/${slug}`,
+      lastModified: LAST_MODIFIED,
+      changeFrequency: "monthly" as const,
+      priority: 0.7,
+      alternates: {
+        languages: {
+          de: `${SITE}/de/${slug}`,
+          en: `${SITE}/en/${slug}`,
+        },
+      },
+    },
+  ]);
 
   return [
     {
@@ -61,6 +93,7 @@ export default function sitemap(): MetadataRoute.Sitemap {
         },
       },
     },
+    ...detailPages,
     ...blog,
   ];
 }

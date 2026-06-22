@@ -47,7 +47,7 @@ export function Nav({
 
   return (
     <header className="sticky top-0 z-50 border-b border-hairline bg-bg/80 backdrop-blur-md">
-      <div className="mx-auto flex h-16 w-full max-w-[1120px] items-center justify-between px-6 md:px-10">
+      <div className="mx-auto flex h-16 w-full max-w-[1280px] items-center justify-between px-6 md:px-10">
         <Link
           href={`/${locale}`}
           className="text-[15px] font-medium tracking-[0.22em] text-ink"
@@ -55,11 +55,11 @@ export function Nav({
           ASSADDAR<span className="text-copper">.</span>
         </Link>
 
-        <nav className="hidden items-center gap-8 md:flex">
+        <nav className="hidden items-center gap-4 xl:flex">
           {t.links.map((l) =>
             renderLink(
               l,
-              "text-[13px] text-ink2 transition-colors hover:text-ink",
+              "text-[12px] text-ink2 transition-colors hover:text-ink",
             ),
           )}
         </nav>
@@ -100,7 +100,7 @@ export function Nav({
             aria-label={open ? t.close : t.menu}
             aria-expanded={open}
             onClick={() => setOpen((v) => !v)}
-            className="inline-flex h-9 w-9 items-center justify-center rounded-lg border border-hairline text-ink md:hidden"
+            className="inline-flex h-9 w-9 items-center justify-center rounded-lg border border-hairline text-ink xl:hidden"
           >
             {open ? <X className="h-5 w-5" /> : <Menu className="h-5 w-5" />}
           </button>
@@ -108,8 +108,8 @@ export function Nav({
       </div>
 
       {open && (
-        <div className="border-t border-hairline bg-bg md:hidden">
-          <div className="mx-auto flex w-full max-w-[1120px] flex-col gap-1 px-6 py-4">
+        <div className="border-t border-hairline bg-bg xl:hidden">
+          <div className="mx-auto flex w-full max-w-[1280px] flex-col gap-1 px-6 py-4">
             {t.links.map((l) =>
               renderLink(
                 l,

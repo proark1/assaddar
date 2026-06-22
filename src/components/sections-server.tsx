@@ -15,6 +15,7 @@ import {
 import Link from "next/link";
 import type { Dict, Locale } from "@/content";
 import { posts as blogPosts } from "@/blog/posts";
+import { aboutContent } from "@/about";
 import { Button, Container, Kicker, Section } from "./ui";
 import { Reveal } from "./motion";
 
@@ -314,6 +315,61 @@ export function About({ t, locale }: { t: Dict["about"]; locale: Locale }) {
             </div>
           </Reveal>
         </div>
+      </Container>
+    </Section>
+  );
+}
+
+export function ProductsPreview({ locale }: { locale: Locale }) {
+  const a = aboutContent[locale];
+  const isDe = locale === "de";
+
+  return (
+    <Section id="meine-produkte" className="border-t border-hairline">
+      <Container>
+        <Reveal>
+          <Kicker>{a.productsTitle}</Kicker>
+          <h2 className="mt-5 max-w-3xl font-serif text-3xl font-normal text-ink md:text-[40px]">
+            {isDe
+              ? "Eigene KI-Produkte als Praxisbeweis."
+              : "Own AI products as proof of practice."}
+          </h2>
+          <p className="mt-4 max-w-2xl text-base leading-relaxed text-ink2">
+            {isDe
+              ? "Ich berate nicht nur über KI und Digitalisierung. Ich baue solche Systeme selbst: von Produktlogik und Datenmodell bis Nutzerführung, Automatisierung und Betrieb."
+              : "I do not only advise on AI and digitalization. I build these systems myself: from product logic and data models to UX, automation, and operations."}
+          </p>
+        </Reveal>
+
+        <div className="mt-12 grid gap-5 md:grid-cols-2">
+          {a.products.map((product, i) => (
+            <Reveal key={product.name} delay={i * 0.05}>
+              <article className="flex h-full flex-col rounded-xl border border-hairline bg-surface p-6 shadow-card">
+                <div className="font-mono text-[10.5px] uppercase tracking-[0.12em] text-copper">
+                  {product.tagline}
+                </div>
+                <h3 className="mt-3 font-serif text-xl text-ink">
+                  {product.name}
+                </h3>
+                <p className="mt-3 flex-1 text-sm leading-relaxed text-ink2">
+                  {product.text}
+                </p>
+              </article>
+            </Reveal>
+          ))}
+        </div>
+
+        <Reveal delay={0.1}>
+          <div className="mt-10">
+            <Link
+              href={`/${locale}/meine-produkte`}
+              className="group inline-flex items-center gap-1.5 text-sm font-medium text-copper"
+            >
+              {isDe ? "Produkte im Detail ansehen" : "View products in detail"}
+              <ArrowRight className="h-4 w-4 transition-transform group-hover:translate-x-0.5" />
+            </Link>
+          </div>
+        </Reveal>
       </Container>
     </Section>
   );
