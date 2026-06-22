@@ -7,6 +7,7 @@ import {
   generateBlogHeroAction,
   deleteBlogHeroAction,
 } from "@/app/actions/blog-hero";
+import { BlogHeroCompressor } from "@/components/portal/blog-hero-compressor";
 import {
   Badge,
   PortalCard,
@@ -16,6 +17,16 @@ import {
 } from "@/components/portal/chrome";
 
 export const dynamic = "force-dynamic";
+
+function formatBytes(value: number) {
+  if (!Number.isFinite(value) || value <= 0) return "0 KB";
+  if (value >= 1024 * 1024) {
+    return `${(value / 1024 / 1024).toLocaleString("de-DE", {
+      maximumFractionDigits: 2,
+    })} MB`;
+  }
+  return `${Math.max(1, Math.round(value / 1024)).toLocaleString("de-DE")} KB`;
+}
 
 export default async function BlogHeroAdminPage({
   params,
@@ -69,6 +80,9 @@ export default async function BlogHeroAdminPage({
         {posts.map((post) => {
           const existing = heroes[post.slug];
           const promptValue = existing?.prompt ?? defaultHeroPrompt(post.slug);
+          const imageUrl = existing
+            ? `/api/blog/hero/${post.slug}?v=${encodeURIComponent(existing.generatedAt)}`
+            : "";
           return (
             <PortalCard key={post.slug}>
               <div className="flex items-start justify-between gap-3">
@@ -83,11 +97,19 @@ export default async function BlogHeroAdminPage({
                 <div className="mt-4 overflow-hidden rounded-lg border border-hairline">
                   {/* eslint-disable-next-line @next/next/no-img-element */}
                   <img
-                    src={`/api/blog/hero/${post.slug}?v=${encodeURIComponent(existing.generatedAt)}`}
+                    src={imageUrl}
                     alt={existing.alt}
                     className="aspect-[16/6] w-full object-cover"
                   />
                 </div>
+              )}
+
+              {existing && (
+                <BlogHeroCompressor
+                  slug={post.slug}
+                  imageUrl={imageUrl}
+                  currentSize={existing.size}
+                />
               )}
 
               <form action={generateBlogHeroAction} className="mt-4 space-y-3">
@@ -110,8 +132,10 @@ export default async function BlogHeroAdminPage({
                     {existing ? "Neu generieren" : "Generieren"}
                   </button>
                   {existing && (
-                    <span className="text-[12px] text-muted">
-                      Zuletzt: {new Date(existing.generatedAt).toLocaleString("de-DE")}
+                    <span className="text-[12px] leading-relaxed text-muted">
+                      Zuletzt:{" "}
+                      {new Date(existing.generatedAt).toLocaleString("de-DE")} ·{" "}
+                      Aktuelle Größe: {formatBytes(existing.size)}
                     </span>
                   )}
                 </div>
