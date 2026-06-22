@@ -26,6 +26,7 @@ import {
   UsersRound,
   type LucideIcon,
 } from "lucide-react";
+import Image from "next/image";
 import Link from "next/link";
 import type { Dict, Locale } from "@/content";
 import { posts as blogPosts } from "@/blog/posts";
@@ -62,29 +63,66 @@ function DecorativeLines() {
 
 export function Hero({ t }: { t: Dict["hero"] }) {
   return (
-    <Section className="relative overflow-hidden pt-14 md:pt-20">
+    <Section className="relative overflow-hidden pb-0 pt-14 md:pt-20">
       <DecorativeLines />
       <Container className="relative">
-        <Kicker>{t.kicker}</Kicker>
-        <h1 className="mt-6 max-w-3xl font-serif text-[34px] font-normal leading-[1.12] tracking-[-0.01em] text-ink sm:text-5xl md:text-[56px]">
-          {t.line1} <span className="text-copper">{t.line2}</span>
-        </h1>
-        <p className="mt-7 max-w-xl text-base leading-relaxed text-ink2">{t.sub}</p>
-        <Reveal delay={0.1}>
-          <div className="mt-9 flex flex-col items-start gap-6 sm:flex-row sm:items-center">
-            <Button href={t.ctaPrimaryHref}>{t.ctaPrimary}</Button>
-            <div>
-              <a
-                href={t.ctaSecondaryHref}
-                className="inline-flex items-center gap-1.5 border-b border-copper pb-0.5 text-sm text-ink transition-colors hover:text-copper"
-              >
-                {t.ctaSecondary}
-                <ArrowRight className="h-3.5 w-3.5 text-copper" />
-              </a>
-              <p className="mt-2 text-xs text-muted">{t.ctaSecondaryHint}</p>
-            </div>
+        <div className="grid gap-8 lg:min-h-[560px] lg:grid-cols-[minmax(0,0.98fr)_minmax(340px,0.72fr)] lg:items-end">
+          <div className="pb-10 md:pb-16 lg:pb-24">
+            <Kicker>{t.kicker}</Kicker>
+            <h1 className="mt-6 max-w-3xl font-serif text-[34px] font-normal leading-[1.12] tracking-[-0.01em] text-ink sm:text-5xl md:text-[56px]">
+              {t.line1} <span className="text-copper">{t.line2}</span>
+            </h1>
+            <p className="mt-7 max-w-xl text-base leading-relaxed text-ink2">
+              {t.sub}
+            </p>
+            <Reveal delay={0.1}>
+              <div className="mt-9 flex flex-col items-start gap-6 sm:flex-row sm:items-center">
+                <Button href={t.ctaPrimaryHref}>{t.ctaPrimary}</Button>
+                <div>
+                  <a
+                    href={t.ctaSecondaryHref}
+                    className="inline-flex items-center gap-1.5 border-b border-copper pb-0.5 text-sm text-ink transition-colors hover:text-copper"
+                  >
+                    {t.ctaSecondary}
+                    <ArrowRight className="h-3.5 w-3.5 text-copper" />
+                  </a>
+                  <p className="mt-2 text-xs text-muted">{t.ctaSecondaryHint}</p>
+                </div>
+              </div>
+            </Reveal>
           </div>
-        </Reveal>
+
+          <Reveal delay={0.15}>
+            <div className="relative mx-auto flex min-h-[360px] w-full max-w-[460px] items-end justify-center overflow-hidden sm:min-h-[440px] lg:min-h-[560px] lg:max-w-none">
+              <svg
+                aria-hidden="true"
+                viewBox="0 0 420 520"
+                className="absolute bottom-0 left-1/2 h-[92%] w-[92%] -translate-x-1/2 text-copper opacity-25"
+              >
+                <path
+                  d="M62 434 C 114 334 73 208 165 139 C 240 83 356 118 376 224 C 399 346 291 433 165 452"
+                  fill="none"
+                  stroke="currentColor"
+                  strokeWidth="1.5"
+                />
+                <path
+                  d="M46 384 L356 384 M82 312 L320 312 M116 240 L286 240"
+                  fill="none"
+                  stroke="currentColor"
+                  strokeWidth="1"
+                />
+              </svg>
+              <Image
+                src="/people/assad-dar-portrait.png"
+                alt="Assad Dar"
+                width={1024}
+                height={1536}
+                priority
+                className="relative z-10 h-[360px] w-auto object-contain object-bottom sm:h-[440px] lg:h-[560px]"
+              />
+            </div>
+          </Reveal>
+        </div>
       </Container>
     </Section>
   );
@@ -799,13 +837,6 @@ export function ProductsPreview({ locale }: { locale: Locale }) {
                     className="inline-flex items-center gap-1.5 text-copper"
                   >
                     Website
-                    <ArrowRight className="h-3.5 w-3.5" />
-                  </a>
-                  <a
-                    href={product.repoHref}
-                    className="inline-flex items-center gap-1.5 text-muted transition-colors hover:text-copper"
-                  >
-                    GitHub: {product.repo}
                     <ArrowRight className="h-3.5 w-3.5" />
                   </a>
                 </div>

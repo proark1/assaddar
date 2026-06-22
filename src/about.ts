@@ -5,8 +5,6 @@ export type AboutWorld = { tag: string; title: string; org: string; text: string
 export type AboutProduct = {
   name: string;
   href: string;
-  repo: string;
-  repoHref: string;
   tagline: string;
   text: string;
   bullets: string[];
@@ -78,8 +76,6 @@ const de: AboutContent = {
     {
       name: "unmutenow.ai",
       href: "https://unmutenow.ai",
-      repo: "socialpilotai",
-      repoHref: "https://github.com/proark1/socialpilotai",
       tagline: "AI Communication Training Platform",
       text:
         "KI-gestuetzte Trainingsplattform fuer reale Kommunikationssituationen: Nutzer ueben Gespraeche mit AI-Personas, erhalten Coaching und sehen messbare Fortschritte.",
@@ -92,8 +88,6 @@ const de: AboutContent = {
     {
       name: "1tab.ai",
       href: "https://1tab.ai",
-      repo: "1tabai",
-      repoHref: "https://github.com/proark1/1tabai",
       tagline: "AI-Powered Startup Operating System",
       text:
         "Full-Stack SaaS-Workspace fuer Gruenderteams: Research, Planung, Umsetzung und Launch in einem System statt verteilt ueber Notion, Asana, Miro und weitere Tools.",
@@ -189,8 +183,6 @@ const en: AboutContent = {
     {
       name: "unmutenow.ai",
       href: "https://unmutenow.ai",
-      repo: "socialpilotai",
-      repoHref: "https://github.com/proark1/socialpilotai",
       tagline: "AI Communication Training Platform",
       text:
         "AI-powered communication training for real-world confidence: users practice conversations with AI personas, get coaching, and track measurable progress.",
@@ -203,8 +195,6 @@ const en: AboutContent = {
     {
       name: "1tab.ai",
       href: "https://1tab.ai",
-      repo: "1tabai",
-      repoHref: "https://github.com/proark1/1tabai",
       tagline: "AI-Powered Startup Operating System",
       text:
         "A full-stack SaaS workspace for startup teams: research, planning, execution, and launch in one system instead of scattered across Notion, Asana, Miro, and other tools.",

@@ -161,15 +161,6 @@ export default async function AboutPage({
                       Website
                       <ExternalLink className="h-3.5 w-3.5" />
                     </Link>
-                    <Link
-                      href={product.repoHref}
-                      target="_blank"
-                      rel="noreferrer"
-                      className="inline-flex items-center gap-1.5 text-sm font-medium text-ink2 transition-colors hover:text-copper"
-                    >
-                      GitHub: {product.repo}
-                      <ExternalLink className="h-3.5 w-3.5" />
-                    </Link>
                   </div>
                 </article>
               ))}

@@ -25,7 +25,6 @@ type ProductStory = {
   audience: string;
   core: string[];
   proof: string[];
-  stack: string[];
   icon: typeof Mic2;
 };
 
@@ -50,7 +49,6 @@ const PRODUCT_STORIES: Record<Locale, Record<string, ProductStory>> = {
         "Verbindet Voice, Persona-Design, Coaching-Logik und Nutzerdaten zu einem echten Produkt.",
         "Relevanter Beratungsbeweis für Kundenservice, Sales Enablement, HR-Training und interne Schulung.",
       ],
-      stack: ["React", "TypeScript", "Supabase", "Gemini", "ElevenLabs", "Anam AI", "PWA"],
       icon: Mic2,
     },
     "1tab.ai": {
@@ -72,7 +70,6 @@ const PRODUCT_STORIES: Record<Locale, Record<string, ProductStory>> = {
         "Verbindet Datenmodell, Workflows, AI-Credits, Rollenlogik und Produktivität in einem System.",
         "Relevanter Beratungsbeweis für Prozessplattformen, interne Tools und AI-gestützte Workspaces.",
       ],
-      stack: ["React", "TypeScript", "Supabase", "Postgres", "Realtime", "Gemini", "IndexedDB"],
       icon: Layers3,
     },
   },
@@ -96,7 +93,6 @@ const PRODUCT_STORIES: Record<Locale, Record<string, ProductStory>> = {
         "Combines voice, persona design, coaching logic, and user data into a real product.",
         "Relevant consulting proof for customer service, sales enablement, HR training, and internal learning.",
       ],
-      stack: ["React", "TypeScript", "Supabase", "Gemini", "ElevenLabs", "Anam AI", "PWA"],
       icon: Mic2,
     },
     "1tab.ai": {
@@ -118,7 +114,6 @@ const PRODUCT_STORIES: Record<Locale, Record<string, ProductStory>> = {
         "Combines data model, workflows, AI credits, roles, and productivity in one system.",
         "Relevant consulting proof for process platforms, internal tools, and AI-assisted workspaces.",
       ],
-      stack: ["React", "TypeScript", "Supabase", "Postgres", "Realtime", "Gemini", "IndexedDB"],
       icon: Layers3,
     },
   },
@@ -187,7 +182,6 @@ export default async function MeineProduktePage({
           name: "Assad Dar",
           url: `${SITE_URL}/${safe}/ueber-mich`,
         },
-        codeRepository: product.repoHref,
       },
     })),
   };
@@ -301,15 +295,6 @@ export default async function MeineProduktePage({
                             Website
                             <ExternalLink className="h-3.5 w-3.5" />
                           </Link>
-                          <Link
-                            href={product.repoHref}
-                            target="_blank"
-                            rel="noreferrer"
-                            className="inline-flex items-center gap-1.5 text-sm font-medium text-ink2 transition-colors hover:text-copper"
-                          >
-                            GitHub: {product.repo}
-                            <ExternalLink className="h-3.5 w-3.5" />
-                          </Link>
                         </div>
                       </div>
 
@@ -366,22 +351,6 @@ export default async function MeineProduktePage({
                           </div>
                         </div>
 
-                        <div className="mt-8 rounded-xl border border-hairline bg-surface2 p-5">
-                          <div className="flex items-center gap-2 font-mono text-[10.5px] uppercase tracking-[0.12em] text-copper">
-                            <Workflow className="h-3.5 w-3.5" />
-                            {isDe ? "Produktarchitektur" : "Product architecture"}
-                          </div>
-                          <div className="mt-4 flex flex-wrap gap-2">
-                            {story.stack.map((tech) => (
-                              <span
-                                key={tech}
-                                className="rounded-md border border-hairline bg-bg px-3 py-1.5 text-[12px] text-ink2"
-                              >
-                                {tech}
-                              </span>
-                            ))}
-                          </div>
-                        </div>
                       </div>
                     </div>
                   );
