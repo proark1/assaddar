@@ -5,9 +5,11 @@ import {
   BriefcaseBusiness,
   Clock3,
   FileText,
+  FolderKanban,
   Images,
   LayoutDashboard,
   LogOut,
+  PencilLine,
   Settings,
   ShieldCheck,
   Users,
@@ -132,6 +134,20 @@ export function PortalShell({
                 >
                   <Clock3 className="h-3.5 w-3.5" />
                   Heute
+                </Link>
+                <Link
+                  href={`/${locale}/portal/admin/pipeline`}
+                  className="inline-flex items-center gap-1.5 hover:text-ink"
+                >
+                  <FolderKanban className="h-3.5 w-3.5" />
+                  Pipeline
+                </Link>
+                <Link
+                  href={`/${locale}/portal/admin/drafts`}
+                  className="inline-flex items-center gap-1.5 hover:text-ink"
+                >
+                  <PencilLine className="h-3.5 w-3.5" />
+                  Drafts
                 </Link>
                 <Link
                   href={`/${locale}/portal/admin/customers`}

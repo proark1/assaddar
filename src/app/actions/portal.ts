@@ -135,6 +135,36 @@ function addAuditUpdate({
   });
 }
 
+function addInternalMarker({
+  store,
+  projectId,
+  userId,
+  title,
+  marker,
+  body,
+}: {
+  store: PortalStore;
+  projectId: string;
+  userId: string;
+  title: string;
+  marker: string;
+  body: string;
+}) {
+  const project = store.projects.find((entry) => entry.id === projectId);
+  if (!project) return;
+
+  store.updates.push({
+    id: id("update"),
+    projectId,
+    title: `Audit: ${title}`,
+    body: `${marker}\n${body}`,
+    visibility: "internal",
+    asdarStage: project.asdarStage,
+    createdBy: userId,
+    createdAt: new Date().toISOString(),
+  });
+}
+
 function cents(value: string) {
   const normalized = value.replace(/\./g, "").replace(",", ".");
   const amount = Number.parseFloat(normalized);
@@ -296,6 +326,72 @@ export async function saveTemplateOverrideAction(formData: FormData) {
     : "created=template";
   revalidatePath(`/${locale}/portal/admin/templates`);
   redirect(`/${locale}/portal/admin/templates?${query}#${templateId}`);
+}
+
+export async function markNotificationDoneAction(formData: FormData) {
+  const locale = safeLocale(formData.get("locale"));
+  const user = await requireAdmin(locale);
+  const projectId = text(formData, "projectId");
+  const notificationId = text(formData, "notificationId");
+  const returnTo = text(formData, "returnTo") || `/${locale}/portal/admin/today`;
+
+  if (!notificationId) redirect(returnTo);
+
+  await mutateStore((store) => {
+    if (!getProjectBundle(store, projectId)) return;
+    addInternalMarker({
+      store,
+      projectId,
+      userId: user.id,
+      title: "Notification erledigt",
+      marker: `NOTIFICATION_DONE:${notificationId}`,
+      body: `${notificationId} wurde als erledigt markiert.`,
+    });
+  });
+
+  revalidatePath(`/${locale}/portal/admin`);
+  revalidatePath(`/${locale}/portal/admin/today`);
+  revalidatePath(adminProjectPath(locale, projectId));
+  redirect(returnTo);
+}
+
+export async function convertNotificationToTaskAction(formData: FormData) {
+  const locale = safeLocale(formData.get("locale"));
+  const user = await requireAdmin(locale);
+  const projectId = text(formData, "projectId");
+  const notificationId = text(formData, "notificationId");
+  const taskTitle = text(formData, "taskTitle") || "Notification nachfassen";
+  const returnTo = text(formData, "returnTo") || `/${locale}/portal/admin/today`;
+
+  await mutateStore((store) => {
+    const bundle = getProjectBundle(store, projectId);
+    if (!bundle) return;
+    const now = new Date().toISOString();
+
+    store.tasks.push({
+      id: id("task"),
+      projectId,
+      title: taskTitle,
+      owner: "assad",
+      status: "todo",
+      visibleToCustomer: false,
+      createdAt: now,
+    });
+
+    addInternalMarker({
+      store,
+      projectId,
+      userId: user.id,
+      title: "Notification in Aufgabe umgewandelt",
+      marker: notificationId ? `NOTIFICATION_DONE:${notificationId}` : "NOTIFICATION_DONE:manual",
+      body: `${taskTitle} wurde aus einer Notification erzeugt.`,
+    });
+  });
+
+  revalidatePath(`/${locale}/portal/admin`);
+  revalidatePath(`/${locale}/portal/admin/today`);
+  revalidatePath(adminProjectPath(locale, projectId));
+  redirect(returnTo);
 }
 
 export async function assignCustomerAction(formData: FormData) {
@@ -948,6 +1044,112 @@ export async function addMeetingNoteAction(formData: FormData) {
   revalidatePath(adminProjectPath(locale, projectId));
   revalidatePath(`/${locale}/portal/projects/${projectId}`);
   redirect(`${adminProjectPath(locale, projectId)}?saved=meeting`);
+}
+
+export async function scheduleProjectAppointmentAction(formData: FormData) {
+  const locale = safeLocale(formData.get("locale"));
+  const user = await requireAdmin(locale);
+  const projectId = text(formData, "projectId");
+  const appointmentDate = text(formData, "appointmentDate");
+  const appointmentTime = text(formData, "appointmentTime");
+  const appointmentType = text(formData, "appointmentType") || "Projekttermin";
+  const meetingUrl = text(formData, "meetingUrl");
+  const notes = text(formData, "notes");
+  const publish = checkbox(formData, "publish");
+
+  await mutateStore((store) => {
+    const bundle = getProjectBundle(store, projectId);
+    if (!bundle) return;
+    const now = new Date().toISOString();
+    const dateLine = [appointmentDate, appointmentTime].filter(Boolean).join(" ");
+    const body = [
+      `Termin: ${dateLine || "wird abgestimmt"}`,
+      meetingUrl && `Link: ${meetingUrl}`,
+      notes && `Hinweis: ${notes}`,
+    ]
+      .filter(Boolean)
+      .join("\n");
+
+    store.updates.push({
+      id: id("update"),
+      projectId,
+      title: `Termin: ${appointmentType}`,
+      body,
+      visibility: publish ? "customer" : "internal",
+      asdarStage: bundle.project.asdarStage,
+      createdBy: user.id,
+      createdAt: now,
+    });
+
+    addAuditUpdate({
+      store,
+      projectId,
+      userId: user.id,
+      title: "Termin gespeichert",
+      body: `${appointmentType} wurde für ${dateLine || "später"} gespeichert.`,
+    });
+  });
+
+  if (publish) {
+    await notifyProjectCustomers({
+      locale,
+      projectId,
+      subject: "Assad Dar Portal: Neuer Projekttermin",
+      body: `${appointmentType} wurde im Portal gespeichert.`,
+    });
+  }
+
+  revalidateProjectViews(locale, projectId);
+  redirect(`${adminProjectPath(locale, projectId)}?view=meeting&saved=appointment`);
+}
+
+export async function publishDraftUpdateAction(formData: FormData) {
+  const locale = safeLocale(formData.get("locale"));
+  const user = await requireAdmin(locale);
+  const projectId = text(formData, "projectId");
+  const title = text(formData, "title") || "Projektupdate";
+  const body = text(formData, "body");
+  const draftId = text(formData, "draftId");
+  const returnTo = text(formData, "returnTo") || `${adminProjectPath(locale, projectId)}?view=communication`;
+
+  if (!body) redirect(returnTo);
+
+  await mutateStore((store) => {
+    const bundle = getProjectBundle(store, projectId);
+    if (!bundle) return;
+    const now = new Date().toISOString();
+
+    store.updates.push({
+      id: id("update"),
+      projectId,
+      title,
+      body,
+      visibility: "customer",
+      asdarStage: bundle.project.asdarStage,
+      createdBy: user.id,
+      createdAt: now,
+    });
+
+    addInternalMarker({
+      store,
+      projectId,
+      userId: user.id,
+      title: "Draft veröffentlicht",
+      marker: draftId ? `DRAFT_DONE:${draftId}` : "DRAFT_DONE:manual",
+      body: `${title} wurde als Kundenupdate veröffentlicht.`,
+    });
+  });
+
+  await notifyProjectCustomers({
+    locale,
+    projectId,
+    subject: `Assad Dar Portal: ${title}`,
+    body,
+  });
+
+  revalidateProjectViews(locale, projectId);
+  revalidatePath(`/${locale}/portal/admin/drafts`);
+  redirect(returnTo);
 }
 
 export async function saveKnowledgeSnapshotAction(formData: FormData) {
@@ -1605,6 +1807,36 @@ export async function approveFileAction(formData: FormData) {
     file.approvalStatus = "approved";
     file.approvedBy = user.id;
     file.approvedAt = now;
+
+    if (file.category === "proposal") {
+      const amountCents = Number(
+        file.description.match(/Betrag:\s*(\d+)\s*Cent/i)?.[1] ?? 0,
+      );
+      const proposalNumber =
+        file.description.match(/Proposal-ID:\s*([^\n]+)/i)?.[1] ??
+        file.name.replace(/^Proposal\s*/, "");
+      const hasInvoice = store.invoices.some(
+        (invoice) =>
+          invoice.projectId === projectId &&
+          (invoice.number.includes(proposalNumber.replace("AD-P", "AD")) ||
+            invoice.description.includes(file.name)),
+      );
+      if (!hasInvoice && Number.isFinite(amountCents) && amountCents > 0) {
+        store.invoices.push({
+          id: id("invoice"),
+          projectId,
+          number: proposalNumber.replace("AD-P", "AD"),
+          description: `Automatisch erzeugt nach Annahme von ${file.name}`,
+          amountCents,
+          currency: "EUR",
+          status: "sent",
+          issuedAt: now.slice(0, 10),
+          dueDate: undefined,
+          createdAt: now,
+        });
+      }
+    }
+
     store.updates.push({
       id: id("update"),
       projectId,
@@ -1627,6 +1859,54 @@ export async function approveFileAction(formData: FormData) {
 
   revalidateProjectViews(locale, projectId);
   redirect(`${customerProjectPath(locale, projectId)}?saved=approval`);
+}
+
+export async function requestProposalChangesAction(formData: FormData) {
+  const locale = safeLocale(formData.get("locale"));
+  const projectId = text(formData, "projectId");
+  const fileId = text(formData, "fileId");
+  const message = text(formData, "message");
+  const user = await requireProjectAccessForAction(locale, projectId);
+  if (user.role === "admin") redirect(adminProjectPath(locale, projectId));
+
+  if (!message) {
+    redirect(`${customerProjectPath(locale, projectId)}?view=files&error=comment`);
+  }
+
+  await mutateStore((store) => {
+    const bundle = getProjectBundle(store, projectId);
+    const file = store.files.find(
+      (entry) =>
+        entry.id === fileId &&
+        entry.projectId === projectId &&
+        entry.visibility === "customer" &&
+        entry.category === "proposal",
+    );
+    if (!bundle || !file) return;
+    const now = new Date().toISOString();
+
+    store.updates.push({
+      id: id("update"),
+      projectId,
+      title: `Kommentar: Änderungswunsch zu ${file.name}`,
+      body: `${user.name}\n\n${message}`,
+      visibility: "customer",
+      asdarStage: bundle.project.asdarStage,
+      createdBy: user.id,
+      createdAt: now,
+    });
+
+    addAuditUpdate({
+      store,
+      projectId,
+      userId: user.id,
+      title: "Proposal Änderung angefragt",
+      body: `${user.name} hat Änderungen zu ${file.name} angefragt.`,
+    });
+  });
+
+  revalidateProjectViews(locale, projectId);
+  redirect(`${customerProjectPath(locale, projectId)}?view=files&saved=proposal-change`);
 }
 
 export async function addFileAction(formData: FormData) {
@@ -2018,7 +2298,13 @@ export async function generateProposalAction(formData: FormData) {
       id: proposalId,
       projectId,
       name: `Proposal ${proposalNumber}`,
-      description: "Kundenangebot als PDF. Bitte prüfen und im Portal freigeben.",
+      description: [
+        "Kundenangebot als PDF. Bitte prüfen und im Portal freigeben.",
+        amountCents > 0 ? `Betrag: ${amountCents} Cent` : "",
+        `Proposal-ID: ${proposalNumber}`,
+      ]
+        .filter(Boolean)
+        .join("\n"),
       storagePath,
       mimeType: "application/pdf",
       size: buffer.length,

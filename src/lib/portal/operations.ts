@@ -84,6 +84,35 @@ export type PortalNotification = {
   priority: number;
 };
 
+export type ProjectPipelineColumn = {
+  id:
+    | "discovery"
+    | "analysis"
+    | "implementation"
+    | "waiting"
+    | "billing"
+    | "completed";
+  title: string;
+  body: string;
+  bundles: ProjectBundle[];
+};
+
+export type DraftReviewItem = {
+  id: string;
+  projectId: string;
+  title: string;
+  type: "customer_update" | "meeting_summary" | "proposal" | "final_report";
+  body: string;
+  hrefView: AdminProjectAction["hrefView"];
+  priority: number;
+};
+
+export type FileVersionGroup = {
+  key: string;
+  latest: ProjectBundle["files"][number];
+  versions: ProjectBundle["files"];
+};
+
 export type ConsultantCopyTemplate = {
   id: string;
   title: string;
@@ -874,6 +903,30 @@ export function buildAdminCommandCenter(bundles: ProjectBundle[]) {
   };
 }
 
+function handledNotificationIds(bundle: ProjectBundle) {
+  return new Set(
+    bundle.updates
+      .flatMap((update) =>
+        [...update.body.matchAll(/NOTIFICATION_DONE:([^\s\n]+)/g)].map(
+          (match) => match[1],
+        ),
+      )
+      .filter(Boolean),
+  );
+}
+
+function handledDraftIds(bundle: ProjectBundle) {
+  return new Set(
+    bundle.updates
+      .flatMap((update) =>
+        [...update.body.matchAll(/DRAFT_DONE:([^\s\n]+)/g)].map(
+          (match) => match[1],
+        ),
+      )
+      .filter(Boolean),
+  );
+}
+
 export function buildAdminNotificationCenter(
   bundles: ProjectBundle[],
 ): PortalNotification[] {
@@ -881,12 +934,15 @@ export function buildAdminNotificationCenter(
 
   for (const bundle of bundles) {
     if (bundle.project.status === "completed") continue;
+    const handled = handledNotificationIds(bundle);
 
     for (const comment of bundle.updates.filter((update) =>
       isCustomerComment(update.title),
     )) {
+      const notificationId = `comment-${comment.id}`;
+      if (handled.has(notificationId)) continue;
       notifications.push({
-        id: `comment-${comment.id}`,
+        id: notificationId,
         projectId: bundle.project.id,
         tone: "copper",
         title: `${bundle.organization.name}: neue Kundenfrage`,
@@ -901,8 +957,10 @@ export function buildAdminNotificationCenter(
     for (const intake of bundle.updates.filter((update) =>
       isCustomerIntake(update.title),
     )) {
+      const notificationId = `intake-${intake.id}`;
+      if (handled.has(notificationId)) continue;
       notifications.push({
-        id: `intake-${intake.id}`,
+        id: notificationId,
         projectId: bundle.project.id,
         tone: "green",
         title: `${bundle.organization.name}: Fragebogen eingereicht`,
@@ -917,8 +975,10 @@ export function buildAdminNotificationCenter(
     for (const approval of bundle.updates.filter((update) =>
       isApproval(update.title),
     )) {
+      const notificationId = `approval-${approval.id}`;
+      if (handled.has(notificationId)) continue;
       notifications.push({
-        id: `approval-${approval.id}`,
+        id: notificationId,
         projectId: bundle.project.id,
         tone: "green",
         title: `${bundle.organization.name}: Freigabe erhalten`,
@@ -933,8 +993,10 @@ export function buildAdminNotificationCenter(
     for (const file of bundle.files.filter(
       (entry) => entry.visibility === "customer" && entry.category === "customer_upload",
     )) {
+      const notificationId = `file-${file.id}`;
+      if (handled.has(notificationId)) continue;
       notifications.push({
-        id: `file-${file.id}`,
+        id: notificationId,
         projectId: bundle.project.id,
         tone: "copper",
         title: `${bundle.organization.name}: Kundendatei hochgeladen`,
@@ -948,8 +1010,10 @@ export function buildAdminNotificationCenter(
 
     const staleAge = daysSince(latestCustomerUpdateDate(bundle));
     if (staleAge > 7) {
+      const notificationId = `stale-${bundle.project.id}`;
+      if (handled.has(notificationId)) continue;
       notifications.push({
-        id: `stale-${bundle.project.id}`,
+        id: notificationId,
         projectId: bundle.project.id,
         tone: "amber",
         title: `${bundle.organization.name}: Kundenupdate fällig`,
@@ -967,8 +1031,10 @@ export function buildAdminNotificationCenter(
         entry.status !== "paid" &&
         (entry.status === "overdue" || isPast(entry.dueDate)),
     )) {
+      const notificationId = `invoice-${invoice.id}`;
+      if (handled.has(notificationId)) continue;
       notifications.push({
-        id: `invoice-${invoice.id}`,
+        id: notificationId,
         projectId: bundle.project.id,
         tone: "red",
         title: `${bundle.organization.name}: Rechnung offen`,
@@ -985,6 +1051,185 @@ export function buildAdminNotificationCenter(
     if (b.priority !== a.priority) return b.priority - a.priority;
     return dateMs(b.createdAt) - dateMs(a.createdAt);
   });
+}
+
+export function buildProjectPipeline(
+  bundles: ProjectBundle[],
+): ProjectPipelineColumn[] {
+  const active = bundles.filter((bundle) => bundle.project.status !== "completed");
+  const waiting = active.filter(
+    (bundle) =>
+      !hasCustomerIntake(bundle) ||
+      bundle.tasks.some(
+        (task) =>
+          task.owner === "customer" &&
+          task.visibleToCustomer &&
+          task.status !== "done",
+      ),
+  );
+  const billing = active.filter((bundle) =>
+    bundle.invoices.some(
+      (invoice) => invoice.status !== "draft" && invoice.status !== "paid",
+    ),
+  );
+  const waitingIds = new Set(waiting.map((bundle) => bundle.project.id));
+  const billingWithoutWaiting = billing.filter(
+    (bundle) => !waitingIds.has(bundle.project.id),
+  );
+  const billingIds = new Set(
+    billingWithoutWaiting.map((bundle) => bundle.project.id),
+  );
+  const remaining = active.filter(
+    (bundle) =>
+      !waitingIds.has(bundle.project.id) && !billingIds.has(bundle.project.id),
+  );
+
+  return [
+    {
+      id: "discovery",
+      title: "Discovery",
+      body: "Neue Projekte, Intake, erste Orientierung.",
+      bundles: remaining.filter((bundle) => bundle.project.status === "discovery"),
+    },
+    {
+      id: "analysis",
+      title: "Analysis",
+      body: "Analyse, Copilot, Playbook und Priorisierung.",
+      bundles: remaining.filter((bundle) => bundle.project.status === "analysis"),
+    },
+    {
+      id: "implementation",
+      title: "Implementation",
+      body: "Umsetzung, Aufgaben, Dateien und Roadmap.",
+      bundles: remaining.filter(
+        (bundle) => bundle.project.status === "implementation",
+      ),
+    },
+    {
+      id: "waiting",
+      title: "Waiting for Customer",
+      body: "Kundeninput, Freigaben oder Aufgaben fehlen.",
+      bundles: waiting,
+    },
+    {
+      id: "billing",
+      title: "Billing",
+      body: "Offene Proposal-, Rechnungs- oder Zahlungsarbeit.",
+      bundles: billingWithoutWaiting,
+    },
+    {
+      id: "completed",
+      title: "Completed",
+      body: "Abgeschlossene oder archivierte Projekte.",
+      bundles: bundles.filter((bundle) => bundle.project.status === "completed"),
+    },
+  ];
+}
+
+export function buildDraftReviewItems(bundles: ProjectBundle[]): DraftReviewItem[] {
+  return bundles
+    .filter((bundle) => bundle.project.status !== "completed")
+    .flatMap((bundle) => {
+      const handled = handledDraftIds(bundle);
+      const copilot = buildConsultingCopilotBrief(bundle);
+      const diagnosis = buildProjectDiagnosis(bundle);
+      const proposalNeeded =
+        diagnosis.readinessScore >= 55 &&
+        !bundle.files.some((file) => file.category === "proposal");
+      const finalReportNeeded =
+        bundle.project.status === "implementation" &&
+        !bundle.files.some((file) => file.category === "final_report");
+
+      const items: Array<DraftReviewItem | null> = [
+        handled.has(`${bundle.project.id}:customer-update`)
+          ? null
+          : {
+              id: `${bundle.project.id}:customer-update`,
+              projectId: bundle.project.id,
+              title: `${bundle.organization.name}: Kundenupdate prüfen`,
+              type: "customer_update" as const,
+              body: copilot.nextCustomerUpdate.body,
+              hrefView: "communication" as const,
+              priority: daysSince(latestCustomerUpdateDate(bundle)) > 7 ? 9 : 5,
+            },
+        handled.has(`${bundle.project.id}:meeting-summary`)
+          ? null
+          : {
+              id: `${bundle.project.id}:meeting-summary`,
+              projectId: bundle.project.id,
+              title: `${bundle.organization.name}: Meeting Summary vorbereiten`,
+              type: "meeting_summary" as const,
+              body: buildMeetingModePlan(bundle).customerSummaryDraft,
+              hrefView: "meeting" as const,
+              priority: 6,
+            },
+        proposalNeeded && !handled.has(`${bundle.project.id}:proposal`)
+          ? {
+              id: `${bundle.project.id}:proposal`,
+              projectId: bundle.project.id,
+              title: `${bundle.organization.name}: Proposal Draft`,
+              type: "proposal" as const,
+              body: [
+                bundle.project.summary || bundle.intelligence.companyContext,
+                "",
+                "Empfohlener Scope:",
+                ...diagnosis.opportunities.slice(0, 3).map((item) => `- ${item}`),
+              ].join("\n"),
+              hrefView: "billing" as const,
+              priority: 7,
+            }
+          : null,
+        finalReportNeeded && !handled.has(`${bundle.project.id}:final-report`)
+          ? {
+              id: `${bundle.project.id}:final-report`,
+              projectId: bundle.project.id,
+              title: `${bundle.organization.name}: Abschlussbericht Draft`,
+              type: "final_report" as const,
+              body: formatDiagnosisReport(bundle, diagnosis),
+              hrefView: "delivery" as const,
+              priority: 4,
+            }
+          : null,
+      ];
+
+      return items.filter((item): item is DraftReviewItem => item !== null);
+    })
+    .sort((a, b) => b.priority - a.priority);
+}
+
+function fileVersionKey(name: string) {
+  return name
+    .toLowerCase()
+    .replace(/\.[a-z0-9]+$/i, "")
+    .replace(/\b(v|version|final|draft|entwurf|neu|new)[-_\s]*\d*$/i, "")
+    .replace(/[-_\s]+/g, " ")
+    .trim();
+}
+
+export function buildFileVersionGroups(
+  bundle: ProjectBundle,
+  scope: "admin" | "customer" = "admin",
+): FileVersionGroup[] {
+  const files = bundle.files.filter((file) =>
+    scope === "customer" ? file.visibility === "customer" : true,
+  );
+  const groups = new Map<string, ProjectBundle["files"]>();
+
+  for (const file of files) {
+    const key = fileVersionKey(file.name) || file.id;
+    groups.set(key, [...(groups.get(key) ?? []), file]);
+  }
+
+  return [...groups.entries()]
+    .map(([key, versions]) => {
+      const sorted = versions.sort((a, b) => b.uploadedAt.localeCompare(a.uploadedAt));
+      return {
+        key,
+        latest: sorted[0],
+        versions: sorted,
+      };
+    })
+    .sort((a, b) => b.latest.uploadedAt.localeCompare(a.latest.uploadedAt));
 }
 
 export function buildConsultantCopyTemplates(

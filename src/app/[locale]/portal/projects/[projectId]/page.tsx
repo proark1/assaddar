@@ -20,6 +20,7 @@ import {
   approveMilestoneAction,
   customerTaskFileAction,
   customerTaskStatusAction,
+  requestProposalChangesAction,
   submitCustomerIntakeAction,
 } from "@/app/actions/portal";
 import { isLocale, type Locale } from "@/content";
@@ -41,6 +42,7 @@ import {
 } from "@/lib/portal/format";
 import {
   buildCustomerChecklist,
+  buildFileVersionGroups,
   buildCustomerNextActions,
 } from "@/lib/portal/operations";
 import {
@@ -179,6 +181,9 @@ export default async function CustomerProjectPage({
   const reminders = allCustomerUpdates.filter((update) =>
     isReminder(update.title),
   );
+  const appointments = allCustomerUpdates
+    .filter((update) => update.title.startsWith("Termin:"))
+    .sort((a, b) => b.createdAt.localeCompare(a.createdAt));
   const updates = allCustomerUpdates.filter(
     (update) => !isStructuredUpdate(update.title),
   );
@@ -195,6 +200,7 @@ export default async function CustomerProjectPage({
     (milestone) => milestone.visibleToCustomer,
   );
   const files = bundle.files.filter((file) => file.visibility === "customer");
+  const fileGroups = buildFileVersionGroups(bundle, "customer");
   const invoices = bundle.invoices.filter(
     (invoice) => invoice.status !== "draft",
   );
@@ -397,7 +403,7 @@ export default async function CustomerProjectPage({
           <p className="mt-5 text-base leading-relaxed text-ink2">
             {bundle.project.summary || "Die Projektbeschreibung folgt."}
           </p>
-          <div className="mt-6 grid gap-4 lg:grid-cols-[1.15fr_0.85fr]">
+          <div className="mt-6 grid gap-4 lg:grid-cols-3">
             <div className="rounded-lg border border-copper/25 bg-copper/10 p-4">
               <div className="text-sm font-medium text-ink">
                 Nächster Schritt
@@ -407,6 +413,20 @@ export default async function CustomerProjectPage({
                   "Der nächste Schritt wird vorbereitet."}
               </p>
             </div>
+            {appointments[0] && (
+              <div className="rounded-lg border border-hairline bg-bg p-4">
+                <div className="flex items-center gap-2 text-sm font-medium text-ink">
+                  <Clock3 className="h-4 w-4 text-copper" />
+                  Nächster Termin
+                </div>
+                <div className="mt-2 text-sm font-medium text-ink">
+                  {appointments[0].title.replace(/^Termin:\s*/, "")}
+                </div>
+                <p className="mt-1 whitespace-pre-line text-[12px] leading-relaxed text-muted">
+                  {appointments[0].body}
+                </p>
+              </div>
+            )}
             {primaryAction && (
               <Link
                 href={stepHref(primaryAction.hrefView)}
@@ -993,39 +1013,87 @@ export default async function CustomerProjectPage({
                 title="Dateien zur Prüfung"
               />
               <div className="mt-5 space-y-3">
-                {pendingFileApprovals.map((file) => (
-                  <div
-                    key={file.id}
-                    className="flex flex-col gap-3 rounded-lg border border-hairline bg-bg p-3 sm:flex-row sm:items-center sm:justify-between"
-                  >
-                    <a
-                      href={`/api/portal/files/${file.id}`}
-                      className="flex items-start gap-3 text-sm text-ink transition-colors hover:text-copper"
+                {pendingFileApprovals.map((file) => {
+                  const isProposal = file.category === "proposal";
+                  return (
+                    <div
+                      key={file.id}
+                      className="rounded-lg border border-hairline bg-bg p-3"
                     >
-                      <Download className="mt-0.5 h-4 w-4 text-copper" />
-                      <span>
-                        <span className="block font-medium">{file.name}</span>
-                        <span className="mt-1 block text-[12px] text-muted">
-                          {file.description || "Datei herunterladen und prüfen"}
-                        </span>
-                      </span>
-                    </a>
-                    <form action={approveFileAction}>
-                      <input type="hidden" name="locale" value={safe} />
-                      <input type="hidden" name="projectId" value={projectId} />
-                      <input type="hidden" name="fileId" value={file.id} />
-                      <button
-                        type="submit"
-                        className="inline-flex items-center gap-2 rounded-lg border border-hairline px-3 py-2 text-[12px] font-medium text-ink transition-colors hover:border-copper hover:text-copper"
-                      >
-                        <CheckCircle2 className="h-3.5 w-3.5" />
-                        {file.category === "proposal"
-                          ? "Angebot annehmen"
-                          : "Datei freigeben"}
-                      </button>
-                    </form>
-                  </div>
-                ))}
+                      <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
+                        <a
+                          href={`/api/portal/files/${file.id}`}
+                          className="flex items-start gap-3 text-sm text-ink transition-colors hover:text-copper"
+                        >
+                          <Download className="mt-0.5 h-4 w-4 text-copper" />
+                          <span>
+                            <span className="block font-medium">
+                              {file.name}
+                            </span>
+                            <span className="mt-1 block text-[12px] text-muted">
+                              {file.description ||
+                                "Datei herunterladen und prüfen"}
+                            </span>
+                          </span>
+                        </a>
+                        <form action={approveFileAction}>
+                          <input type="hidden" name="locale" value={safe} />
+                          <input
+                            type="hidden"
+                            name="projectId"
+                            value={projectId}
+                          />
+                          <input type="hidden" name="fileId" value={file.id} />
+                          <button
+                            type="submit"
+                            className="inline-flex items-center gap-2 rounded-lg border border-hairline px-3 py-2 text-[12px] font-medium text-ink transition-colors hover:border-copper hover:text-copper"
+                          >
+                            <CheckCircle2 className="h-3.5 w-3.5" />
+                            {isProposal
+                              ? "Angebot annehmen"
+                              : "Datei freigeben"}
+                          </button>
+                        </form>
+                      </div>
+                      {isProposal && (
+                        <details className="mt-3 border-t border-hairline pt-3">
+                          <summary className="cursor-pointer text-[12px] font-medium text-copper">
+                            Änderung anfragen
+                          </summary>
+                          <form
+                            action={requestProposalChangesAction}
+                            className="mt-3 space-y-2"
+                          >
+                            <input type="hidden" name="locale" value={safe} />
+                            <input
+                              type="hidden"
+                              name="projectId"
+                              value={projectId}
+                            />
+                            <input
+                              type="hidden"
+                              name="fileId"
+                              value={file.id}
+                            />
+                            <textarea
+                              name="message"
+                              required
+                              placeholder="Was soll im Angebot angepasst werden?"
+                              className={`${textareaClass} min-h-24`}
+                            />
+                            <button
+                              type="submit"
+                              className="inline-flex items-center gap-2 rounded-lg border border-hairline px-3 py-2 text-[12px] font-medium text-ink transition-colors hover:border-copper hover:text-copper"
+                            >
+                              <MessageCircle className="h-3.5 w-3.5" />
+                              Änderungswunsch senden
+                            </button>
+                          </form>
+                        </details>
+                      )}
+                    </div>
+                  );
+                })}
                 {pendingFileApprovals.length === 0 && (
                   <p className="text-sm text-muted">
                     Keine offenen Dateifreigaben.
@@ -1094,57 +1162,144 @@ export default async function CustomerProjectPage({
             <PortalCard>
               <PortalSectionTitle eyebrow="Dateien" title="Deliverables" />
               <div className="mt-5 space-y-3">
-                {files.map((file) => (
-                  <div key={file.id} className="space-y-2">
-                    <a
-                      href={`/api/portal/files/${file.id}`}
-                      className="flex items-start gap-3 rounded-lg border border-hairline bg-bg p-3 transition-colors hover:border-copper"
+                {fileGroups.map((group) => {
+                  const file = group.latest;
+                  const isProposal = file.category === "proposal";
+                  const isApproved =
+                    approvedFileIds.has(file.id) ||
+                    file.approvalStatus === "approved";
+                  return (
+                    <div
+                      key={group.key}
+                      className="rounded-lg border border-hairline bg-bg p-3"
                     >
-                      <Download className="mt-0.5 h-4 w-4 text-copper" />
-                      <div>
-                        <div className="text-sm font-medium text-ink">
-                          {file.name}
+                      {file.mimeType.startsWith("image/") && (
+                        <img
+                          src={`/api/portal/files/${file.id}`}
+                          alt={file.name}
+                          className="mb-3 aspect-video w-full rounded-lg border border-hairline object-cover"
+                        />
+                      )}
+                      <a
+                        href={`/api/portal/files/${file.id}`}
+                        className="flex items-start gap-3 transition-colors hover:text-copper"
+                      >
+                        <Download className="mt-0.5 h-4 w-4 text-copper" />
+                        <div>
+                          <div className="flex flex-wrap items-center gap-2">
+                            <div className="text-sm font-medium text-ink">
+                              {file.name}
+                            </div>
+                            {group.versions.length > 1 && (
+                              <Badge tone="copper">
+                                {group.versions.length} Versionen
+                              </Badge>
+                            )}
+                          </div>
+                          <div className="mt-1 text-[12px] text-muted">
+                            {file.description || "Datei herunterladen"} ·{" "}
+                            {Math.ceil(file.size / 1024)} KB
+                          </div>
                         </div>
-                        <div className="mt-1 text-[12px] text-muted">
-                          {file.description || "Datei herunterladen"}
-                        </div>
+                      </a>
+                      <div className="mt-3 flex flex-wrap items-center gap-2">
+                        {isApproved ? (
+                          <Badge tone="green">Freigegeben</Badge>
+                        ) : file.approvalStatus === "not_required" ? (
+                          <Badge>Keine Freigabe nötig</Badge>
+                        ) : (
+                          <>
+                            <Badge tone="amber">
+                              {isProposal ? "Annahme offen" : "Freigabe offen"}
+                            </Badge>
+                            <form action={approveFileAction}>
+                              <input
+                                type="hidden"
+                                name="locale"
+                                value={safe}
+                              />
+                              <input
+                                type="hidden"
+                                name="projectId"
+                                value={projectId}
+                              />
+                              <input
+                                type="hidden"
+                                name="fileId"
+                                value={file.id}
+                              />
+                              <button
+                                type="submit"
+                                className="inline-flex items-center gap-2 rounded-lg border border-hairline px-3 py-2 text-[12px] font-medium text-ink transition-colors hover:border-copper hover:text-copper"
+                              >
+                                <CheckCircle2 className="h-3.5 w-3.5" />
+                                {isProposal
+                                  ? "Angebot annehmen"
+                                  : "Datei freigeben"}
+                              </button>
+                            </form>
+                          </>
+                        )}
                       </div>
-                    </a>
-                    {approvedFileIds.has(file.id) ||
-                    file.approvalStatus === "approved" ? (
-                      <Badge tone="green">Freigegeben</Badge>
-                    ) : file.approvalStatus === "not_required" ? (
-                      <Badge>Keine Freigabe nötig</Badge>
-                    ) : (
-                      <div className="flex flex-wrap items-center gap-2">
-                        <Badge tone="amber">
-                          {file.category === "proposal"
-                            ? "Annahme offen"
-                            : "Freigabe offen"}
-                        </Badge>
-                        <form action={approveFileAction}>
-                          <input type="hidden" name="locale" value={safe} />
-                          <input
-                            type="hidden"
-                            name="projectId"
-                            value={projectId}
-                          />
-                          <input type="hidden" name="fileId" value={file.id} />
-                          <button
-                            type="submit"
-                            className="inline-flex items-center gap-2 rounded-lg border border-hairline px-3 py-2 text-[12px] font-medium text-ink transition-colors hover:border-copper hover:text-copper"
+                      {isProposal && !isApproved && (
+                        <details className="mt-3 border-t border-hairline pt-3">
+                          <summary className="cursor-pointer text-[12px] font-medium text-copper">
+                            Änderung anfragen
+                          </summary>
+                          <form
+                            action={requestProposalChangesAction}
+                            className="mt-3 space-y-2"
                           >
-                            <CheckCircle2 className="h-3.5 w-3.5" />
-                            {file.category === "proposal"
-                              ? "Angebot annehmen"
-                              : "Datei freigeben"}
-                          </button>
-                        </form>
-                      </div>
-                    )}
-                  </div>
-                ))}
-                {files.length === 0 && (
+                            <input type="hidden" name="locale" value={safe} />
+                            <input
+                              type="hidden"
+                              name="projectId"
+                              value={projectId}
+                            />
+                            <input
+                              type="hidden"
+                              name="fileId"
+                              value={file.id}
+                            />
+                            <textarea
+                              name="message"
+                              required
+                              placeholder="Was soll im Angebot angepasst werden?"
+                              className={`${textareaClass} min-h-24`}
+                            />
+                            <button
+                              type="submit"
+                              className="inline-flex items-center gap-2 rounded-lg border border-hairline px-3 py-2 text-[12px] font-medium text-ink transition-colors hover:border-copper hover:text-copper"
+                            >
+                              <MessageCircle className="h-3.5 w-3.5" />
+                              Änderungswunsch senden
+                            </button>
+                          </form>
+                        </details>
+                      )}
+                      {group.versions.length > 1 && (
+                        <details className="mt-3 border-t border-hairline pt-3">
+                          <summary className="cursor-pointer text-[12px] font-medium text-copper">
+                            Versionshistorie anzeigen
+                          </summary>
+                          <div className="mt-2 space-y-2">
+                            {group.versions.slice(1).map((version) => (
+                              <a
+                                key={version.id}
+                                href={`/api/portal/files/${version.id}`}
+                                className="block rounded-md border border-hairline bg-surface px-3 py-2 text-[12px] text-ink2 transition-colors hover:border-copper hover:text-copper"
+                              >
+                                {version.name} · {formatDate(version.uploadedAt)} ·{" "}
+                                {Math.ceil(version.size / 1024)} KB
+                              </a>
+                            ))}
+                          </div>
+                        </details>
+                      )}
+                    </div>
+                  );
+                })}
+                {fileGroups.length === 0 && (
                   <p className="text-sm text-muted">Noch keine Dateien.</p>
                 )}
               </div>

@@ -43,6 +43,7 @@ import {
   addMeetingNoteAction,
   runAiScanAction,
   saveKnowledgeSnapshotAction,
+  scheduleProjectAppointmentAction,
   sendProjectReminderAction,
   updateIntelligenceAction,
   updateInvoiceStatusAction,
@@ -82,6 +83,7 @@ import {
   buildConsultantCopyTemplates,
   buildConsultantWorkflow,
   buildCustomerUpdateDraft,
+  buildFileVersionGroups,
   buildMeetingModePlan,
   buildProjectDiagnosis,
   buildProjectTimeline,
@@ -172,6 +174,7 @@ export default async function AdminProjectPage({
   const customerUpdateDraft = buildCustomerUpdateDraft(bundle);
   const aiComparison = buildAiProviderComparison(bundle);
   const projectTimeline = buildProjectTimeline(bundle);
+  const fileGroups = buildFileVersionGroups(bundle);
   const similar = findSimilarProjectBundles(bundles, bundle);
   const matchedTemplate = matchConsultingTemplate(bundle.organization.industry);
   const template =
@@ -185,6 +188,9 @@ export default async function AdminProjectPage({
   );
   const approvals = bundle.updates.filter((update) => isApproval(update.title));
   const reminders = bundle.updates.filter((update) => isReminder(update.title));
+  const appointments = bundle.updates
+    .filter((update) => update.title.startsWith("Termin:"))
+    .sort((a, b) => b.createdAt.localeCompare(a.createdAt));
   const intakeUpdates = bundle.updates.filter((update) =>
     isCustomerIntake(update.title),
   );
@@ -922,6 +928,105 @@ export default async function AdminProjectPage({
               <p className="mt-2 text-sm leading-relaxed text-ink2">
                 {meetingMode.focus}
               </p>
+            </div>
+            <div className="mt-5 grid gap-4 lg:grid-cols-[0.95fr_1.05fr]">
+              <form
+                action={scheduleProjectAppointmentAction}
+                className="rounded-lg border border-hairline bg-bg p-4"
+              >
+                <HiddenProjectFields locale={safe} projectId={projectId} />
+                <div className="text-sm font-medium text-ink">
+                  Nächsten Termin planen
+                </div>
+                <p className="mt-1 text-[12px] leading-relaxed text-muted">
+                  Optional im Kundenportal veröffentlichen und per E-Mail
+                  ankündigen.
+                </p>
+                <div className="mt-4 grid gap-3 sm:grid-cols-2">
+                  <input
+                    name="appointmentDate"
+                    type="date"
+                    className={fieldClass}
+                  />
+                  <input
+                    name="appointmentTime"
+                    type="time"
+                    className={fieldClass}
+                  />
+                </div>
+                <input
+                  name="appointmentType"
+                  defaultValue="Projekt-Call"
+                  className={`${fieldClass} mt-3`}
+                />
+                <input
+                  name="meetingUrl"
+                  placeholder="Meeting-Link"
+                  className={`${fieldClass} mt-3`}
+                />
+                <textarea
+                  name="notes"
+                  placeholder="Hinweis für den Kunden"
+                  className={`${textareaClass} mt-3 min-h-24`}
+                />
+                <label className="mt-3 flex items-center gap-2 text-sm text-ink2">
+                  <input
+                    name="publish"
+                    type="checkbox"
+                    defaultChecked
+                    className="h-4 w-4 accent-[var(--color-copper)]"
+                  />
+                  Termin im Kundenportal anzeigen
+                </label>
+                <button
+                  type="submit"
+                  className="mt-4 inline-flex w-full items-center justify-center gap-2 rounded-lg bg-copper px-4 py-2.5 text-sm font-medium text-oncopper transition-colors hover:bg-copper-hi"
+                >
+                  <Video className="h-4 w-4" />
+                  Termin speichern
+                </button>
+              </form>
+              <div className="rounded-lg border border-hairline bg-bg p-4">
+                <div className="text-sm font-medium text-ink">
+                  Geplante Termine
+                </div>
+                <div className="mt-4 space-y-3">
+                  {appointments.slice(0, 4).map((appointment) => (
+                    <article
+                      key={appointment.id}
+                      className="rounded-lg border border-hairline bg-surface p-3"
+                    >
+                      <div className="flex flex-wrap items-center gap-2">
+                        <Badge
+                          tone={
+                            appointment.visibility === "customer"
+                              ? "green"
+                              : "neutral"
+                          }
+                        >
+                          {appointment.visibility === "customer"
+                            ? "Kunde"
+                            : "Intern"}
+                        </Badge>
+                        <span className="text-[12px] text-muted">
+                          {formatDate(appointment.createdAt)}
+                        </span>
+                      </div>
+                      <div className="mt-2 text-sm font-medium text-ink">
+                        {appointment.title.replace(/^Termin:\s*/, "")}
+                      </div>
+                      <p className="mt-1 whitespace-pre-line text-[12px] leading-relaxed text-muted">
+                        {appointment.body}
+                      </p>
+                    </article>
+                  ))}
+                  {appointments.length === 0 && (
+                    <p className="text-sm text-muted">
+                      Noch kein Termin gespeichert.
+                    </p>
+                  )}
+                </div>
+              </div>
             </div>
             <div className="mt-5 grid gap-4 lg:grid-cols-3">
               <div className="rounded-lg border border-hairline bg-bg p-4">
@@ -2017,30 +2122,71 @@ export default async function AdminProjectPage({
               </button>
             </form>
             <div className="mt-5 space-y-3">
-              {bundle.files.map((file) => (
-                <a
-                  key={file.id}
-                  href={`/api/portal/files/${file.id}`}
-                  className="flex items-start gap-3 rounded-lg border border-hairline bg-bg p-3 transition-colors hover:border-copper"
-                >
-                  <Download className="mt-0.5 h-4 w-4 text-copper" />
-                  <div>
-                    <div className="flex flex-wrap items-center gap-2">
-                      <div className="text-sm font-medium text-ink">
-                        {file.name}
+              {fileGroups.map((group) => {
+                const file = group.latest;
+                return (
+                  <div
+                    key={group.key}
+                    className="rounded-lg border border-hairline bg-bg p-3"
+                  >
+                    <a
+                      href={`/api/portal/files/${file.id}`}
+                      className="flex items-start gap-3 transition-colors hover:text-copper"
+                    >
+                      <Download className="mt-0.5 h-4 w-4 text-copper" />
+                      <div>
+                        <div className="flex flex-wrap items-center gap-2">
+                          <div className="text-sm font-medium text-ink">
+                            {file.name}
+                          </div>
+                          {approvedFileIds.has(file.id) && (
+                            <Badge tone="green">Freigegeben</Badge>
+                          )}
+                          {group.versions.length > 1 && (
+                            <Badge tone="copper">
+                              {group.versions.length} Versionen
+                            </Badge>
+                          )}
+                        </div>
+                        <div className="mt-1 text-[12px] text-muted">
+                          {file.visibility} · {file.category ?? "other"} ·{" "}
+                          {file.approvalStatus ?? "not_required"} ·{" "}
+                          {Math.ceil(file.size / 1024)} KB
+                        </div>
+                        {file.description && (
+                          <p className="mt-1 text-[12px] leading-relaxed text-ink2">
+                            {file.description}
+                          </p>
+                        )}
                       </div>
-                      {approvedFileIds.has(file.id) && (
-                        <Badge tone="green">Freigegeben</Badge>
-                      )}
-                    </div>
-                    <div className="mt-1 text-[12px] text-muted">
-                      {file.visibility} · {file.category ?? "other"} ·{" "}
-                      {file.approvalStatus ?? "not_required"} ·{" "}
-                      {Math.ceil(file.size / 1024)} KB
-                    </div>
+                    </a>
+                    {group.versions.length > 1 && (
+                      <details className="mt-3 border-t border-hairline pt-3">
+                        <summary className="cursor-pointer text-[12px] font-medium text-copper">
+                          Versionshistorie anzeigen
+                        </summary>
+                        <div className="mt-2 space-y-2">
+                          {group.versions.slice(1).map((version) => (
+                            <a
+                              key={version.id}
+                              href={`/api/portal/files/${version.id}`}
+                              className="block rounded-md border border-hairline bg-surface px-3 py-2 text-[12px] text-ink2 transition-colors hover:border-copper hover:text-copper"
+                            >
+                              {version.name} · {formatDate(version.uploadedAt)} ·{" "}
+                              {Math.ceil(version.size / 1024)} KB
+                            </a>
+                          ))}
+                        </div>
+                      </details>
+                    )}
                   </div>
-                </a>
-              ))}
+                );
+              })}
+              {fileGroups.length === 0 && (
+                <p className="text-sm text-muted">
+                  Noch keine Dateien hochgeladen.
+                </p>
+              )}
             </div>
           </PortalCard>
 

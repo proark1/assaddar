@@ -1,6 +1,10 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 import {
+  convertNotificationToTaskAction,
+  markNotificationDoneAction,
+} from "@/app/actions/portal";
+import {
   AlertTriangle,
   ArrowRight,
   Bell,
@@ -234,29 +238,69 @@ export default async function AdminTodayPage({
             <PortalSectionTitle eyebrow="Inbox" title="Kundensignale" />
             <div className="mt-5 space-y-3">
               {notifications.slice(0, 8).map((item) => (
-                <Link
+                <div
                   key={item.id}
-                  href={`/${safe}/portal/admin/projects/${item.projectId}?view=${item.hrefView}`}
-                  className="flex gap-3 rounded-lg border border-hairline bg-bg p-3 transition-colors hover:border-copper"
+                  className="rounded-lg border border-hairline bg-bg p-3"
                 >
-                  {item.tone === "green" ? (
-                    <CheckCircle2 className="mt-0.5 h-4 w-4 shrink-0 text-success" />
-                  ) : (
-                    <Bell
-                      className={`mt-0.5 h-4 w-4 shrink-0 ${
-                        item.tone === "red" ? "text-critical" : "text-copper"
-                      }`}
-                    />
-                  )}
-                  <div>
-                    <div className="text-sm font-medium text-ink">
-                      {item.title}
+                  <Link
+                    href={`/${safe}/portal/admin/projects/${item.projectId}?view=${item.hrefView}`}
+                    className="flex gap-3 transition-colors hover:text-copper"
+                  >
+                    {item.tone === "green" ? (
+                      <CheckCircle2 className="mt-0.5 h-4 w-4 shrink-0 text-success" />
+                    ) : (
+                      <Bell
+                        className={`mt-0.5 h-4 w-4 shrink-0 ${
+                          item.tone === "red" ? "text-critical" : "text-copper"
+                        }`}
+                      />
+                    )}
+                    <div>
+                      <div className="text-sm font-medium text-ink">
+                        {item.title}
+                      </div>
+                      <p className="mt-1 line-clamp-3 text-[12px] leading-relaxed text-muted">
+                        {item.body}
+                      </p>
                     </div>
-                    <p className="mt-1 line-clamp-3 text-[12px] leading-relaxed text-muted">
-                      {item.body}
-                    </p>
+                  </Link>
+                  <div className="mt-3 flex flex-wrap gap-2">
+                    <form action={markNotificationDoneAction}>
+                      <input type="hidden" name="locale" value={safe} />
+                      <input type="hidden" name="projectId" value={item.projectId} />
+                      <input type="hidden" name="notificationId" value={item.id} />
+                      <input
+                        type="hidden"
+                        name="returnTo"
+                        value={`/${safe}/portal/admin/today`}
+                      />
+                      <button
+                        type="submit"
+                        className="inline-flex items-center gap-1.5 rounded-lg border border-hairline px-3 py-2 text-[12px] font-medium text-ink transition-colors hover:border-copper hover:text-copper"
+                      >
+                        <CheckCircle2 className="h-3.5 w-3.5" />
+                        Erledigt
+                      </button>
+                    </form>
+                    <form action={convertNotificationToTaskAction}>
+                      <input type="hidden" name="locale" value={safe} />
+                      <input type="hidden" name="projectId" value={item.projectId} />
+                      <input type="hidden" name="notificationId" value={item.id} />
+                      <input type="hidden" name="taskTitle" value={item.title} />
+                      <input
+                        type="hidden"
+                        name="returnTo"
+                        value={`/${safe}/portal/admin/today`}
+                      />
+                      <button
+                        type="submit"
+                        className="inline-flex items-center gap-1.5 rounded-lg border border-hairline px-3 py-2 text-[12px] font-medium text-ink transition-colors hover:border-copper hover:text-copper"
+                      >
+                        Aufgabe erstellen
+                      </button>
+                    </form>
                   </div>
-                </Link>
+                </div>
               ))}
               {notifications.length === 0 && (
                 <p className="text-sm text-muted">Keine neuen Signale.</p>

@@ -11,6 +11,7 @@ import {
   FolderKanban,
   Gauge,
   History,
+  PencilLine,
   Search,
   Users,
 } from "lucide-react";
@@ -40,6 +41,7 @@ import {
   PortalShell,
   textareaClass,
 } from "@/components/portal/chrome";
+import { AdminCommandPalette } from "@/components/portal/admin-command-palette";
 import { ProjectCreateSubmit } from "@/components/portal/project-create-submit";
 
 export const dynamic = "force-dynamic";
@@ -77,6 +79,49 @@ export default async function AdminPage({
   const attentionItems = allBundles.flatMap(buildAttentionItems);
   const commandCenter = buildAdminCommandCenter(allBundles);
   const notifications = buildAdminNotificationCenter(allBundles);
+  const commands = [
+    {
+      label: "Heute öffnen",
+      href: `/${safe}/portal/admin/today`,
+      group: "Workflow",
+      keywords: "today inbox action queue notification",
+    },
+    {
+      label: "Pipeline öffnen",
+      href: `/${safe}/portal/admin/pipeline`,
+      group: "Workflow",
+      keywords: "kanban status projekt flow",
+    },
+    {
+      label: "Draft Review öffnen",
+      href: `/${safe}/portal/admin/drafts`,
+      group: "Workflow",
+      keywords: "updates kommunikation meeting proposal",
+    },
+    {
+      label: "Kunden verwalten",
+      href: `/${safe}/portal/admin/customers`,
+      group: "Admin",
+      keywords: "kunden account login zugriff",
+    },
+    {
+      label: "Templates bearbeiten",
+      href: `/${safe}/portal/admin/templates`,
+      group: "Admin",
+      keywords: "branchen playbook industry",
+    },
+    ...allBundles.map((bundle) => ({
+      label: `${bundle.organization.name} öffnen`,
+      href: `/${safe}/portal/admin/projects/${bundle.project.id}`,
+      group: "Projekt",
+      keywords: [
+        bundle.project.name,
+        bundle.organization.industry,
+        bundle.project.status,
+        bundle.project.asdarStage,
+      ].join(" "),
+    })),
+  ];
   const latestActivity = allBundles
     .flatMap((bundle) =>
       buildProjectTimeline(bundle)
@@ -121,12 +166,27 @@ export default async function AdminPage({
       backHref={`/${safe}/portal`}
       actions={
         <>
+          <AdminCommandPalette commands={commands} />
           <Link
             href={`/${safe}/portal/admin/today`}
             className="inline-flex items-center gap-2 rounded-lg bg-copper px-4 py-2.5 text-sm font-medium text-oncopper transition-colors hover:bg-copper-hi"
           >
             <Clock3 className="h-4 w-4" />
             Heute
+          </Link>
+          <Link
+            href={`/${safe}/portal/admin/pipeline`}
+            className="inline-flex items-center gap-2 rounded-lg border border-hairline px-4 py-2.5 text-sm font-medium text-ink transition-colors hover:border-copper hover:text-copper"
+          >
+            <FolderKanban className="h-4 w-4" />
+            Pipeline
+          </Link>
+          <Link
+            href={`/${safe}/portal/admin/drafts`}
+            className="inline-flex items-center gap-2 rounded-lg border border-hairline px-4 py-2.5 text-sm font-medium text-ink transition-colors hover:border-copper hover:text-copper"
+          >
+            <PencilLine className="h-4 w-4" />
+            Drafts
           </Link>
           <Link
             href={`/${safe}/portal/admin/templates`}
