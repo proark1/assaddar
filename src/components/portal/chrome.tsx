@@ -202,6 +202,60 @@ export function PortalShell({
         </div>
       </header>
 
+      <div className="border-b border-hairline bg-surface md:hidden">
+        <nav
+          className="mx-auto flex w-full max-w-[1240px] gap-2 overflow-x-auto px-5 py-3 text-sm text-ink2"
+          aria-label="Mobile Portal Navigation"
+        >
+          <Link
+            href={`/${locale}`}
+            className="shrink-0 rounded-lg border border-hairline px-3 py-2"
+          >
+            Website
+          </Link>
+          <Link
+            href={`/${locale}/portal`}
+            className="shrink-0 rounded-lg border border-hairline px-3 py-2"
+          >
+            Dashboard
+          </Link>
+          {user.role === "admin" && (
+            <>
+              <Link
+                href={`/${locale}/portal/admin/today`}
+                className="shrink-0 rounded-lg border border-hairline px-3 py-2"
+              >
+                Heute
+              </Link>
+              <Link
+                href={`/${locale}/portal/admin/pipeline`}
+                className="shrink-0 rounded-lg border border-hairline px-3 py-2"
+              >
+                Pipeline
+              </Link>
+              <Link
+                href={`/${locale}/portal/admin/drafts`}
+                className="shrink-0 rounded-lg border border-hairline px-3 py-2"
+              >
+                Drafts
+              </Link>
+              <Link
+                href={`/${locale}/portal/admin/customers`}
+                className="shrink-0 rounded-lg border border-hairline px-3 py-2"
+              >
+                Kunden
+              </Link>
+            </>
+          )}
+          <Link
+            href={`/${locale}/portal/settings`}
+            className="shrink-0 rounded-lg border border-hairline px-3 py-2"
+          >
+            Settings
+          </Link>
+        </nav>
+      </div>
+
       <main className="mx-auto w-full max-w-[1240px] px-5 py-8 md:px-8 md:py-10">
         {backHref && (
           <Link

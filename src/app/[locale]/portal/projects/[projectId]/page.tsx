@@ -287,6 +287,24 @@ export default async function CustomerProjectPage({
   const nextActions = buildCustomerNextActions(bundle);
   const customerChecklist = buildCustomerChecklist(bundle);
   const primaryAction = nextActions[0];
+  const assadWorkItems = [
+    ...tasks
+      .filter((task) => task.owner === "assad" && task.status !== "done")
+      .map((task) => ({
+        id: task.id,
+        title: task.title,
+        body: task.dueDate ? `Geplant bis ${formatDate(task.dueDate)}` : "In Arbeit",
+      })),
+    ...milestones
+      .filter((milestone) => milestone.status === "active")
+      .map((milestone) => ({
+        id: milestone.id,
+        title: milestone.title,
+        body: milestone.dueDate
+          ? `Meilenstein bis ${formatDate(milestone.dueDate)}`
+          : "Aktiver Meilenstein",
+      })),
+  ].slice(0, 3);
   const requiredIntakeQuestions = intakeQuestions.filter((question) =>
     ["companyContext", "issues", "goals"].includes(question.id),
   );
@@ -451,6 +469,53 @@ export default async function CustomerProjectPage({
               </Link>
             )}
           </div>
+          <div className="mt-4 rounded-lg border border-hairline bg-bg p-4">
+            <div className="flex flex-col gap-4 md:flex-row md:items-start md:justify-between">
+              <div>
+                <div className="text-sm font-medium text-ink">
+                  Was Assad gerade macht
+                </div>
+                <p className="mt-1 text-[12px] leading-relaxed text-muted">
+                  Sie sehen nur die Punkte, die für den Projektfortschritt
+                  relevant sind. Interne Notizen bleiben ausgeblendet.
+                </p>
+              </div>
+              <Link
+                href={stepHref("overview")}
+                className="inline-flex items-center gap-1.5 text-sm font-medium text-copper"
+              >
+                Verlauf ansehen
+                <ArrowRight className="h-3.5 w-3.5" />
+              </Link>
+            </div>
+            <div className="mt-4 grid gap-3 md:grid-cols-3">
+              {assadWorkItems.length ? (
+                assadWorkItems.map((item) => (
+                  <div
+                    key={item.id}
+                    className="rounded-lg border border-hairline bg-surface p-3"
+                  >
+                    <div className="text-sm font-medium text-ink">
+                      {item.title}
+                    </div>
+                    <div className="mt-1 text-[12px] text-muted">
+                      {item.body}
+                    </div>
+                  </div>
+                ))
+              ) : (
+                <div className="rounded-lg border border-hairline bg-surface p-3 md:col-span-3">
+                  <div className="text-sm font-medium text-ink">
+                    Nächster Arbeitsschritt wird vorbereitet
+                  </div>
+                  <div className="mt-1 text-[12px] text-muted">
+                    {bundle.project.nextStep ||
+                      "Assad bereitet die nächste Analyse oder Empfehlung vor."}
+                  </div>
+                </div>
+              )}
+            </div>
+          </div>
         </PortalCard>
 
         <PortalCard>
@@ -530,7 +595,7 @@ export default async function CustomerProjectPage({
             </div>
 
             <div className="grid gap-3">
-              {nextActions.slice(0, 4).map((action) => (
+              {nextActions.slice(0, 1).map((action) => (
                 <Link
                   key={action.id}
                   href={stepHref(action.hrefView)}
@@ -569,6 +634,29 @@ export default async function CustomerProjectPage({
                   </div>
                 </Link>
               ))}
+              {nextActions.length > 1 && (
+                <details className="rounded-lg border border-hairline bg-bg p-4">
+                  <summary className="cursor-pointer text-sm font-medium text-copper">
+                    Weitere Hinweise anzeigen
+                  </summary>
+                  <div className="mt-3 space-y-3">
+                    {nextActions.slice(1, 4).map((action) => (
+                      <Link
+                        key={action.id}
+                        href={stepHref(action.hrefView)}
+                        className="block rounded-lg border border-hairline bg-surface p-3 transition-colors hover:border-copper"
+                      >
+                        <div className="text-sm font-medium text-ink">
+                          {action.title}
+                        </div>
+                        <p className="mt-1 text-[12px] leading-relaxed text-muted">
+                          {action.body}
+                        </p>
+                      </Link>
+                    ))}
+                  </div>
+                </details>
+              )}
             </div>
           </div>
         </PortalCard>

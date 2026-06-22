@@ -101,7 +101,13 @@ export type DraftReviewItem = {
   id: string;
   projectId: string;
   title: string;
-  type: "customer_update" | "meeting_summary" | "proposal" | "final_report";
+  type:
+    | "customer_update"
+    | "meeting_summary"
+    | "proposal"
+    | "final_report"
+    | "invoice_reminder"
+    | "next_call_agenda";
   body: string;
   hrefView: AdminProjectAction["hrefView"];
   priority: number;
@@ -247,8 +253,10 @@ export function buildProjectTimeline(
           ? "Intake"
           : isApproval(update.title)
             ? "Freigabe"
-            : isReminder(update.title)
-              ? "Reminder"
+          : isReminder(update.title)
+            ? "Reminder"
+            : update.title.startsWith("Termin:")
+              ? "Termin"
               : update.visibility === "customer"
                 ? "Kundenupdate"
                 : "Intern",
@@ -927,6 +935,10 @@ function handledDraftIds(bundle: ProjectBundle) {
   );
 }
 
+function hasProjectAppointment(bundle: ProjectBundle) {
+  return bundle.updates.some((update) => update.title.startsWith("Termin:"));
+}
+
 export function buildAdminNotificationCenter(
   bundles: ProjectBundle[],
 ): PortalNotification[] {
@@ -1139,6 +1151,14 @@ export function buildDraftReviewItems(bundles: ProjectBundle[]): DraftReviewItem
       const finalReportNeeded =
         bundle.project.status === "implementation" &&
         !bundle.files.some((file) => file.category === "final_report");
+      const overdueInvoices = bundle.invoices.filter(
+        (invoice) =>
+          invoice.status !== "paid" &&
+          invoice.status !== "draft" &&
+          isPast(invoice.dueDate),
+      );
+      const needsCallAgenda =
+        hasCustomerIntake(bundle) && !hasProjectAppointment(bundle);
 
       const items: Array<DraftReviewItem | null> = [
         handled.has(`${bundle.project.id}:customer-update`)
@@ -1188,6 +1208,41 @@ export function buildDraftReviewItems(bundles: ProjectBundle[]): DraftReviewItem
               body: formatDiagnosisReport(bundle, diagnosis),
               hrefView: "delivery" as const,
               priority: 4,
+            }
+          : null,
+        overdueInvoices[0] &&
+        !handled.has(`${bundle.project.id}:invoice-reminder:${overdueInvoices[0].id}`)
+          ? {
+              id: `${bundle.project.id}:invoice-reminder:${overdueInvoices[0].id}`,
+              projectId: bundle.project.id,
+              title: `${bundle.organization.name}: Rechnungsreminder pruefen`,
+              type: "invoice_reminder" as const,
+              body: [
+                `Kurzer Hinweis zur Rechnung ${overdueInvoices[0].number}:`,
+                "",
+                "die Rechnung ist im Portal noch offen. Bitte pruefen Sie die Zahlung oder geben Sie kurz Rueckmeldung, falls etwas fehlt.",
+                "",
+                "Vielen Dank.",
+              ].join("\n"),
+              hrefView: "billing" as const,
+              priority: 8,
+            }
+          : null,
+        needsCallAgenda && !handled.has(`${bundle.project.id}:next-call-agenda`)
+          ? {
+              id: `${bundle.project.id}:next-call-agenda`,
+              projectId: bundle.project.id,
+              title: `${bundle.organization.name}: naechste Call-Agenda`,
+              type: "next_call_agenda" as const,
+              body: [
+                "Vorschlag fuer den naechsten Termin:",
+                "",
+                ...buildMeetingModePlan(bundle).agenda.map((item) => `- ${item}`),
+                "",
+                "Ziel: Entscheidungen, Datenbedarf und ersten Pilot konkret festlegen.",
+              ].join("\n"),
+              hrefView: "meeting" as const,
+              priority: 6,
             }
           : null,
       ];

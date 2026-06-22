@@ -5,6 +5,7 @@ import {
   Archive,
   ArrowRight,
   Bell,
+  Bot,
   BrainCircuit,
   BookOpen,
   CheckCircle2,
@@ -42,6 +43,7 @@ import {
   inviteCustomerAction,
   addMeetingNoteAction,
   runAiScanAction,
+  runProjectAutomationsAction,
   saveKnowledgeSnapshotAction,
   scheduleProjectAppointmentAction,
   sendProjectReminderAction,
@@ -279,13 +281,30 @@ export default async function AdminProjectPage({
       title={bundle.project.name}
       backHref={`/${safe}/portal/admin`}
       actions={
-        <Link
-          href={`/${safe}/portal/projects/${bundle.project.id}`}
-          className="inline-flex items-center gap-2 rounded-lg border border-hairline px-4 py-2.5 text-sm font-medium text-ink transition-colors hover:border-copper hover:text-copper"
-        >
-          <Eye className="h-4 w-4" />
-          Kundenansicht
-        </Link>
+        <>
+          <form action={runProjectAutomationsAction}>
+            <HiddenProjectFields locale={safe} projectId={projectId} />
+            <input
+              type="hidden"
+              name="returnTo"
+              value={`/${safe}/portal/admin/projects/${projectId}`}
+            />
+            <button
+              type="submit"
+              className="inline-flex items-center gap-2 rounded-lg bg-copper px-4 py-2.5 text-sm font-medium text-oncopper transition-colors hover:bg-copper-hi"
+            >
+              <Bot className="h-4 w-4" />
+              Automationen
+            </button>
+          </form>
+          <Link
+            href={`/${safe}/portal/projects/${bundle.project.id}`}
+            className="inline-flex items-center gap-2 rounded-lg border border-hairline px-4 py-2.5 text-sm font-medium text-ink transition-colors hover:border-copper hover:text-copper"
+          >
+            <Eye className="h-4 w-4" />
+            Kundenansicht
+          </Link>
+        </>
       }
     >
       {(query.saved || query.assigned || query.error) && (

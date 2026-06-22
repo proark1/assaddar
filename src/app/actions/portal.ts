@@ -9,6 +9,7 @@ import {
   buildConsultantBrief,
   buildCustomerSafeSummary,
 } from "@/lib/portal/automation";
+import { applyPortalAutomationRules } from "@/lib/portal/automation-rules";
 import { appUrl } from "@/lib/portal/config";
 import { sendPortalEmail } from "@/lib/portal/email";
 import {
@@ -259,6 +260,7 @@ export async function createProjectAction(formData: FormData) {
   const user = await requireAdmin(locale);
 
   const company = text(formData, "company");
+  const customerName = text(formData, "customerName");
   const sourceStore = await readStore();
   const template = getEffectiveConsultingTemplate(
     text(formData, "templateId"),
@@ -283,8 +285,234 @@ export async function createProjectAction(formData: FormData) {
     template,
   });
 
+  const setupProcess = text(formData, "setupProcess");
+  const setupBottleneck = text(formData, "setupBottleneck");
+  const setupMetric = text(formData, "setupMetric");
+  const setupDecisionMakers = text(formData, "setupDecisionMakers");
+  const setupPilot = text(formData, "setupPilot");
+
+  const inviteResult = await mutateStore<{
+    rawToken: string;
+    email: string;
+    name: string;
+    projectName: string;
+    company: string;
+  } | null>((store) => {
+    const bundle = getProjectBundle(store, projectId);
+    if (!bundle) return null;
+    const now = new Date().toISOString();
+
+    if (
+      setupProcess ||
+      setupBottleneck ||
+      setupMetric ||
+      setupDecisionMakers ||
+      setupPilot
+    ) {
+      upsertIntelligence(store, projectId, {
+        companyContext: appendNote(
+          bundle.intelligence.companyContext,
+          "Setup Wizard: wichtiger Prozess",
+          setupProcess,
+        ),
+        stakeholders: appendNote(
+          bundle.intelligence.stakeholders,
+          "Setup Wizard: Entscheider und Stakeholder",
+          setupDecisionMakers,
+        ),
+        issues: appendNote(
+          bundle.intelligence.issues,
+          "Setup Wizard: Hauptengpass",
+          setupBottleneck,
+        ),
+        goals: appendNote(
+          bundle.intelligence.goals,
+          "Setup Wizard: messbares Ziel",
+          setupMetric,
+        ),
+        currentTools: bundle.intelligence.currentTools,
+        dataSituation: bundle.intelligence.dataSituation,
+        constraints: bundle.intelligence.constraints,
+        opportunities: appendNote(
+          bundle.intelligence.opportunities,
+          "Setup Wizard: erster Pilot",
+          setupPilot,
+        ),
+        internalNotes: appendNote(
+          bundle.intelligence.internalNotes,
+          "Projekt beim Anlegen gefuehrt vorbereitet",
+          [
+            setupProcess && `Prozess: ${setupProcess}`,
+            setupBottleneck && `Engpass: ${setupBottleneck}`,
+            setupMetric && `Messziel: ${setupMetric}`,
+            setupDecisionMakers && `Stakeholder: ${setupDecisionMakers}`,
+            setupPilot && `Pilot: ${setupPilot}`,
+          ]
+            .filter(Boolean)
+            .join("\n"),
+        ),
+      });
+
+      if (setupPilot) {
+        store.tasks.push({
+          id: id("task"),
+          projectId,
+          title: `Pilot vorbereiten: ${setupPilot}`,
+          owner: "assad",
+          status: "todo",
+          visibleToCustomer: true,
+          createdAt: now,
+        });
+      }
+
+      if (setupProcess || setupPilot) {
+        store.milestones.push({
+          id: id("milestone"),
+          projectId,
+          title: "Projekt-Setup und erster Beratungsfokus definiert",
+          status: "active",
+          visibleToCustomer: true,
+          createdAt: now,
+        });
+        store.updates.push({
+          id: id("update"),
+          projectId,
+          title: "Projekt-Setup vorbereitet",
+          body: [
+            "Das Projekt wurde angelegt und die ersten Informationen wurden strukturiert.",
+            setupPilot
+              ? `Erster Fokus: ${setupPilot}`
+              : setupProcess
+                ? `Erster Fokus: ${setupProcess}`
+                : "",
+            setupMetric ? `Messziel: ${setupMetric}` : "",
+          ]
+            .filter(Boolean)
+            .join("\n\n"),
+          visibility: "customer",
+          asdarStage: bundle.project.asdarStage,
+          createdBy: user.id,
+          createdAt: now,
+        });
+      }
+    }
+
+    if (!customerEmail.includes("@")) return null;
+
+    let customer = findUserByEmail(store, customerEmail);
+    if (customer && customer.role !== "customer") return null;
+
+    if (!customer) {
+      customer = {
+        id: id("user"),
+        name: customerName || customerEmail,
+        email: customerEmail,
+        passwordHash: hashPassword(randomTemporaryPassword()),
+        role: "customer",
+        createdAt: now,
+      };
+      store.users.push(customer);
+    } else if (customerName && customer.name === customer.email) {
+      customer.name = customerName;
+    }
+
+    const exists = store.projectMembers.some(
+      (member) => member.projectId === projectId && member.userId === customer.id,
+    );
+    if (!exists) {
+      store.projectMembers.push({
+        id: id("member"),
+        projectId,
+        userId: customer.id,
+        role: "client_owner",
+        createdAt: now,
+      });
+    }
+
+    const token = createAuthToken(customer.id, "project_invite", 60 * 24 * 7);
+    store.authTokens.push(token.record);
+    addAuditUpdate({
+      store,
+      projectId,
+      userId: user.id,
+      title: "Kunde automatisch eingeladen",
+      body: `${customer.email} wurde beim Projektstart eingeladen und zugeordnet.`,
+    });
+
+    return {
+      rawToken: token.rawToken,
+      email: customer.email,
+      name: customer.name,
+      projectName,
+      company,
+    };
+  });
+
+  if (inviteResult) {
+    const inviteUrl = `${appUrl()}/${locale}/invite?token=${encodeURIComponent(
+      inviteResult.rawToken,
+    )}`;
+    await sendPortalEmail({
+      to: inviteResult.email,
+      subject: `Einladung zum Assad Dar Portal: ${inviteResult.projectName}`,
+      text: [
+        `Hallo ${inviteResult.name},`,
+        "",
+        `Assad Dar hat ein Projektportal fuer ${inviteResult.company} vorbereitet.`,
+        "Bitte legen Sie ueber diesen Link Ihr Passwort fest:",
+        inviteUrl,
+        "",
+        "Der Link ist 7 Tage gueltig.",
+        "",
+        "Viele Gruesse",
+        "Assad Dar",
+      ].join("\n"),
+    });
+  }
+
   revalidatePath(`/${locale}/portal`);
   redirect(adminProjectPath(locale, projectId));
+}
+
+export async function runPortalAutomationsAction(formData: FormData) {
+  const locale = safeLocale(formData.get("locale"));
+  const user = await requireAdmin(locale);
+  const returnTo = text(formData, "returnTo") || `/${locale}/portal/admin`;
+
+  const summary = await mutateStore((store) =>
+    applyPortalAutomationRules({ store, userId: user.id }),
+  );
+
+  revalidatePath(`/${locale}/portal/admin`);
+  revalidatePath(`/${locale}/portal/admin/today`);
+  revalidatePath(`/${locale}/portal/admin/drafts`);
+  revalidatePath(`/${locale}/portal/admin/pipeline`);
+  revalidatePath(`/${locale}/portal`);
+  redirect(
+    `${returnTo}${returnTo.includes("?") ? "&" : "?"}saved=automation&tasks=${summary.tasksCreated}&insights=${summary.insightsCreated}`,
+  );
+}
+
+export async function runProjectAutomationsAction(formData: FormData) {
+  const locale = safeLocale(formData.get("locale"));
+  const user = await requireAdmin(locale);
+  const projectId = text(formData, "projectId");
+  const returnTo =
+    text(formData, "returnTo") ||
+    `${adminProjectPath(locale, projectId)}?view=guidance`;
+
+  const summary = await mutateStore((store) =>
+    applyPortalAutomationRules({ store, userId: user.id, projectId }),
+  );
+
+  revalidateProjectViews(locale, projectId);
+  revalidatePath(`/${locale}/portal/admin`);
+  revalidatePath(`/${locale}/portal/admin/today`);
+  revalidatePath(`/${locale}/portal/admin/drafts`);
+  revalidatePath(`/${locale}/portal/admin/pipeline`);
+  redirect(
+    `${returnTo}${returnTo.includes("?") ? "&" : "?"}saved=automation&tasks=${summary.tasksCreated}&insights=${summary.insightsCreated}`,
+  );
 }
 
 export async function saveTemplateOverrideAction(formData: FormData) {

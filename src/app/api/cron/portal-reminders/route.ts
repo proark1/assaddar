@@ -1,4 +1,5 @@
 import { NextResponse } from "next/server";
+import { applyPortalAutomationRules } from "@/lib/portal/automation-rules";
 import { appUrl } from "@/lib/portal/config";
 import { sendPortalEmail } from "@/lib/portal/email";
 import { getProjectBundle, id, mutateStore } from "@/lib/portal/store";
@@ -48,9 +49,12 @@ export async function GET(request: Request) {
     return new NextResponse("Unauthorized", { status: 401 });
   }
 
-  const emails = await mutateStore<ReminderEmail[]>((store) => {
+  const result = await mutateStore<{
+    emails: ReminderEmail[];
+    automation: ReturnType<typeof applyPortalAutomationRules> | null;
+  }>((store) => {
     const admin = store.users.find((user) => user.role === "admin");
-    if (!admin) return [];
+    if (!admin) return { emails: [], automation: null };
 
     const now = new Date().toISOString();
     const queued: ReminderEmail[] = [];
@@ -171,11 +175,14 @@ export async function GET(request: Request) {
       }
     }
 
-    return queued;
+    return {
+      emails: queued,
+      automation: applyPortalAutomationRules({ store, userId: admin.id }),
+    };
   });
 
   await Promise.all(
-    emails.map((email) =>
+    result.emails.map((email) =>
       sendPortalEmail({
         to: email.to,
         subject: email.subject,
@@ -184,5 +191,9 @@ export async function GET(request: Request) {
     ),
   );
 
-  return NextResponse.json({ ok: true, reminders: emails.length });
+  return NextResponse.json({
+    ok: true,
+    reminders: result.emails.length,
+    automation: result.automation,
+  });
 }

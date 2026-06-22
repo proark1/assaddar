@@ -3,6 +3,7 @@ import Link from "next/link";
 import {
   AlertTriangle,
   ArrowRight,
+  Bot,
   Bell,
   BookOpen,
   CheckCircle2,
@@ -15,9 +16,13 @@ import {
   Search,
   Users,
 } from "lucide-react";
-import { createProjectAction } from "@/app/actions/portal";
+import {
+  createProjectAction,
+  runPortalAutomationsAction,
+} from "@/app/actions/portal";
 import { isLocale, type Locale } from "@/content";
 import { buildAttentionItems } from "@/lib/portal/automation";
+import { buildAutomationOpportunities } from "@/lib/portal/automation-rules";
 import { requireAdmin } from "@/lib/portal/auth";
 import { listProjectBundlesForUser, readStore } from "@/lib/portal/store";
 import {
@@ -62,6 +67,9 @@ export default async function AdminPage({
     status?: string;
     health?: string;
     template?: string;
+    saved?: string;
+    tasks?: string;
+    insights?: string;
   }>;
 }) {
   const { locale } = await params;
@@ -77,9 +85,16 @@ export default async function AdminPage({
     portalStore.templateOverrides,
   );
   const attentionItems = allBundles.flatMap(buildAttentionItems);
+  const automationOpportunities = buildAutomationOpportunities(allBundles);
   const commandCenter = buildAdminCommandCenter(allBundles);
   const notifications = buildAdminNotificationCenter(allBundles);
   const commands = [
+    {
+      label: "Automationen ausführen",
+      href: `/${safe}/portal/admin#automation`,
+      group: "Workflow",
+      keywords: "automation next best action task reminder draft",
+    },
     {
       label: "Heute öffnen",
       href: `/${safe}/portal/admin/today`,
@@ -205,6 +220,12 @@ export default async function AdminPage({
         </>
       }
     >
+      {query.saved === "automation" && (
+        <div className="mb-6 rounded-lg border border-success/25 bg-success/10 px-4 py-3 text-sm text-success">
+          Automation abgeschlossen: {query.tasks ?? "0"} Aufgaben und{" "}
+          {query.insights ?? "0"} Insights vorbereitet.
+        </div>
+      )}
       <div className="grid gap-6 lg:grid-cols-[1.35fr_0.85fr]">
         <div className="space-y-5">
           <PortalCard>
@@ -322,6 +343,99 @@ export default async function AdminPage({
               {commandCenter.focusItems.length === 0 && (
                 <p className="text-sm text-muted">
                   Keine dringenden Punkte erkannt.
+                </p>
+              )}
+            </div>
+          </PortalCard>
+
+          <PortalCard id="automation" className="border-copper/30 bg-copper/10">
+            <div className="grid gap-5 lg:grid-cols-[1fr_auto] lg:items-center">
+              <PortalSectionTitle
+                eyebrow="Automation"
+                title="Assad Assist laufen lassen"
+              >
+                Prüft alle aktiven Projekte und erzeugt interne Aufgaben,
+                Diagnosis-Insights, Proposal-Hinweise, Rechnungsnachfassungen
+                und Update-Entwürfe. Nichts Kritisches wird automatisch an
+                Kunden gesendet.
+              </PortalSectionTitle>
+              <form action={runPortalAutomationsAction}>
+                <input type="hidden" name="locale" value={safe} />
+                <input
+                  type="hidden"
+                  name="returnTo"
+                  value={`/${safe}/portal/admin`}
+                />
+                <button
+                  type="submit"
+                  className="inline-flex w-full items-center justify-center gap-2 rounded-lg bg-copper px-4 py-2.5 text-sm font-medium text-oncopper transition-colors hover:bg-copper-hi lg:w-auto"
+                >
+                  <Bot className="h-4 w-4" />
+                  Automationen ausführen
+                </button>
+              </form>
+            </div>
+            <div className="mt-5 grid gap-3 md:grid-cols-3">
+              <div className="rounded-lg border border-hairline bg-surface px-4 py-3">
+                <div className="text-xl font-medium text-ink">
+                  {automationOpportunities.length}
+                </div>
+                <div className="text-[12px] text-muted">erkannte Chancen</div>
+              </div>
+              <div className="rounded-lg border border-hairline bg-surface px-4 py-3">
+                <div className="text-xl font-medium text-ink">
+                  {
+                    automationOpportunities.filter((item) => item.tone === "red")
+                      .length
+                  }
+                </div>
+                <div className="text-[12px] text-muted">dringend</div>
+              </div>
+              <div className="rounded-lg border border-hairline bg-surface px-4 py-3">
+                <div className="text-xl font-medium text-ink">
+                  {
+                    automationOpportunities.filter(
+                      (item) => item.category === "customer_update",
+                    ).length
+                  }
+                </div>
+                <div className="text-[12px] text-muted">Update-Entwürfe</div>
+              </div>
+            </div>
+            <div className="mt-5 space-y-2">
+              {automationOpportunities.slice(0, 5).map((item) => (
+                <Link
+                  key={item.id}
+                  href={`/${safe}/portal/admin/projects/${item.projectId}`}
+                  className="flex items-start justify-between gap-3 rounded-lg border border-hairline bg-surface p-3 transition-colors hover:border-copper"
+                >
+                  <div>
+                    <div className="flex flex-wrap items-center gap-2">
+                      <Badge
+                        tone={
+                          item.tone === "red"
+                            ? "red"
+                            : item.tone === "green"
+                              ? "green"
+                              : "copper"
+                        }
+                      >
+                        {item.category}
+                      </Badge>
+                      <div className="text-sm font-medium text-ink">
+                        {item.title}
+                      </div>
+                    </div>
+                    <p className="mt-1 text-[12px] leading-relaxed text-muted">
+                      {item.body}
+                    </p>
+                  </div>
+                  <ArrowRight className="mt-0.5 h-4 w-4 shrink-0 text-copper" />
+                </Link>
+              ))}
+              {automationOpportunities.length === 0 && (
+                <p className="text-sm text-muted">
+                  Keine neuen Automationen erkannt.
                 </p>
               )}
             </div>
@@ -732,6 +846,16 @@ export default async function AdminPage({
                     className={fieldClass}
                   />
                 </div>
+                <div>
+                  <label className="mb-1.5 block text-sm text-ink2">
+                    Kundenname
+                  </label>
+                  <input
+                    name="customerName"
+                    placeholder="Name für Einladung und Portal"
+                    className={fieldClass}
+                  />
+                </div>
               </div>
             </div>
 
@@ -754,6 +878,68 @@ export default async function AdminPage({
                 </div>
               </div>
             </div>
+
+            <details className="rounded-lg border border-hairline bg-bg p-4" open>
+              <summary className="cursor-pointer text-sm font-medium text-copper">
+                Schritt 4 · Setup-Automation
+              </summary>
+              <p className="mt-2 text-[12px] leading-relaxed text-muted">
+                Diese Felder erzeugen direkt interne Beratungshinweise,
+                Kundenupdate, Aufgabe und Meilenstein.
+              </p>
+              <div className="mt-4 space-y-3">
+                <div>
+                  <label className="mb-1.5 block text-sm text-ink2">
+                    Wichtigster Prozess
+                  </label>
+                  <input
+                    name="setupProcess"
+                    placeholder="z.B. Anfrage bis Angebot"
+                    className={fieldClass}
+                  />
+                </div>
+                <div>
+                  <label className="mb-1.5 block text-sm text-ink2">
+                    Hauptengpass
+                  </label>
+                  <textarea
+                    name="setupBottleneck"
+                    placeholder="Wo verliert das Team Zeit, Qualität oder Transparenz?"
+                    className={textareaClass}
+                  />
+                </div>
+                <div>
+                  <label className="mb-1.5 block text-sm text-ink2">
+                    Messbares Ziel
+                  </label>
+                  <input
+                    name="setupMetric"
+                    placeholder="z.B. 30% weniger manuelle Angebotszeit"
+                    className={fieldClass}
+                  />
+                </div>
+                <div>
+                  <label className="mb-1.5 block text-sm text-ink2">
+                    Entscheider und Stakeholder
+                  </label>
+                  <textarea
+                    name="setupDecisionMakers"
+                    placeholder="Geschäftsführung, Fachbereich, IT, Power User..."
+                    className={textareaClass}
+                  />
+                </div>
+                <div>
+                  <label className="mb-1.5 block text-sm text-ink2">
+                    Erster Pilot
+                  </label>
+                  <textarea
+                    name="setupPilot"
+                    placeholder="Welcher kleine Pilot soll zuerst vorbereitet werden?"
+                    className={textareaClass}
+                  />
+                </div>
+              </div>
+            </details>
             <ProjectCreateSubmit />
           </form>
         </PortalCard>

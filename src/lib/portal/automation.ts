@@ -24,7 +24,8 @@ export function isStructuredUpdate(title: string) {
     title.startsWith("Kommentar:") ||
     title.startsWith("Intake:") ||
     title.startsWith("Freigabe:") ||
-    title.startsWith("Erinnerung:")
+    title.startsWith("Erinnerung:") ||
+    title.startsWith("Termin:")
   );
 }
 

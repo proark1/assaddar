@@ -3,11 +3,13 @@ import Link from "next/link";
 import {
   convertNotificationToTaskAction,
   markNotificationDoneAction,
+  runPortalAutomationsAction,
 } from "@/app/actions/portal";
 import {
   AlertTriangle,
   ArrowRight,
   Bell,
+  Bot,
   CheckCircle2,
   Clock3,
   CreditCard,
@@ -89,13 +91,30 @@ export default async function AdminTodayPage({
       title="Heute"
       backHref={`/${safe}/portal/admin`}
       actions={
-        <Link
-          href={`/${safe}/portal/admin`}
-          className="inline-flex items-center gap-2 rounded-lg border border-hairline px-4 py-2.5 text-sm font-medium text-ink transition-colors hover:border-copper hover:text-copper"
-        >
-          <LayoutDashboard className="h-4 w-4" />
-          Cockpit
-        </Link>
+        <>
+          <form action={runPortalAutomationsAction}>
+            <input type="hidden" name="locale" value={safe} />
+            <input
+              type="hidden"
+              name="returnTo"
+              value={`/${safe}/portal/admin/today`}
+            />
+            <button
+              type="submit"
+              className="inline-flex items-center gap-2 rounded-lg bg-copper px-4 py-2.5 text-sm font-medium text-oncopper transition-colors hover:bg-copper-hi"
+            >
+              <Bot className="h-4 w-4" />
+              Automationen
+            </button>
+          </form>
+          <Link
+            href={`/${safe}/portal/admin`}
+            className="inline-flex items-center gap-2 rounded-lg border border-hairline px-4 py-2.5 text-sm font-medium text-ink transition-colors hover:border-copper hover:text-copper"
+          >
+            <LayoutDashboard className="h-4 w-4" />
+            Cockpit
+          </Link>
+        </>
       }
     >
       <div className="grid gap-6 lg:grid-cols-[1.15fr_0.85fr]">

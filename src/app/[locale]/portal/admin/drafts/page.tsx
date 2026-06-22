@@ -38,6 +38,8 @@ const typeLabels = {
   meeting_summary: "Meeting Summary",
   proposal: "Proposal",
   final_report: "Abschlussbericht",
+  invoice_reminder: "Rechnungsreminder",
+  next_call_agenda: "Call-Agenda",
 };
 
 const publishTitles = {
@@ -45,6 +47,8 @@ const publishTitles = {
   meeting_summary: "Meeting-Zusammenfassung",
   proposal: "Angebotsentwurf und empfohlener Scope",
   final_report: "Abschlussbericht Entwurf",
+  invoice_reminder: "Hinweis zur offenen Rechnung",
+  next_call_agenda: "Vorschlag für den nächsten Termin",
 };
 
 export default async function AdminDraftsPage({
