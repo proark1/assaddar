@@ -1,10 +1,18 @@
 import type { Metadata } from "next";
 import Link from "next/link";
-import { ArrowRight, CreditCard, FileText, FolderKanban } from "lucide-react";
+import {
+  AlertTriangle,
+  ArrowRight,
+  CheckCircle2,
+  CreditCard,
+  FileText,
+  FolderKanban,
+} from "lucide-react";
 import { isLocale, type Locale } from "@/content";
 import { requireUser } from "@/lib/portal/auth";
 import { listProjectBundlesForUser } from "@/lib/portal/store";
 import { formatCurrency, formatStage, formatStatus } from "@/lib/portal/format";
+import { buildCustomerNextActions } from "@/lib/portal/operations";
 import {
   Badge,
   EmptyState,
@@ -62,6 +70,14 @@ export default async function PortalPage({
       user.role === "admin" ? task.status !== "done" : task.visibleToCustomer,
     ),
   );
+  const customerNextActions =
+    user.role === "admin"
+      ? []
+      : bundles.flatMap((bundle) =>
+          buildCustomerNextActions(bundle)
+            .slice(0, 2)
+            .map((action) => ({ bundle, action })),
+        );
 
   return (
     <PortalShell
@@ -123,6 +139,59 @@ export default async function PortalPage({
           </div>
         </PortalCard>
       </div>
+
+      {user.role !== "admin" && customerNextActions.length > 0 && (
+        <PortalCard className="mt-8">
+          <PortalSectionTitle
+            eyebrow="Jetzt wichtig"
+            title="Ihre nächsten Schritte"
+          >
+            Die wichtigsten offenen Punkte aus allen Projekten, damit Sie nicht
+            lange suchen müssen.
+          </PortalSectionTitle>
+          <div className="mt-5 grid gap-3 md:grid-cols-2">
+            {customerNextActions.slice(0, 4).map(({ bundle, action }) => (
+              <Link
+                key={`${bundle.project.id}-${action.id}`}
+                href={`/${safe}/portal/projects/${bundle.project.id}?view=${action.hrefView}`}
+                className={`group rounded-lg border p-4 transition-colors hover:border-copper ${
+                  action.tone === "red"
+                    ? "border-critical/30 bg-critical/10"
+                    : action.tone === "green"
+                      ? "border-success/25 bg-success/10"
+                      : "border-copper/25 bg-copper/10"
+                }`}
+              >
+                <div className="flex items-start justify-between gap-4">
+                  <div className="flex gap-3">
+                    {action.tone === "green" ? (
+                      <CheckCircle2 className="mt-0.5 h-4 w-4 shrink-0 text-success" />
+                    ) : (
+                      <AlertTriangle
+                        className={`mt-0.5 h-4 w-4 shrink-0 ${
+                          action.tone === "red" ? "text-critical" : "text-copper"
+                        }`}
+                      />
+                    )}
+                    <div>
+                      <div className="text-[12px] text-muted">
+                        {bundle.organization.name}
+                      </div>
+                      <h2 className="mt-1 text-sm font-medium text-ink">
+                        {action.title}
+                      </h2>
+                      <p className="mt-1 text-sm leading-relaxed text-ink2">
+                        {action.body}
+                      </p>
+                    </div>
+                  </div>
+                  <ArrowRight className="h-4 w-4 shrink-0 text-copper transition-transform group-hover:translate-x-0.5" />
+                </div>
+              </Link>
+            ))}
+          </div>
+        </PortalCard>
+      )}
 
       <div className="mt-8">
         {loadError ? (

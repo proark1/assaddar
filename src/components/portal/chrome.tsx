@@ -1,6 +1,7 @@
 import Link from "next/link";
 import {
   ArrowLeft,
+  BookOpen,
   BriefcaseBusiness,
   FileText,
   Images,
@@ -125,6 +126,13 @@ export function PortalShell({
                 >
                   <Users className="h-3.5 w-3.5" />
                   Kunden
+                </Link>
+                <Link
+                  href={`/${locale}/portal/admin/templates`}
+                  className="inline-flex items-center gap-1.5 hover:text-ink"
+                >
+                  <BookOpen className="h-3.5 w-3.5" />
+                  Templates
                 </Link>
                 <Link
                   href={`/${locale}/portal/admin/blog`}

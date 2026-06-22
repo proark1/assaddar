@@ -2,6 +2,8 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import { redirect } from "next/navigation";
 import {
+  AlertTriangle,
+  ArrowRight,
   CheckCircle2,
   Clock3,
   CreditCard,
@@ -37,6 +39,7 @@ import {
   formatStage,
   formatStatus,
 } from "@/lib/portal/format";
+import { buildCustomerNextActions } from "@/lib/portal/operations";
 import {
   Badge,
   EmptyState,
@@ -269,6 +272,7 @@ export default async function CustomerProjectPage({
   const pendingFileApprovals = files.filter(
     (file) => !approvedFileIds.has(file.id),
   );
+  const nextActions = buildCustomerNextActions(bundle);
   const defaultView: CustomerView = !intakeSubmitted
     ? "input"
     : pendingCustomerTasks.length ||
@@ -298,8 +302,8 @@ export default async function CustomerProjectPage({
       eyebrow: "2",
       title: "Fragebogen",
       body: intakeSubmitted
-        ? "Ergaenzen bei Aenderungen."
-        : "Zuerst ausfuellen.",
+        ? "Ergänzen bei Änderungen."
+        : "Zuerst ausfüllen.",
     },
     {
       id: "actions",
@@ -322,7 +326,7 @@ export default async function CustomerProjectPage({
       id: "messages",
       eyebrow: "5",
       title: "Nachricht",
-      body: "Eine Rueckfrage senden.",
+      body: "Eine Rückfrage senden.",
       count: comments.length,
     },
   ];
@@ -339,7 +343,7 @@ export default async function CustomerProjectPage({
         <div className="mb-6 rounded-lg border border-copper/30 bg-copper/10 px-4 py-3 text-sm text-ink">
           {query.saved && "Gespeichert."}
           {query.error === "intake" &&
-            " Bitte mindestens ein Intake-Feld ausfuellen."}
+            " Bitte mindestens ein Intake-Feld ausfüllen."}
           {query.error === "file" && " Datei konnte nicht hochgeladen werden."}
           {query.error === "comment" && " Bitte einen Kommentar eintragen."}
         </div>
@@ -372,6 +376,86 @@ export default async function CustomerProjectPage({
               {bundle.project.nextStep ||
                 "Der nächste Schritt wird vorbereitet."}
             </p>
+          </div>
+        </PortalCard>
+
+        <PortalCard>
+          <div className="grid gap-6 lg:grid-cols-[0.9fr_1.4fr]">
+            <div>
+              <PortalSectionTitle
+                eyebrow="Jetzt wichtig"
+                title="Ihre nächsten Schritte"
+              >
+                Das Portal zeigt zuerst, was von Ihnen gebraucht wird. Alles
+                andere bleibt in den Detailbereichen erreichbar.
+              </PortalSectionTitle>
+              <div className="mt-5 grid gap-3 text-sm sm:grid-cols-3 lg:grid-cols-1">
+                <div className="rounded-lg border border-hairline bg-bg p-3">
+                  <div className="font-medium text-ink">
+                    {formatStage(bundle.project.asdarStage)}
+                  </div>
+                  <div className="mt-1 text-[12px] text-muted">ASDAR Phase</div>
+                </div>
+                <div className="rounded-lg border border-hairline bg-bg p-3">
+                  <div className="font-medium text-ink">
+                    {pendingCustomerTasks.length}
+                  </div>
+                  <div className="mt-1 text-[12px] text-muted">
+                    offene Kundenaufgaben
+                  </div>
+                </div>
+                <div className="rounded-lg border border-hairline bg-bg p-3">
+                  <div className="font-medium text-ink">
+                    {pendingFileApprovals.length + pendingMilestoneApprovals.length}
+                  </div>
+                  <div className="mt-1 text-[12px] text-muted">
+                    offene Freigaben
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <div className="grid gap-3">
+              {nextActions.slice(0, 4).map((action) => (
+                <Link
+                  key={action.id}
+                  href={stepHref(action.hrefView)}
+                  className={`group rounded-lg border p-4 transition-colors hover:border-copper ${
+                    action.tone === "red"
+                      ? "border-critical/30 bg-critical/10"
+                      : action.tone === "green"
+                        ? "border-success/25 bg-success/10"
+                        : "border-copper/25 bg-copper/10"
+                  }`}
+                >
+                  <div className="flex items-start justify-between gap-4">
+                    <div className="flex gap-3">
+                      {action.tone === "green" ? (
+                        <CheckCircle2 className="mt-0.5 h-4 w-4 shrink-0 text-success" />
+                      ) : (
+                        <AlertTriangle
+                          className={`mt-0.5 h-4 w-4 shrink-0 ${
+                            action.tone === "red" ? "text-critical" : "text-copper"
+                          }`}
+                        />
+                      )}
+                      <div>
+                        <h3 className="text-sm font-medium text-ink">
+                          {action.title}
+                        </h3>
+                        <p className="mt-1 text-sm leading-relaxed text-ink2">
+                          {action.body}
+                        </p>
+                      </div>
+                    </div>
+                    <span className="inline-flex shrink-0 items-center gap-1.5 text-[12px] font-medium text-copper">
+                      {action.cta}
+                      <ArrowRight className="h-3.5 w-3.5 transition-transform group-hover:translate-x-0.5" />
+                    </span>
+                  </div>
+                </Link>
+              ))}
+            </div>
           </div>
         </PortalCard>
 
@@ -416,20 +500,20 @@ export default async function CustomerProjectPage({
           <PortalCard>
             <PortalSectionTitle
               eyebrow="Ihr Input"
-              title="Gefuehrter Projektfragebogen"
+              title="Geführter Projektfragebogen"
             >
               Ihre Antworten landen direkt in Assads interner Analyse und
               erzeugen automatisch eine erste Beratungsgrundlage.
             </PortalSectionTitle>
             {intakeSubmitted && (
               <div className="mt-4 rounded-lg border border-success/25 bg-success/10 p-3 text-sm text-success">
-                Fragebogen wurde bereits eingereicht. Sie koennen ihn erneut
-                senden, wenn sich wichtige Informationen geaendert haben.
+                Fragebogen wurde bereits eingereicht. Sie können ihn erneut
+                senden, wenn sich wichtige Informationen geändert haben.
               </div>
             )}
             <details open={!intakeSubmitted} className="mt-5">
               <summary className="cursor-pointer text-sm font-medium text-copper">
-                Fragebogen oeffnen
+                Fragebogen öffnen
               </summary>
               <form
                 action={submitCustomerIntakeAction}
@@ -437,14 +521,25 @@ export default async function CustomerProjectPage({
               >
                 <input type="hidden" name="locale" value={safe} />
                 <input type="hidden" name="projectId" value={projectId} />
-                {intakeQuestions.map((question) =>
+                <div className="rounded-lg border border-copper/25 bg-copper/10 p-4 text-sm leading-relaxed text-ink2">
+                  Antworten Sie so konkret wie möglich. Beispiele, Tools,
+                  Dokumente und echte Fälle helfen Assad, schneller eine
+                  belastbare Beratung abzuleiten.
+                </div>
+                {intakeQuestions.map((question, index) =>
                   question.id.startsWith("template_") ? (
-                    <div key={question.id}>
+                    <div
+                      key={question.id}
+                      className="rounded-lg border border-hairline bg-bg p-4"
+                    >
                       <input
                         type="hidden"
                         name="questionLabel"
                         value={question.prompt}
                       />
+                      <div className="mb-3 font-mono text-[10.5px] uppercase tracking-[0.14em] text-copper">
+                        Schritt {index + 1}
+                      </div>
                       <label className="mb-1.5 block text-sm text-ink2">
                         {question.prompt}
                       </label>
@@ -456,7 +551,13 @@ export default async function CustomerProjectPage({
                       />
                     </div>
                   ) : (
-                    <div key={question.id}>
+                    <div
+                      key={question.id}
+                      className="rounded-lg border border-hairline bg-bg p-4"
+                    >
+                      <div className="mb-3 font-mono text-[10.5px] uppercase tracking-[0.14em] text-copper">
+                        Schritt {index + 1}
+                      </div>
                       <label className="mb-1.5 block text-sm text-ink2">
                         {question.label}
                       </label>

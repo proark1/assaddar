@@ -5,6 +5,13 @@ import { readPortalFile } from "@/lib/portal/storage";
 
 export const dynamic = "force-dynamic";
 
+function contentDispositionFilename(name: string) {
+  const fallback = name.replace(/[^\w. -]/g, "_").slice(0, 120) || "download";
+  return `attachment; filename="${fallback.replaceAll("\"", "_")}"; filename*=UTF-8''${encodeURIComponent(
+    name,
+  )}`;
+}
+
 export async function GET(
   _request: Request,
   { params }: { params: Promise<{ fileId: string }> },
@@ -35,9 +42,9 @@ export async function GET(
       headers: {
         "Content-Type": stored.contentType,
         "Content-Length": String(stored.size),
-        "Content-Disposition": `attachment; filename="${encodeURIComponent(
-          file.name,
-        )}"`,
+        "Content-Disposition": contentDispositionFilename(file.name),
+        "Cache-Control": "private, no-store",
+        "X-Content-Type-Options": "nosniff",
       },
     });
   } catch {

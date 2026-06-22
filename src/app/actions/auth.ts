@@ -26,6 +26,17 @@ export async function loginAction(formData: FormData) {
   const locale = safeLocale(formData.get("locale"));
   const email = String(formData.get("email") || "").trim().toLowerCase();
   const password = String(formData.get("password") || "");
+  const requestHeaders = await headers();
+  const rateLimit = checkRateLimit(
+    `login:${clientIpFromHeaders(requestHeaders)}:${email}`,
+    8,
+    15 * 60 * 1000,
+  );
+
+  if (!rateLimit.allowed) {
+    redirect(`/${locale}/login?error=rate`);
+  }
+
   const store = await readStore();
   const user = findUserByEmail(store, email);
 
@@ -120,6 +131,16 @@ export async function logoutAction(formData: FormData) {
 export async function requestPasswordResetAction(formData: FormData) {
   const locale = safeLocale(formData.get("locale"));
   const email = String(formData.get("email") || "").trim().toLowerCase();
+  const requestHeaders = await headers();
+  const rateLimit = checkRateLimit(
+    `password-reset:${clientIpFromHeaders(requestHeaders)}:${email}`,
+    4,
+    60 * 60 * 1000,
+  );
+
+  if (!rateLimit.allowed) {
+    redirect(`/${locale}/forgot-password?sent=1`);
+  }
 
   const result = await mutateStore((store) => {
     const user = findUserByEmail(store, email);

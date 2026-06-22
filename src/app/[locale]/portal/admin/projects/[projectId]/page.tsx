@@ -31,6 +31,7 @@ import {
   archiveProjectAction,
   assignCustomerAction,
   completeSetupWizardAction,
+  generateDiagnosisPackAction,
   generateProposalAction,
   generateProjectBriefAction,
   inviteCustomerAction,
@@ -69,6 +70,7 @@ import {
   formatStage,
   projectStatuses,
 } from "@/lib/portal/format";
+import { buildProjectDiagnosis } from "@/lib/portal/operations";
 import {
   Badge,
   fieldClass,
@@ -140,6 +142,7 @@ export default async function AdminProjectPage({
 
   const query = await searchParams;
   const guidance = buildConsultantGuidance(bundle);
+  const diagnosis = buildProjectDiagnosis(bundle);
   const similar = findSimilarProjectBundles(bundles, bundle);
   const template = matchConsultingTemplate(bundle.organization.industry);
   const auditUpdates = bundle.updates.filter((update) =>
@@ -1040,6 +1043,91 @@ export default async function AdminProjectPage({
                 </div>
               ))}
             </div>
+          </PortalCard>
+
+          <PortalCard className={viewClass("guidance")}>
+            <PortalSectionTitle
+              eyebrow="Automation"
+              title="ASDAR Diagnosis Pack"
+            >
+              Erzeugt aus dem aktuellen Projektstand einen strukturierten
+              Beratungsbefund mit Readiness, Risiken, Chancen, Aufgaben,
+              Meilensteinen und optionalem Kundenupdate.
+            </PortalSectionTitle>
+            <div className="mt-5 rounded-lg border border-copper/25 bg-copper/10 p-4">
+              <div className="flex flex-wrap items-center justify-between gap-3">
+                <div>
+                  <div className="text-sm font-medium text-ink">
+                    Readiness {diagnosis.readinessScore}/100
+                  </div>
+                  <div className="mt-1 text-[12px] text-muted">
+                    {diagnosis.readinessLabel}
+                  </div>
+                </div>
+                <Badge
+                  tone={
+                    diagnosis.readinessScore >= 80
+                      ? "green"
+                      : diagnosis.readinessScore >= 55
+                        ? "amber"
+                        : "red"
+                  }
+                >
+                  {diagnosis.missingInputs.length} Lücken
+                </Badge>
+              </div>
+              {diagnosis.missingInputs.length > 0 && (
+                <div className="mt-4">
+                  <div className="text-sm font-medium text-ink">
+                    Noch ergänzen
+                  </div>
+                  <div className="mt-2 flex flex-wrap gap-2">
+                    {diagnosis.missingInputs.slice(0, 6).map((item) => (
+                      <Badge key={item}>{item}</Badge>
+                    ))}
+                  </div>
+                </div>
+              )}
+            </div>
+            <form
+              action={generateDiagnosisPackAction}
+              className="mt-4 space-y-3"
+            >
+              <HiddenProjectFields locale={safe} projectId={projectId} />
+              <label className="flex items-center gap-2 text-sm text-ink2">
+                <input
+                  name="createTasks"
+                  type="checkbox"
+                  defaultChecked
+                  className="h-4 w-4 accent-[var(--color-copper)]"
+                />
+                empfohlene Aufgaben für Assad anlegen
+              </label>
+              <label className="flex items-center gap-2 text-sm text-ink2">
+                <input
+                  name="createMilestones"
+                  type="checkbox"
+                  defaultChecked
+                  className="h-4 w-4 accent-[var(--color-copper)]"
+                />
+                Roadmap-Meilensteine erzeugen
+              </label>
+              <label className="flex items-center gap-2 text-sm text-ink2">
+                <input
+                  name="publishSummary"
+                  type="checkbox"
+                  className="h-4 w-4 accent-[var(--color-copper)]"
+                />
+                kundenfreundliche Zusammenfassung veröffentlichen
+              </label>
+              <button
+                type="submit"
+                className="inline-flex w-full items-center justify-center gap-2 rounded-lg bg-copper px-4 py-2.5 text-sm font-medium text-oncopper transition-colors hover:bg-copper-hi"
+              >
+                <WandSparkles className="h-4 w-4" />
+                Diagnosis Pack generieren
+              </button>
+            </form>
           </PortalCard>
 
           <PortalCard className={viewClass("guidance")}>

@@ -1,0 +1,395 @@
+import {
+  isApproval,
+  isCustomerIntake,
+  isStructuredUpdate,
+} from "./automation";
+import { formatCurrency, formatDate, formatStage } from "./format";
+import { matchConsultingTemplate } from "./templates";
+import type { ProjectBundle } from "./types";
+
+export type PortalActionTone = "red" | "amber" | "green" | "copper";
+
+export type CustomerNextAction = {
+  id: string;
+  tone: PortalActionTone;
+  title: string;
+  body: string;
+  hrefView: "input" | "actions" | "files" | "messages" | "overview";
+  cta: string;
+  priority: number;
+};
+
+export type AdminFocusItem = {
+  id: string;
+  projectId: string;
+  tone: PortalActionTone;
+  title: string;
+  body: string;
+  action: string;
+  priority: number;
+};
+
+export type ProjectDiagnosis = {
+  readinessScore: number;
+  readinessLabel: string;
+  missingInputs: string[];
+  risks: string[];
+  opportunities: string[];
+  recommendedTasks: string[];
+  recommendedMilestones: string[];
+  customerSummary: string;
+};
+
+const DAY_MS = 24 * 60 * 60 * 1000;
+
+function dateMs(value?: string) {
+  if (!value) return 0;
+  const time = new Date(value).getTime();
+  return Number.isFinite(time) ? time : 0;
+}
+
+function isPast(date?: string) {
+  if (!date) return false;
+  const due = new Date(`${date}T23:59:59`);
+  return Number.isFinite(due.getTime()) && due.getTime() < Date.now();
+}
+
+function daysSince(value?: string) {
+  const time = dateMs(value);
+  if (!time) return Number.POSITIVE_INFINITY;
+  return Math.floor((Date.now() - time) / DAY_MS);
+}
+
+function customerUpdates(bundle: ProjectBundle) {
+  return bundle.updates.filter(
+    (update) => update.visibility === "customer" && !isStructuredUpdate(update.title),
+  );
+}
+
+function approvalIds(bundle: ProjectBundle, type: "FILE" | "MILESTONE") {
+  return new Set(
+    bundle.updates
+      .filter((update) => isApproval(update.title))
+      .map((update) => update.body.match(new RegExp(`APPROVAL_${type}:([^\\n]+)`))?.[1])
+      .filter((value): value is string => Boolean(value)),
+  );
+}
+
+export function hasCustomerIntake(bundle: ProjectBundle) {
+  return bundle.updates.some((update) => isCustomerIntake(update.title));
+}
+
+export function latestCustomerUpdateDate(bundle: ProjectBundle) {
+  return customerUpdates(bundle)[0]?.createdAt;
+}
+
+export function buildCustomerNextActions(bundle: ProjectBundle): CustomerNextAction[] {
+  const actions: CustomerNextAction[] = [];
+  const fileApprovals = approvalIds(bundle, "FILE");
+  const milestoneApprovals = approvalIds(bundle, "MILESTONE");
+  const pendingCustomerTasks = bundle.tasks.filter(
+    (task) => task.visibleToCustomer && task.owner === "customer" && task.status !== "done",
+  );
+  const pendingFiles = bundle.files.filter(
+    (file) => file.visibility === "customer" && !fileApprovals.has(file.id),
+  );
+  const pendingMilestones = bundle.milestones.filter(
+    (milestone) =>
+      milestone.visibleToCustomer &&
+      milestone.status !== "done" &&
+      !milestoneApprovals.has(milestone.id),
+  );
+  const openInvoices = bundle.invoices.filter(
+    (invoice) => invoice.status !== "draft" && invoice.status !== "paid",
+  );
+
+  if (!hasCustomerIntake(bundle)) {
+    actions.push({
+      id: "intake",
+      tone: "amber",
+      title: "Projektfragebogen ausfüllen",
+      body: "Assad braucht diese Antworten, um Analyse, Empfehlungen und nächste Schritte sauber vorzubereiten.",
+      hrefView: "input",
+      cta: "Fragebogen öffnen",
+      priority: 10,
+    });
+  }
+
+  for (const task of pendingCustomerTasks.slice(0, 3)) {
+    actions.push({
+      id: `task-${task.id}`,
+      tone: isPast(task.dueDate) ? "red" : "copper",
+      title: task.title,
+      body: `Kundenaufgabe${task.dueDate ? ` · fällig ${formatDate(task.dueDate)}` : ""}.`,
+      hrefView: "actions",
+      cta: "Aufgabe bearbeiten",
+      priority: isPast(task.dueDate) ? 9 : 7,
+    });
+  }
+
+  if (pendingFiles.length > 0) {
+    actions.push({
+      id: "file-approval",
+      tone: "amber",
+      title: `${pendingFiles.length} Datei${pendingFiles.length === 1 ? "" : "en"} prüfen`,
+      body: "Neue Deliverables warten auf Download, Prüfung oder Freigabe.",
+      hrefView: "files",
+      cta: "Dateien prüfen",
+      priority: 8,
+    });
+  }
+
+  if (pendingMilestones.length > 0) {
+    actions.push({
+      id: "milestone-approval",
+      tone: "copper",
+      title: `${pendingMilestones.length} Meilenstein${pendingMilestones.length === 1 ? "" : "e"} prüfen`,
+      body: "Bestätigen Sie den aktuellen Projektfortschritt oder senden Sie eine Rückfrage.",
+      hrefView: "actions",
+      cta: "Roadmap öffnen",
+      priority: 6,
+    });
+  }
+
+  if (openInvoices.length > 0) {
+    const total = openInvoices.reduce((sum, invoice) => sum + invoice.amountCents, 0);
+    actions.push({
+      id: "invoice",
+      tone: openInvoices.some((invoice) => invoice.status === "overdue" || isPast(invoice.dueDate))
+        ? "red"
+        : "amber",
+      title: "Offene Rechnung",
+      body: `${formatCurrency(total, openInvoices[0]?.currency ?? "EUR")} sind aktuell offen.`,
+      hrefView: "files",
+      cta: "Rechnung ansehen",
+      priority: 5,
+    });
+  }
+
+  if (actions.length === 0) {
+    actions.push({
+      id: "no-action",
+      tone: "green",
+      title: "Aktuell ist nichts von Ihnen offen",
+      body: bundle.project.nextStep || "Assad arbeitet am nächsten Projektschritt und informiert Sie im Portal.",
+      hrefView: "overview",
+      cta: "Status ansehen",
+      priority: 1,
+    });
+  }
+
+  return actions.sort((a, b) => b.priority - a.priority);
+}
+
+export function buildAdminCommandCenter(bundles: ProjectBundle[]) {
+  const active = bundles.filter((bundle) => bundle.project.status !== "completed");
+  const staleUpdates = active.filter(
+    (bundle) => daysSince(latestCustomerUpdateDate(bundle)) > 7,
+  );
+  const missingIntake = active.filter((bundle) => !hasCustomerIntake(bundle));
+  const risky = active.filter((bundle) => bundle.project.health !== "green");
+  const overdueTasks = active.flatMap((bundle) =>
+    bundle.tasks
+      .filter(
+        (task) =>
+          task.visibleToCustomer &&
+          task.owner === "customer" &&
+          task.status !== "done" &&
+          isPast(task.dueDate),
+      )
+      .map((task) => ({ bundle, task })),
+  );
+  const unpaidInvoices = active.flatMap((bundle) =>
+    bundle.invoices
+      .filter((invoice) => invoice.status !== "draft" && invoice.status !== "paid")
+      .map((invoice) => ({ bundle, invoice })),
+  );
+
+  const focusItems: AdminFocusItem[] = [
+    ...risky.map((bundle) => ({
+      id: `risk-${bundle.project.id}`,
+      projectId: bundle.project.id,
+      tone: (bundle.project.health === "red" ? "red" : "amber") as PortalActionTone,
+      title: `${bundle.organization.name}: Health ${bundle.project.health}`,
+      body: bundle.project.nextStep || "Projekt braucht einen klaren nächsten Schritt.",
+      action: "Projekt öffnen",
+      priority: bundle.project.health === "red" ? 10 : 8,
+    })),
+    ...missingIntake.map((bundle) => ({
+      id: `intake-${bundle.project.id}`,
+      projectId: bundle.project.id,
+      tone: "amber" as const,
+      title: `${bundle.organization.name}: Intake fehlt`,
+      body: "Kunde hat den geführten Fragebogen noch nicht eingereicht.",
+      action: "Reminder senden",
+      priority: 7,
+    })),
+    ...overdueTasks.map(({ bundle, task }) => ({
+      id: `task-${task.id}`,
+      projectId: bundle.project.id,
+      tone: "red" as const,
+      title: `${bundle.organization.name}: Aufgabe überfällig`,
+      body: task.title,
+      action: "Nachfassen",
+      priority: 9,
+    })),
+    ...staleUpdates.map((bundle) => ({
+      id: `update-${bundle.project.id}`,
+      projectId: bundle.project.id,
+      tone: "amber" as const,
+      title: `${bundle.organization.name}: Update fällig`,
+      body: "Seit mehr als 7 Tagen wurde kein normales Kundenupdate veröffentlicht.",
+      action: "Update schreiben",
+      priority: 6,
+    })),
+    ...unpaidInvoices
+      .filter(({ invoice }) => invoice.status === "overdue" || isPast(invoice.dueDate))
+      .map(({ bundle, invoice }) => ({
+        id: `invoice-${invoice.id}`,
+        projectId: bundle.project.id,
+        tone: "red" as const,
+        title: `${bundle.organization.name}: Rechnung überfällig`,
+        body: `${invoice.number} · ${formatCurrency(invoice.amountCents, invoice.currency)}`,
+        action: "Reminder senden",
+        priority: 8,
+      })),
+  ].sort((a, b) => b.priority - a.priority);
+
+  return {
+    stats: {
+      activeProjects: active.length,
+      riskyProjects: risky.length,
+      missingIntake: missingIntake.length,
+      staleUpdates: staleUpdates.length,
+      overdueCustomerTasks: overdueTasks.length,
+      unpaidInvoiceAmount: unpaidInvoices.reduce(
+        (sum, entry) => sum + entry.invoice.amountCents,
+        0,
+      ),
+    },
+    focusItems,
+  };
+}
+
+function textFilled(value: string) {
+  return value.trim().length > 20;
+}
+
+export function buildProjectDiagnosis(bundle: ProjectBundle): ProjectDiagnosis {
+  const template = matchConsultingTemplate(bundle.organization.industry);
+  const checks = [
+    ["Unternehmenskontext", textFilled(bundle.intelligence.companyContext)],
+    ["Stakeholder", textFilled(bundle.intelligence.stakeholders)],
+    ["Probleme und Engpässe", textFilled(bundle.intelligence.issues)],
+    ["messbare Ziele", textFilled(bundle.intelligence.goals)],
+    ["Tool-Landschaft", textFilled(bundle.intelligence.currentTools)],
+    ["Daten- und Dokumentenlage", textFilled(bundle.intelligence.dataSituation)],
+    ["Constraints und Risiken", textFilled(bundle.intelligence.constraints)],
+    ["Automatisierungschancen", textFilled(bundle.intelligence.opportunities)],
+    ["Kundenintake", hasCustomerIntake(bundle)],
+    ["sichtbarer nächster Schritt", Boolean(bundle.project.nextStep.trim())],
+  ] as const;
+  const passed = checks.filter(([, ok]) => ok).length;
+  const missingInputs = checks.filter(([, ok]) => !ok).map(([label]) => label);
+  const readinessScore = Math.round((passed / checks.length) * 100);
+  const readinessLabel =
+    readinessScore >= 80
+      ? "umsetzungsbereit"
+      : readinessScore >= 55
+        ? "analysebereit"
+        : "intake offen";
+  const openCustomerTasks = bundle.tasks.filter(
+    (task) => task.visibleToCustomer && task.owner === "customer" && task.status !== "done",
+  );
+  const openAssadTasks = bundle.tasks.filter(
+    (task) => task.owner === "assad" && task.status !== "done",
+  );
+
+  const risks = [
+    ...template.risks.slice(0, 3),
+    ...missingInputs.slice(0, 3).map((item) => `${item} ist noch nicht ausreichend geklärt.`),
+    openCustomerTasks.length > 2
+      ? "Mehrere Kundenaufgaben sind offen; das kann die Analyse verzögern."
+      : "",
+  ].filter(Boolean);
+
+  const opportunities = [
+    ...(bundle.intelligence.opportunities
+      ? bundle.intelligence.opportunities
+          .split(/\n|;/)
+          .map((item) => item.trim())
+          .filter(Boolean)
+          .slice(0, 3)
+      : []),
+    ...template.quickWins.slice(0, 3),
+  ].slice(0, 5);
+
+  const recommendedTasks = [
+    missingInputs.length
+      ? `Fehlende Intake-Punkte klären: ${missingInputs.slice(0, 3).join(", ")}`
+      : "",
+    `Quick Win bewerten: ${template.quickWins[0]}`,
+    `Kundenupdate schreiben: ${formatStage(bundle.project.asdarStage)} Fortschritt und nächster Schritt`,
+    openAssadTasks.length === 0 ? "Interne nächste Assad-Aufgabe definieren" : "",
+  ].filter(Boolean);
+
+  const recommendedMilestones = [
+    "ASDAR Diagnose und Priorisierung abgeschlossen",
+    "Erster Automatisierungs-Pilot definiert",
+    "Kundenfreigabe für Roadmap erhalten",
+  ];
+
+  const customerSummary = [
+    `Aktueller Stand: Das Projekt befindet sich in der ASDAR Phase ${formatStage(
+      bundle.project.asdarStage,
+    )}.`,
+    bundle.project.nextStep
+      ? `Nächster Schritt: ${bundle.project.nextStep}`
+      : `Nächster Schritt: ${template.kickoffGoal}`,
+    readinessScore >= 80
+      ? "Die Grundlage ist gut genug, um konkrete Umsetzungsschritte zu priorisieren."
+      : "Wir ergänzen aktuell noch wichtige Informationen, damit die Empfehlungen belastbar werden.",
+  ].join("\n\n");
+
+  return {
+    readinessScore,
+    readinessLabel,
+    missingInputs,
+    risks: risks.slice(0, 6),
+    opportunities,
+    recommendedTasks,
+    recommendedMilestones,
+    customerSummary,
+  };
+}
+
+export function formatDiagnosisReport(bundle: ProjectBundle, diagnosis: ProjectDiagnosis) {
+  return [
+    `ASDAR Diagnosis Pack: ${bundle.project.name}`,
+    "",
+    `Kunde: ${bundle.organization.name}`,
+    `Branche: ${bundle.organization.industry}`,
+    `Readiness: ${diagnosis.readinessScore}/100 (${diagnosis.readinessLabel})`,
+    `Phase: ${formatStage(bundle.project.asdarStage)}`,
+    "",
+    "Fehlende Inputs",
+    ...(diagnosis.missingInputs.length
+      ? diagnosis.missingInputs.map((item) => `- ${item}`)
+      : ["- Keine kritischen Lücken erkannt."]),
+    "",
+    "Risiken",
+    ...diagnosis.risks.map((item) => `- ${item}`),
+    "",
+    "Chancen und Quick Wins",
+    ...diagnosis.opportunities.map((item) => `- ${item}`),
+    "",
+    "Empfohlene Aufgaben",
+    ...diagnosis.recommendedTasks.map((item) => `- ${item}`),
+    "",
+    "Empfohlene Meilensteine",
+    ...diagnosis.recommendedMilestones.map((item) => `- ${item}`),
+    "",
+    "Kundensichere Zusammenfassung",
+    diagnosis.customerSummary,
+  ].join("\n");
+}

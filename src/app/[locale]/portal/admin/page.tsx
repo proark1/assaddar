@@ -4,6 +4,9 @@ import {
   AlertTriangle,
   ArrowRight,
   BookOpen,
+  Clock3,
+  CreditCard,
+  Gauge,
   Search,
   Users,
 } from "lucide-react";
@@ -17,6 +20,7 @@ import {
   formatStatus,
   projectStatuses,
 } from "@/lib/portal/format";
+import { buildAdminCommandCenter } from "@/lib/portal/operations";
 import { consultingTemplates } from "@/lib/portal/templates";
 import {
   Badge,
@@ -45,6 +49,7 @@ export default async function AdminPage({
     q?: string;
     status?: string;
     health?: string;
+    template?: string;
   }>;
 }) {
   const { locale } = await params;
@@ -56,6 +61,11 @@ export default async function AdminPage({
   const healthFilter = query.health ?? "all";
   const allBundles = await listProjectBundlesForUser(user);
   const attentionItems = allBundles.flatMap(buildAttentionItems);
+  const commandCenter = buildAdminCommandCenter(allBundles);
+  const selectedTemplateId =
+    consultingTemplates.some((template) => template.id === query.template)
+      ? query.template
+      : "";
   const bundles = allBundles.filter((bundle) => {
     const matchesQuery =
       !projectQuery ||
@@ -84,13 +94,22 @@ export default async function AdminPage({
       title="Consulting Cockpit"
       backHref={`/${safe}/portal`}
       actions={
-        <Link
-          href={`/${safe}/portal/admin/customers`}
-          className="inline-flex items-center gap-2 rounded-lg border border-hairline px-4 py-2.5 text-sm font-medium text-ink transition-colors hover:border-copper hover:text-copper"
-        >
-          <Users className="h-4 w-4" />
-          Kunden
-        </Link>
+        <>
+          <Link
+            href={`/${safe}/portal/admin/templates`}
+            className="inline-flex items-center gap-2 rounded-lg border border-hairline px-4 py-2.5 text-sm font-medium text-ink transition-colors hover:border-copper hover:text-copper"
+          >
+            <BookOpen className="h-4 w-4" />
+            Templates
+          </Link>
+          <Link
+            href={`/${safe}/portal/admin/customers`}
+            className="inline-flex items-center gap-2 rounded-lg border border-hairline px-4 py-2.5 text-sm font-medium text-ink transition-colors hover:border-copper hover:text-copper"
+          >
+            <Users className="h-4 w-4" />
+            Kunden
+          </Link>
+        </>
       }
     >
       <div className="grid gap-6 lg:grid-cols-[1.35fr_0.85fr]">
@@ -98,10 +117,81 @@ export default async function AdminPage({
           <PortalCard>
             <PortalSectionTitle
               eyebrow="Heute"
+              title="Command Center"
+            >
+              Der schnelle Überblick darüber, wo Assad jetzt handeln,
+              nachfassen oder ein Update veröffentlichen sollte.
+            </PortalSectionTitle>
+            <div className="mt-5 grid gap-3 sm:grid-cols-2 xl:grid-cols-3">
+              <div className="rounded-lg border border-hairline bg-bg p-4">
+                <Gauge className="h-4 w-4 text-copper" />
+                <div className="mt-3 text-2xl font-medium text-ink">
+                  {commandCenter.stats.riskyProjects}
+                </div>
+                <div className="text-sm text-muted">Riskante Projekte</div>
+              </div>
+              <div className="rounded-lg border border-hairline bg-bg p-4">
+                <Clock3 className="h-4 w-4 text-copper" />
+                <div className="mt-3 text-2xl font-medium text-ink">
+                  {commandCenter.stats.staleUpdates}
+                </div>
+                <div className="text-sm text-muted">Updates fällig</div>
+              </div>
+              <div className="rounded-lg border border-hairline bg-bg p-4">
+                <CreditCard className="h-4 w-4 text-copper" />
+                <div className="mt-3 text-2xl font-medium text-ink">
+                  {new Intl.NumberFormat("de-DE", {
+                    style: "currency",
+                    currency: "EUR",
+                    maximumFractionDigits: 0,
+                  }).format(commandCenter.stats.unpaidInvoiceAmount / 100)}
+                </div>
+                <div className="text-sm text-muted">Offen fakturiert</div>
+              </div>
+            </div>
+
+            <div className="mt-5 space-y-3">
+              {commandCenter.focusItems.slice(0, 6).map((item) => (
+                <Link
+                  key={item.id}
+                  href={`/${safe}/portal/admin/projects/${item.projectId}`}
+                  className="flex items-start justify-between gap-4 rounded-lg border border-hairline bg-bg p-3 transition-colors hover:border-copper"
+                >
+                  <div className="flex gap-3">
+                    <AlertTriangle
+                      className={`mt-0.5 h-4 w-4 shrink-0 ${
+                        item.tone === "red" ? "text-critical" : "text-copper"
+                      }`}
+                    />
+                    <div>
+                      <div className="text-sm font-medium text-ink">
+                        {item.title}
+                      </div>
+                      <p className="mt-1 text-sm leading-relaxed text-ink2">
+                        {item.body}
+                      </p>
+                    </div>
+                  </div>
+                  <span className="shrink-0 text-[12px] font-medium text-copper">
+                    {item.action}
+                  </span>
+                </Link>
+              ))}
+              {commandCenter.focusItems.length === 0 && (
+                <p className="text-sm text-muted">
+                  Keine dringenden Punkte erkannt.
+                </p>
+              )}
+            </div>
+          </PortalCard>
+
+          <PortalCard>
+            <PortalSectionTitle
+              eyebrow="Heute"
               title="Needs Attention"
             >
               Automatisch erkannte Punkte, bei denen Assad nachfassen,
-              erinnern oder den naechsten Beratungsschritt setzen sollte.
+              erinnern oder den nächsten Beratungsschritt setzen sollte.
             </PortalSectionTitle>
             <div className="mt-5 space-y-3">
               {attentionItems.slice(0, 8).map((item) => (
@@ -139,10 +229,10 @@ export default async function AdminPage({
           <PortalCard>
             <PortalSectionTitle
               eyebrow="Playbook Library"
-              title="Industrie-Templates fuer schnelle Beratung"
+              title="Industrie-Templates für schnelle Beratung"
             >
               Jede Vorlage bringt Intake-Felder, Diagnosefragen, Quick Wins,
-              Aufgaben, Meilensteine und Meeting-Guidance fuer den Admin mit.
+              Aufgaben, Meilensteine und Meeting-Guidance für den Admin mit.
             </PortalSectionTitle>
             <div className="mt-5 grid gap-3 md:grid-cols-2">
               {consultingTemplates.map((template) => (
@@ -324,7 +414,11 @@ export default async function AdminPage({
               <label className="mb-1.5 block text-sm text-ink2">
                 Industrie-Template
               </label>
-              <select name="templateId" className={fieldClass}>
+              <select
+                name="templateId"
+                defaultValue={selectedTemplateId}
+                className={fieldClass}
+              >
                 <option value="">Kein Template / manuell</option>
                 {consultingTemplates.map((template) => (
                   <option key={template.id} value={template.id}>
@@ -333,7 +427,7 @@ export default async function AdminPage({
                 ))}
               </select>
               <p className="mt-1 text-[12px] leading-relaxed text-muted">
-                Fuellt ASDAR Intake, erste Aufgaben, Meilensteine und ein
+                Füllt ASDAR Intake, erste Aufgaben, Meilensteine und ein
                 Kunden-Kickoff-Update vor.
               </p>
             </div>

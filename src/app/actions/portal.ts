@@ -25,6 +25,10 @@ import { createInvoiceCheckoutUrl } from "@/lib/portal/payments";
 import { hashPassword } from "@/lib/portal/password";
 import { savePortalFile } from "@/lib/portal/storage";
 import {
+  buildProjectDiagnosis,
+  formatDiagnosisReport,
+} from "@/lib/portal/operations";
+import {
   buildTemplatePrompt,
   getConsultingTemplate,
   matchConsultingTemplate,
@@ -523,7 +527,7 @@ export async function submitCustomerIntakeAction(formData: FormData) {
       projectId,
       title: "Intake: Kundenantworten eingereicht",
       body: [
-        "Der gefuehrte Fragebogen wurde eingereicht. Assad nutzt die Antworten fuer Analyse, Empfehlungen und naechste Schritte.",
+        "Der geführte Fragebogen wurde eingereicht. Assad nutzt die Antworten für Analyse, Empfehlungen und nächste Schritte.",
         "",
         answerBlock,
       ].join("\n"),
@@ -567,7 +571,7 @@ export async function submitCustomerIntakeAction(formData: FormData) {
       projectId,
       userId: user.id,
       title: "Kundenintake eingereicht",
-      body: `${user.name} hat den gefuehrten Projektfragebogen eingereicht.`,
+      body: `${user.name} hat den geführten Projektfragebogen eingereicht.`,
     });
   });
 
@@ -739,7 +743,7 @@ export async function completeSetupWizardAction(formData: FormData) {
         .join("\n\n"),
       internalNotes: [
         bundle.intelligence.internalNotes,
-        "Setup Wizard abgeschlossen. Im naechsten Termin Pilotumfang, Datenzugang und Erfolgsmessung finalisieren.",
+        "Setup Wizard abgeschlossen. Im nächsten Termin Pilotumfang, Datenzugang und Erfolgsmessung finalisieren.",
       ]
         .filter(Boolean)
         .join("\n\n"),
@@ -934,6 +938,108 @@ export async function saveKnowledgeSnapshotAction(formData: FormData) {
 
   revalidatePath(adminProjectPath(locale, projectId));
   redirect(`${adminProjectPath(locale, projectId)}?saved=knowledge`);
+}
+
+export async function generateDiagnosisPackAction(formData: FormData) {
+  const locale = safeLocale(formData.get("locale"));
+  const user = await requireAdmin(locale);
+  const projectId = text(formData, "projectId");
+  const publishSummary = checkbox(formData, "publishSummary");
+  const createTasks = checkbox(formData, "createTasks");
+  const createMilestones = checkbox(formData, "createMilestones");
+  const sourceStore = await readStore();
+  const bundle = getProjectBundle(sourceStore, projectId);
+  if (!bundle) redirect(`/${locale}/portal/admin`);
+
+  const diagnosis = buildProjectDiagnosis(bundle);
+  const report = formatDiagnosisReport(bundle, diagnosis);
+
+  await mutateStore((store) => {
+    const nextBundle = getProjectBundle(store, projectId);
+    if (!nextBundle) return;
+    const now = new Date().toISOString();
+
+    store.aiInsights.push({
+      id: id("insight"),
+      projectId,
+      title: `ASDAR Diagnosis Pack: ${diagnosis.readinessScore}/100`,
+      body: report,
+      kind: diagnosis.readinessScore >= 70 ? "guidance" : "risk",
+      createdAt: now,
+    });
+
+    if (createTasks) {
+      const existingTitles = new Set(
+        store.tasks
+          .filter((task) => task.projectId === projectId)
+          .map((task) => task.title.toLowerCase()),
+      );
+      for (const title of diagnosis.recommendedTasks) {
+        if (existingTitles.has(title.toLowerCase())) continue;
+        store.tasks.push({
+          id: id("task"),
+          projectId,
+          title,
+          owner: "assad",
+          status: "todo",
+          visibleToCustomer: false,
+          createdAt: now,
+        });
+      }
+    }
+
+    if (createMilestones) {
+      const existingTitles = new Set(
+        store.milestones
+          .filter((milestone) => milestone.projectId === projectId)
+          .map((milestone) => milestone.title.toLowerCase()),
+      );
+      for (const title of diagnosis.recommendedMilestones) {
+        if (existingTitles.has(title.toLowerCase())) continue;
+        store.milestones.push({
+          id: id("milestone"),
+          projectId,
+          title,
+          status: "planned",
+          visibleToCustomer: true,
+          createdAt: now,
+        });
+      }
+    }
+
+    if (publishSummary) {
+      store.updates.push({
+        id: id("update"),
+        projectId,
+        title: "ASDAR Diagnose aktualisiert",
+        body: diagnosis.customerSummary,
+        visibility: "customer",
+        asdarStage: nextBundle.project.asdarStage,
+        createdBy: user.id,
+        createdAt: now,
+      });
+    }
+
+    addAuditUpdate({
+      store,
+      projectId,
+      userId: user.id,
+      title: "ASDAR Diagnosis Pack generiert",
+      body: `Readiness ${diagnosis.readinessScore}/100 (${diagnosis.readinessLabel}).`,
+    });
+  });
+
+  if (publishSummary) {
+    await notifyProjectCustomers({
+      locale,
+      projectId,
+      subject: "Assad Dar Portal: ASDAR Diagnose aktualisiert",
+      body: diagnosis.customerSummary,
+    });
+  }
+
+  revalidateProjectViews(locale, projectId);
+  redirect(`${adminProjectPath(locale, projectId)}?saved=diagnosis`);
 }
 
 export async function addUpdateAction(formData: FormData) {
@@ -1623,12 +1729,12 @@ export async function sendProjectReminderAction(formData: FormData) {
   const customMessage = text(formData, "message");
   const reminder =
     reminderType === "task" && task
-      ? {
-          title: `Erinnerung: Aufgabe ${task.title}`,
-          subject: `Assad Dar Portal: Aufgabe offen`,
-          body:
-            customMessage ||
-            `Bitte pruefen Sie die offene Aufgabe im Projektportal: ${task.title}`,
+        ? {
+            title: `Erinnerung: Aufgabe ${task.title}`,
+            subject: `Assad Dar Portal: Aufgabe offen`,
+            body:
+              customMessage ||
+            `Bitte prüfen Sie die offene Aufgabe im Projektportal: ${task.title}`,
         }
       : reminderType === "invoice" && invoice
         ? {
@@ -1636,7 +1742,7 @@ export async function sendProjectReminderAction(formData: FormData) {
             subject: `Assad Dar Portal: Rechnung ${invoice.number}`,
             body:
               customMessage ||
-              `Bitte pruefen Sie die Rechnung ${invoice.number} im Projektportal.`,
+              `Bitte prüfen Sie die Rechnung ${invoice.number} im Projektportal.`,
           }
         : reminderType === "intake"
           ? {
@@ -1644,14 +1750,14 @@ export async function sendProjectReminderAction(formData: FormData) {
               subject: "Assad Dar Portal: Projektfragebogen",
               body:
                 customMessage ||
-                "Bitte fuellen Sie den gefuehrten Projektfragebogen im Portal aus, damit Assad die Analyse vorbereiten kann.",
+                "Bitte füllen Sie den geführten Projektfragebogen im Portal aus, damit Assad die Analyse vorbereiten kann.",
             }
           : {
               title: "Erinnerung: Projektinput",
               subject: "Assad Dar Portal: Projektinput",
               body:
                 customMessage ||
-                "Bitte pruefen Sie das Projektportal. Dort wartet ein naechster Schritt.",
+                "Bitte prüfen Sie das Projektportal. Dort wartet ein nächster Schritt.",
             };
 
   await mutateStore((store) => {
@@ -1762,7 +1868,7 @@ export async function generateProjectBriefAction(formData: FormData) {
           .map((task) => task.title.toLowerCase()),
       );
       for (const item of template.quickWins.slice(0, 3)) {
-        const title = `Quick Win pruefen: ${item}`;
+        const title = `Quick Win prüfen: ${item}`;
         if (existingTitles.has(title.toLowerCase())) continue;
         store.tasks.push({
           id: id("task"),
@@ -1781,7 +1887,7 @@ export async function generateProjectBriefAction(formData: FormData) {
       projectId,
       userId: user.id,
       title: "Projektbrief generiert",
-      body: `Interner Brief wurde erzeugt${publishSummary ? " und eine Kundenzusammenfassung wurde veroeffentlicht" : ""}.`,
+      body: `Interner Brief wurde erzeugt${publishSummary ? " und eine Kundenzusammenfassung wurde veröffentlicht" : ""}.`,
     });
   });
 
@@ -1790,7 +1896,7 @@ export async function generateProjectBriefAction(formData: FormData) {
       locale,
       projectId,
       subject: "Assad Dar Portal: Projektbrief aktualisiert",
-      body: "Ein neuer Projektbrief wurde im Portal veroeffentlicht.",
+      body: "Ein neuer Projektbrief wurde im Portal veröffentlicht.",
     });
   }
 
@@ -1833,7 +1939,7 @@ export async function generateProposalAction(formData: FormData) {
     scope || "ASDAR Analyse, Prozessstrukturierung und Pilotdefinition.",
     "",
     "Erwartete Ergebnisse",
-    outcomes || "Konkrete Automatisierungshebel, priorisierte Roadmap und naechste Umsetzungsschritte.",
+    outcomes || "Konkrete Automatisierungshebel, priorisierte Roadmap und nächste Umsetzungsschritte.",
     "",
     "Zeitrahmen",
     timeline || "Nach Abstimmung.",
