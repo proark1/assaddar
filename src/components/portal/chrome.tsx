@@ -3,6 +3,7 @@ import {
   ArrowLeft,
   BookOpen,
   BriefcaseBusiness,
+  Clock3,
   FileText,
   Images,
   LayoutDashboard,
@@ -124,6 +125,13 @@ export function PortalShell({
               <>
                 <Link href={`/${locale}/portal/admin`} className="hover:text-ink">
                   Admin
+                </Link>
+                <Link
+                  href={`/${locale}/portal/admin/today`}
+                  className="inline-flex items-center gap-1.5 hover:text-ink"
+                >
+                  <Clock3 className="h-3.5 w-3.5" />
+                  Heute
                 </Link>
                 <Link
                   href={`/${locale}/portal/admin/customers`}

@@ -11,6 +11,7 @@ import {
   Hero,
   Market,
   MethodSection,
+  MiniCaseStudies,
   Proof,
   ProductsPreview,
   TrustSignals,
@@ -103,6 +104,7 @@ export default async function Home({
         <Branchen t={t.branchen} />
         <Proof t={t.proof} />
         <TrustSignals locale={safe} />
+        <MiniCaseStudies locale={safe} />
         <About t={t.about} locale={safe} />
         <ProductsPreview locale={safe} />
         <Blog t={t.blog} />

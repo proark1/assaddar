@@ -3,6 +3,7 @@ import Link from "next/link";
 import {
   AlertTriangle,
   ArrowRight,
+  CalendarDays,
   CheckCircle2,
   CreditCard,
   FileText,
@@ -86,6 +87,29 @@ export default async function PortalPage({
       ? []
       : buildCustomerChecklist(bundles[0]);
   const primaryCustomerAction = customerNextActions[0];
+  const customerHighlights =
+    user.role === "admin"
+      ? []
+      : bundles.slice(0, 3).map((bundle) => {
+          const latestUpdate = bundle.updates
+            .filter((update) => update.visibility === "customer")
+            .sort(
+              (a, b) =>
+                new Date(b.createdAt).getTime() -
+                new Date(a.createdAt).getTime(),
+            )[0];
+          const nextAction = buildCustomerNextActions(bundle)[0];
+
+          return {
+            bundle,
+            latestUpdate,
+            nextAction,
+            workingOn:
+              bundle.project.nextStep ||
+              latestUpdate?.title ||
+              "Assad prüft die Projektinformationen und bereitet den nächsten Schritt vor.",
+          };
+        });
 
   return (
     <PortalShell
@@ -171,6 +195,78 @@ export default async function PortalPage({
             </Link>
           </div>
         </PortalCard>
+      )}
+
+      {user.role !== "admin" && customerHighlights.length > 0 && (
+        <div className="mt-8 grid gap-5 lg:grid-cols-[1.15fr_0.85fr]">
+          <PortalCard>
+            <PortalSectionTitle
+              eyebrow="Projektstand"
+              title="Woran Assad gerade arbeitet"
+            >
+              Eine kurze, kundenfreundliche Sicht auf den aktuellen
+              Beratungsfokus.
+            </PortalSectionTitle>
+            <div className="mt-5 space-y-3">
+              {customerHighlights.map(({ bundle, latestUpdate, workingOn }) => (
+                <Link
+                  key={bundle.project.id}
+                  href={`/${safe}/portal/projects/${bundle.project.id}`}
+                  className="block rounded-lg border border-hairline bg-bg p-4 transition-colors hover:border-copper"
+                >
+                  <div className="flex flex-wrap items-center gap-2">
+                    <Badge tone="copper">
+                      {formatStage(bundle.project.asdarStage)}
+                    </Badge>
+                    {latestUpdate && (
+                      <span className="text-[12px] text-muted">
+                        Letztes Update:{" "}
+                        {new Date(latestUpdate.createdAt).toLocaleDateString(
+                          "de-DE",
+                        )}
+                      </span>
+                    )}
+                  </div>
+                  <h3 className="mt-3 text-sm font-medium text-ink">
+                    {bundle.organization.name}
+                  </h3>
+                  <p className="mt-1 text-sm leading-relaxed text-ink2">
+                    {workingOn}
+                  </p>
+                </Link>
+              ))}
+            </div>
+          </PortalCard>
+
+          <PortalCard>
+            <PortalSectionTitle eyebrow="Termin" title="Nächster Kontakt">
+              Wenn kein Termin vereinbart ist, kann direkt ein neuer Slot
+              gebucht werden.
+            </PortalSectionTitle>
+            <div className="mt-5 rounded-lg border border-hairline bg-bg p-4">
+              <div className="flex gap-3">
+                <CalendarDays className="mt-0.5 h-5 w-5 shrink-0 text-copper" />
+                <div>
+                  <div className="text-sm font-medium text-ink">
+                    Nächster Call wird im Projekt abgestimmt
+                  </div>
+                  <p className="mt-1 text-sm leading-relaxed text-muted">
+                    Sobald ein Termin oder Meeting-Update veröffentlicht wird,
+                    erscheint es im Projektverlauf. Für einen neuen Termin kann
+                    jederzeit die Buchungsseite genutzt werden.
+                  </p>
+                </div>
+              </div>
+              <Link
+                href={`/${safe}/termin`}
+                className="mt-4 inline-flex items-center gap-2 rounded-lg border border-hairline px-4 py-2.5 text-sm font-medium text-ink transition-colors hover:border-copper hover:text-copper"
+              >
+                Termin buchen
+                <ArrowRight className="h-4 w-4" />
+              </Link>
+            </div>
+          </PortalCard>
+        </div>
       )}
 
       {user.role !== "admin" && customerChecklist.length > 0 && (

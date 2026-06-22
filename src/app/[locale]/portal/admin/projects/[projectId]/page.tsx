@@ -21,6 +21,7 @@ import {
   Send,
   Sparkles,
   UserPlus,
+  Video,
   WandSparkles,
 } from "lucide-react";
 import {
@@ -77,9 +78,11 @@ import {
 import {
   buildAiProviderComparison,
   buildAdminProjectActions,
+  buildConsultingCopilotBrief,
   buildConsultantCopyTemplates,
   buildConsultantWorkflow,
   buildCustomerUpdateDraft,
+  buildMeetingModePlan,
   buildProjectDiagnosis,
   buildProjectTimeline,
 } from "@/lib/portal/operations";
@@ -102,6 +105,7 @@ export const metadata: Metadata = {
 type AdminProjectView =
   | "setup"
   | "guidance"
+  | "meeting"
   | "communication"
   | "delivery"
   | "billing"
@@ -110,6 +114,7 @@ type AdminProjectView =
 function adminProjectView(value?: string): AdminProjectView | null {
   return value === "setup" ||
     value === "guidance" ||
+    value === "meeting" ||
     value === "communication" ||
     value === "delivery" ||
     value === "billing" ||
@@ -160,6 +165,8 @@ export default async function AdminProjectPage({
   const guidance = buildConsultantGuidance(bundle);
   const diagnosis = buildProjectDiagnosis(bundle);
   const adminActions = buildAdminProjectActions(bundle);
+  const copilotBrief = buildConsultingCopilotBrief(bundle);
+  const meetingMode = buildMeetingModePlan(bundle);
   const consultantWorkflow = buildConsultantWorkflow(bundle);
   const consultantCopyTemplates = buildConsultantCopyTemplates(bundle);
   const customerUpdateDraft = buildCustomerUpdateDraft(bundle);
@@ -219,33 +226,39 @@ export default async function AdminProjectPage({
       id: "guidance",
       eyebrow: "2",
       title: "Beratung",
-      body: "Playbook, Meeting-Copilot und AI-Scans.",
+      body: "Copilot, Playbook und AI-Scans.",
       count: bundle.aiInsights.length + similar.length,
     },
     {
-      id: "communication",
+      id: "meeting",
       eyebrow: "3",
+      title: "Meeting",
+      body: "Live-Call, Notizen und Entscheidungen.",
+    },
+    {
+      id: "communication",
+      eyebrow: "4",
       title: "Kunde",
       body: "Updates, Kommentare und Kundensignale.",
       count: comments.length + reminders.length,
     },
     {
       id: "delivery",
-      eyebrow: "4",
+      eyebrow: "5",
       title: "Umsetzung",
       body: "Dateien, Aufgaben und Roadmap.",
       count: bundle.files.length + openCustomerTasks + bundle.milestones.length,
     },
     {
       id: "billing",
-      eyebrow: "5",
+      eyebrow: "6",
       title: "Abrechnung",
       body: "Proposal, Rechnungen und Reminder.",
       count: openInvoices,
     },
     {
       id: "access",
-      eyebrow: "6",
+      eyebrow: "7",
       title: "Zugriff",
       body: "Kunden, Einladungen und Audit.",
       count: bundle.customerUsers.length,
@@ -332,7 +345,7 @@ export default async function AdminProjectPage({
       </PortalCard>
 
       <nav
-        className="mb-6 grid gap-3 md:grid-cols-3 xl:grid-cols-6"
+        className="mb-6 grid gap-3 md:grid-cols-3 xl:grid-cols-7"
         aria-label="Admin-Projekt-Schritte"
       >
         {steps.map((step) => {
@@ -663,6 +676,88 @@ export default async function AdminProjectPage({
 
           <PortalCard className={viewClass("guidance")}>
             <PortalSectionTitle
+              eyebrow="AI Copilot"
+              title="Beratungsbrief für den nächsten Schritt"
+            >
+              Kompakte, projektbezogene Beratungshilfe aus Intake,
+              Projektstand, Playbook, Aufgaben und Kundensignalen.
+            </PortalSectionTitle>
+            <div className="mt-5 grid gap-4 lg:grid-cols-[1.1fr_0.9fr]">
+              <div className="rounded-lg border border-copper/25 bg-copper/10 p-4">
+                <div className="flex items-center gap-2 text-sm font-medium text-ink">
+                  <BrainCircuit className="h-4 w-4 text-copper" />
+                  Copilot Summary
+                </div>
+                <p className="mt-3 whitespace-pre-line text-sm leading-relaxed text-ink2">
+                  {copilotBrief.summary}
+                </p>
+              </div>
+              <div className="grid gap-3">
+                <div className="rounded-lg border border-hairline bg-bg p-4">
+                  <div className="text-sm font-medium text-ink">
+                    Fehlende Informationen
+                  </div>
+                  <div className="mt-3 flex flex-wrap gap-2">
+                    {copilotBrief.missingInformation.length ? (
+                      copilotBrief.missingInformation.slice(0, 8).map((item) => (
+                        <Badge key={item} tone="amber">
+                          {item}
+                        </Badge>
+                      ))
+                    ) : (
+                      <Badge tone="green">Keine kritischen Lücken</Badge>
+                    )}
+                  </div>
+                </div>
+                <div className="rounded-lg border border-hairline bg-bg p-4">
+                  <div className="text-sm font-medium text-ink">
+                    Nächste Aktionen
+                  </div>
+                  <ul className="mt-3 space-y-2 text-sm leading-relaxed text-ink2">
+                    {copilotBrief.nextActions.map((item) => (
+                      <li key={item} className="flex gap-2">
+                        <CheckCircle2 className="mt-0.5 h-4 w-4 shrink-0 text-copper" />
+                        <span>{item}</span>
+                      </li>
+                    ))}
+                  </ul>
+                </div>
+              </div>
+            </div>
+            <div className="mt-5 grid gap-4 lg:grid-cols-3">
+              <div className="rounded-lg border border-hairline bg-bg p-4">
+                <div className="text-sm font-medium text-ink">
+                  Fragen im nächsten Call
+                </div>
+                <ul className="mt-3 space-y-2 text-sm leading-relaxed text-ink2">
+                  {copilotBrief.suggestedQuestions.slice(0, 5).map((item) => (
+                    <li key={item}>- {item}</li>
+                  ))}
+                </ul>
+              </div>
+              <div className="rounded-lg border border-hairline bg-bg p-4">
+                <div className="text-sm font-medium text-ink">Quick Wins</div>
+                <ul className="mt-3 space-y-2 text-sm leading-relaxed text-ink2">
+                  {copilotBrief.quickWins.slice(0, 5).map((item) => (
+                    <li key={item}>- {item}</li>
+                  ))}
+                </ul>
+              </div>
+              <div className="rounded-lg border border-hairline bg-bg p-4">
+                <div className="text-sm font-medium text-ink">
+                  Automatisierungsideen
+                </div>
+                <ul className="mt-3 space-y-2 text-sm leading-relaxed text-ink2">
+                  {copilotBrief.automationIdeas.slice(0, 5).map((item) => (
+                    <li key={item}>- {item}</li>
+                  ))}
+                </ul>
+              </div>
+            </div>
+          </PortalCard>
+
+          <PortalCard className={viewClass("guidance")}>
+            <PortalSectionTitle
               eyebrow="Beratungsmodus"
               title="Was Assad vor, während und nach dem Termin tut"
             >
@@ -806,6 +901,121 @@ export default async function AdminProjectPage({
               >
                 <BrainCircuit className="h-4 w-4" />
                 Intelligence speichern
+              </button>
+            </form>
+          </PortalCard>
+
+          <PortalCard className={viewClass("meeting")}>
+            <PortalSectionTitle
+              eyebrow="Meeting Mode"
+              title="Live-Call führen und direkt in Projektfortschritt verwandeln"
+            >
+              Eine fokussierte Arbeitsfläche für Calls: Agenda, Fragen,
+              Entscheidungen, Notizen, Aufgaben und kundenfreundlicher
+              Update-Entwurf.
+            </PortalSectionTitle>
+            <div className="mt-5 rounded-lg border border-copper/25 bg-copper/10 p-4">
+              <div className="flex items-center gap-2 text-sm font-medium text-ink">
+                <Video className="h-4 w-4 text-copper" />
+                Fokus für diesen Termin
+              </div>
+              <p className="mt-2 text-sm leading-relaxed text-ink2">
+                {meetingMode.focus}
+              </p>
+            </div>
+            <div className="mt-5 grid gap-4 lg:grid-cols-3">
+              <div className="rounded-lg border border-hairline bg-bg p-4">
+                <div className="text-sm font-medium text-ink">Agenda</div>
+                <ol className="mt-3 space-y-2 text-sm leading-relaxed text-ink2">
+                  {meetingMode.agenda.map((item, index) => (
+                    <li key={item} className="flex gap-2">
+                      <span className="font-mono text-[12px] text-copper">
+                        {index + 1}
+                      </span>
+                      <span>{item}</span>
+                    </li>
+                  ))}
+                </ol>
+              </div>
+              <div className="rounded-lg border border-hairline bg-bg p-4">
+                <div className="text-sm font-medium text-ink">Live-Fragen</div>
+                <ul className="mt-3 space-y-2 text-sm leading-relaxed text-ink2">
+                  {meetingMode.livePrompts.map((item) => (
+                    <li key={item}>- {item}</li>
+                  ))}
+                </ul>
+              </div>
+              <div className="rounded-lg border border-hairline bg-bg p-4">
+                <div className="text-sm font-medium text-ink">
+                  Entscheidungscheckliste
+                </div>
+                <ul className="mt-3 space-y-2 text-sm leading-relaxed text-ink2">
+                  {meetingMode.decisionChecklist.map((item) => (
+                    <li key={item} className="flex gap-2">
+                      <CheckCircle2 className="mt-0.5 h-4 w-4 shrink-0 text-copper" />
+                      <span>{item}</span>
+                    </li>
+                  ))}
+                </ul>
+              </div>
+            </div>
+            <form action={addMeetingNoteAction} className="mt-5 space-y-4">
+              <HiddenProjectFields locale={safe} projectId={projectId} />
+              <div className="grid gap-4 md:grid-cols-2">
+                <input
+                  name="meetingTitle"
+                  defaultValue={`Meeting: ${meetingMode.focus}`}
+                  className={fieldClass}
+                />
+                <select
+                  name="asdarStage"
+                  defaultValue={bundle.project.asdarStage}
+                  className={fieldClass}
+                >
+                  {asdarStages.map((stage) => (
+                    <option key={stage.value} value={stage.value}>
+                      {stage.label}
+                    </option>
+                  ))}
+                </select>
+              </div>
+              <div className="grid gap-4 md:grid-cols-2">
+                <textarea
+                  name="notes"
+                  placeholder="Live-Notizen, Beobachtungen, Beispiele"
+                  className={textareaClass}
+                />
+                <textarea
+                  name="decisions"
+                  placeholder="Entscheidungen, offene Punkte, Risiken"
+                  className={textareaClass}
+                />
+              </div>
+              <textarea
+                name="nextActions"
+                defaultValue={meetingMode.afterCallActions.join("\n")}
+                className={textareaClass}
+              />
+              <textarea
+                name="customerSummary"
+                defaultValue={meetingMode.customerSummaryDraft}
+                className={textareaClass}
+              />
+              <label className="flex items-center gap-2 text-sm text-ink2">
+                <input
+                  name="publishSummary"
+                  type="checkbox"
+                  defaultChecked
+                  className="h-4 w-4 accent-[var(--color-copper)]"
+                />
+                Zusammenfassung nach dem Call im Kundenportal veröffentlichen
+              </label>
+              <button
+                type="submit"
+                className="inline-flex items-center gap-2 rounded-lg bg-copper px-4 py-2.5 text-sm font-medium text-oncopper transition-colors hover:bg-copper-hi"
+              >
+                <MessagesSquare className="h-4 w-4" />
+                Meeting speichern und nächste Schritte erzeugen
               </button>
             </form>
           </PortalCard>

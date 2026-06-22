@@ -122,6 +122,13 @@ export default async function AdminPage({
       actions={
         <>
           <Link
+            href={`/${safe}/portal/admin/today`}
+            className="inline-flex items-center gap-2 rounded-lg bg-copper px-4 py-2.5 text-sm font-medium text-oncopper transition-colors hover:bg-copper-hi"
+          >
+            <Clock3 className="h-4 w-4" />
+            Heute
+          </Link>
+          <Link
             href={`/${safe}/portal/admin/templates`}
             className="inline-flex items-center gap-2 rounded-lg border border-hairline px-4 py-2.5 text-sm font-medium text-ink transition-colors hover:border-copper hover:text-copper"
           >

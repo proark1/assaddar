@@ -284,6 +284,14 @@ export default async function CustomerProjectPage({
   const requiredIntakeQuestions = intakeQuestions.filter((question) =>
     ["companyContext", "issues", "goals"].includes(question.id),
   );
+  const requiredIntakeProgress = requiredIntakeQuestions.map((question) => ({
+    id: question.id,
+    label: question.label,
+    done: intakeSubmitted || Boolean(intakeDefaults[question.id]?.trim()),
+  }));
+  const requiredIntakeDone = requiredIntakeProgress.filter(
+    (item) => item.done,
+  ).length;
   const optionalIntakeQuestions = intakeQuestions.filter(
     (question) =>
       !question.id.startsWith("template_") &&
@@ -597,6 +605,55 @@ export default async function CustomerProjectPage({
                 senden, wenn sich wichtige Informationen geändert haben.
               </div>
             )}
+            <div className="mt-5 rounded-lg border border-hairline bg-bg p-4">
+              <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+                <div>
+                  <div className="text-sm font-medium text-ink">
+                    Pflichtfortschritt: {requiredIntakeDone}/
+                    {requiredIntakeProgress.length}
+                  </div>
+                  <p className="mt-1 text-[12px] leading-relaxed text-muted">
+                    Diese drei Antworten reichen, damit Assad eine belastbare
+                    erste Analyse starten kann. Zusatzfragen bleiben optional.
+                  </p>
+                </div>
+                <Badge
+                  tone={
+                    requiredIntakeDone === requiredIntakeProgress.length
+                      ? "green"
+                      : "amber"
+                  }
+                >
+                  {requiredIntakeDone === requiredIntakeProgress.length
+                    ? "Startbereit"
+                    : "Noch offen"}
+                </Badge>
+              </div>
+              <div className="mt-4 grid gap-3 md:grid-cols-3">
+                {requiredIntakeProgress.map((item, index) => (
+                  <div
+                    key={item.id}
+                    className={`rounded-lg border p-3 ${
+                      item.done
+                        ? "border-success/25 bg-success/10"
+                        : "border-copper/25 bg-copper/10"
+                    }`}
+                  >
+                    <div className="flex items-center justify-between gap-2">
+                      <span className="font-mono text-[10.5px] uppercase tracking-[0.14em] text-copper">
+                        Schritt {index + 1}
+                      </span>
+                      {item.done && (
+                        <CheckCircle2 className="h-4 w-4 text-success" />
+                      )}
+                    </div>
+                    <div className="mt-2 text-sm font-medium text-ink">
+                      {item.label}
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
             <details open={!intakeSubmitted} className="mt-5">
               <summary className="cursor-pointer text-sm font-medium text-copper">
                 Fragebogen öffnen

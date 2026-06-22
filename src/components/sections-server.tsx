@@ -457,15 +457,46 @@ export function ProductsPreview({ locale }: { locale: Locale }) {
           {a.products.map((product, i) => (
             <Reveal key={product.name} delay={i * 0.05}>
               <article className="flex h-full flex-col rounded-xl border border-hairline bg-surface p-6 shadow-card">
-                <div className="font-mono text-[10.5px] uppercase tracking-[0.12em] text-copper">
-                  {product.tagline}
+                <div className="flex items-start gap-4">
+                  <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-lg border border-copper/30 bg-copper/10 font-serif text-lg text-copper">
+                    {product.name === "1tab.ai" ? "1T" : "UN"}
+                  </div>
+                  <div>
+                    <div className="font-mono text-[10.5px] uppercase tracking-[0.12em] text-copper">
+                      {product.tagline}
+                    </div>
+                    <h3 className="mt-3 font-serif text-xl text-ink">
+                      {product.name}
+                    </h3>
+                  </div>
                 </div>
-                <h3 className="mt-3 font-serif text-xl text-ink">
-                  {product.name}
-                </h3>
                 <p className="mt-3 flex-1 text-sm leading-relaxed text-ink2">
                   {product.text}
                 </p>
+                <ul className="mt-4 space-y-2 text-sm leading-relaxed text-muted">
+                  {product.bullets.slice(0, 3).map((item) => (
+                    <li key={item} className="flex gap-2">
+                      <CheckCircle2 className="mt-0.5 h-4 w-4 shrink-0 text-copper" />
+                      <span>{item}</span>
+                    </li>
+                  ))}
+                </ul>
+                <div className="mt-5 flex flex-wrap gap-3 text-sm">
+                  <a
+                    href={product.href}
+                    className="inline-flex items-center gap-1.5 text-copper"
+                  >
+                    Website
+                    <ArrowRight className="h-3.5 w-3.5" />
+                  </a>
+                  <a
+                    href={product.repoHref}
+                    className="inline-flex items-center gap-1.5 text-muted transition-colors hover:text-copper"
+                  >
+                    GitHub: {product.repo}
+                    <ArrowRight className="h-3.5 w-3.5" />
+                  </a>
+                </div>
               </article>
             </Reveal>
           ))}
@@ -482,6 +513,132 @@ export function ProductsPreview({ locale }: { locale: Locale }) {
             </Link>
           </div>
         </Reveal>
+      </Container>
+    </Section>
+  );
+}
+
+export function MiniCaseStudies({ locale }: { locale: Locale }) {
+  const isDe = locale === "de";
+  const cases = isDe
+    ? [
+        {
+          icon: Stethoscope,
+          title: "Allgemeinarzt in Deutschland",
+          problem:
+            "Telefon, Rezeptanfragen, Dokumentation und Patientenrückfragen erzeugen täglich unnötige Unterbrechungen.",
+          solution:
+            "ASDAR priorisiert Intake, Terminlogik, Vorlagen und automatisierte Patientenkommunikation.",
+          result:
+            "Weniger manuelle Rückfragen, klarere Abläufe und schneller sichtbare Entlastung für das Praxisteam.",
+        },
+        {
+          icon: Car,
+          title: "Autohaus in Deutschland",
+          problem:
+            "Leads, Probefahrten, Angebote, Finanzierung und Nachfass-E-Mails liegen oft über mehrere Tools verteilt.",
+          solution:
+            "Lead-Triage, Angebotsbausteine, Follow-ups und Statusupdates werden strukturiert und automatisierbar gemacht.",
+          result:
+            "Schnellere Reaktion auf Anfragen und konsistentere Kommunikation bis zum Verkauf.",
+        },
+        {
+          icon: SprayCan,
+          title: "Textilreinigung",
+          problem:
+            "Aufträge, Reklamationen, Abholzeiten und Kundenkommunikation laufen stark manuell.",
+          solution:
+            "Digitale Auftragsübersicht, Standardantworten, Statuslogik und einfache Automatisierungen für Wiederholfälle.",
+          result:
+            "Mehr Überblick im Tagesgeschäft und weniger Zeitverlust durch wiederkehrende Fragen.",
+        },
+      ]
+    : [
+        {
+          icon: Stethoscope,
+          title: "General practice in Germany",
+          problem:
+            "Calls, prescription requests, documentation, and patient questions interrupt the team every day.",
+          solution:
+            "ASDAR prioritizes intake, appointment logic, templates, and automated patient communication.",
+          result:
+            "Fewer manual follow-ups, clearer workflows, and faster relief for the practice team.",
+        },
+        {
+          icon: Car,
+          title: "Car dealership in Germany",
+          problem:
+            "Leads, test drives, offers, financing, and follow-up emails are spread across tools.",
+          solution:
+            "Lead triage, offer modules, follow-ups, and status updates are structured for automation.",
+          result:
+            "Faster responses to inquiries and more consistent communication through the sales process.",
+        },
+        {
+          icon: SprayCan,
+          title: "Dry cleaner",
+          problem:
+            "Orders, complaints, pickup windows, and customer communication are handled manually.",
+          solution:
+            "Digital order overview, standard replies, status logic, and simple automations for repeat cases.",
+          result:
+            "More operational clarity and less time lost to recurring questions.",
+        },
+      ];
+
+  return (
+    <Section className="border-t border-hairline">
+      <Container>
+        <Reveal>
+          <Kicker>{isDe ? "Beispiele" : "Examples"}</Kicker>
+          <h2 className="mt-5 max-w-3xl font-serif text-3xl font-normal text-ink md:text-[40px]">
+            {isDe
+              ? "So wird KI-Beratung konkret."
+              : "This is how AI consulting becomes concrete."}
+          </h2>
+          <p className="mt-4 max-w-2xl text-base leading-relaxed text-ink2">
+            {isDe
+              ? "Nicht jede Branche braucht dieselbe Lösung. Der Startpunkt ist immer ein echter Prozess, der heute Zeit, Qualität oder Umsatz kostet."
+              : "Not every industry needs the same solution. The starting point is always a real process that costs time, quality, or revenue today."}
+          </p>
+        </Reveal>
+        <div className="mt-12 grid gap-5 lg:grid-cols-3">
+          {cases.map((item, index) => {
+            const Icon = item.icon;
+            return (
+              <Reveal key={item.title} delay={index * 0.05}>
+                <article className="h-full rounded-xl border border-hairline bg-surface p-6 shadow-card">
+                  <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-copper/10 text-copper">
+                    <Icon className="h-5 w-5" />
+                  </div>
+                  <h3 className="mt-4 text-base font-medium text-ink">
+                    {item.title}
+                  </h3>
+                  <div className="mt-4 space-y-3 text-sm leading-relaxed text-ink2">
+                    <p>
+                      <span className="font-medium text-ink">
+                        {isDe ? "Problem:" : "Problem:"}
+                      </span>{" "}
+                      {item.problem}
+                    </p>
+                    <p>
+                      <span className="font-medium text-ink">
+                        {isDe ? "Ansatz:" : "Approach:"}
+                      </span>{" "}
+                      {item.solution}
+                    </p>
+                    <p>
+                      <span className="font-medium text-ink">
+                        {isDe ? "Ergebnis:" : "Result:"}
+                      </span>{" "}
+                      {item.result}
+                    </p>
+                  </div>
+                </article>
+              </Reveal>
+            );
+          })}
+        </div>
       </Container>
     </Section>
   );

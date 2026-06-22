@@ -44,7 +44,14 @@ export type AdminProjectAction = {
   tone: PortalActionTone;
   title: string;
   body: string;
-  hrefView: "setup" | "guidance" | "communication" | "delivery" | "billing" | "access";
+  hrefView:
+    | "setup"
+    | "guidance"
+    | "meeting"
+    | "communication"
+    | "delivery"
+    | "billing"
+    | "access";
   cta: string;
   priority: number;
 };
@@ -82,6 +89,28 @@ export type ConsultantCopyTemplate = {
   title: string;
   body: string;
   content: string;
+};
+
+export type ConsultingCopilotBrief = {
+  summary: string;
+  missingInformation: string[];
+  suggestedQuestions: string[];
+  quickWins: string[];
+  automationIdeas: string[];
+  nextActions: string[];
+  nextCustomerUpdate: {
+    title: string;
+    body: string;
+  };
+};
+
+export type MeetingModePlan = {
+  focus: string;
+  agenda: string[];
+  livePrompts: string[];
+  decisionChecklist: string[];
+  afterCallActions: string[];
+  customerSummaryDraft: string;
 };
 
 export type AiProviderComparison = {
@@ -579,6 +608,94 @@ export function buildConsultantWorkflow(
       ],
     },
   ];
+}
+
+export function buildConsultingCopilotBrief(
+  bundle: ProjectBundle,
+): ConsultingCopilotBrief {
+  const template = matchConsultingTemplate(bundle.organization.industry);
+  const diagnosis = buildProjectDiagnosis(bundle);
+  const customerAction = buildCustomerNextActions(bundle)[0];
+  const adminAction = buildAdminProjectActions(bundle)[0];
+  const context =
+    bundle.project.summary ||
+    bundle.intelligence.companyContext ||
+    `${bundle.organization.name} wird in der Branche ${bundle.organization.industry} beraten.`;
+  const summary = [
+    context,
+    `Readiness: ${diagnosis.readinessScore}/100 (${diagnosis.readinessLabel}).`,
+    `Aktuelle Phase: ${formatStage(bundle.project.asdarStage)}.`,
+    bundle.project.nextStep
+      ? `Nächster sichtbarer Schritt: ${bundle.project.nextStep}`
+      : `Empfohlener Startpunkt: ${template.kickoffGoal}`,
+  ].join("\n\n");
+
+  const suggestedQuestions = [
+    ...diagnosis.missingInputs.map(
+      (item) => `Was müssen wir zu "${item}" konkret wissen, um entscheiden zu können?`,
+    ),
+    ...template.discoveryQuestions,
+  ].slice(0, 7);
+
+  const nextActions = [
+    adminAction
+      ? `${adminAction.cta}: ${adminAction.title}`
+      : "Projektstand prüfen und nächste Beratungshandlung festlegen.",
+    customerAction && customerAction.id !== "no-action"
+      ? `Kunde: ${customerAction.title}`
+      : "Kunde: aktuell nichts Dringendes offen.",
+    diagnosis.recommendedTasks[0] ?? `Quick Win prüfen: ${template.quickWins[0]}`,
+    "Nach dem nächsten Kontakt ein kurzes Kundenupdate veröffentlichen.",
+  ].filter(Boolean);
+
+  return {
+    summary,
+    missingInformation: diagnosis.missingInputs,
+    suggestedQuestions,
+    quickWins: diagnosis.opportunities.slice(0, 5),
+    automationIdeas: template.automationIdeas.slice(0, 5),
+    nextActions,
+    nextCustomerUpdate: buildCustomerUpdateDraft(bundle),
+  };
+}
+
+export function buildMeetingModePlan(bundle: ProjectBundle): MeetingModePlan {
+  const template = matchConsultingTemplate(bundle.organization.industry);
+  const diagnosis = buildProjectDiagnosis(bundle);
+  const copilot = buildConsultingCopilotBrief(bundle);
+  const primaryGap = diagnosis.missingInputs[0];
+  const primaryQuickWin = diagnosis.opportunities[0] ?? template.quickWins[0];
+
+  return {
+    focus: primaryGap
+      ? `Heute klären: ${primaryGap}`
+      : `Heute entscheiden: erster Pilot für ${primaryQuickWin}`,
+    agenda: [
+      `Projektstand in ${formatStage(bundle.project.asdarStage)} kurz bestätigen.`,
+      ...template.callAgenda.slice(0, 3),
+      "Nächsten Schritt mit Owner, Datum und Erfolgskriterium festlegen.",
+    ],
+    livePrompts: [
+      "Bitte zeigen Sie ein echtes Beispiel aus der letzten Woche.",
+      "Welche Entscheidung musste jemand treffen, und welche Information hat gefehlt?",
+      "Was würde passieren, wenn dieser Schritt morgen halbautomatisch läuft?",
+      ...copilot.suggestedQuestions.slice(0, 3),
+    ].slice(0, 6),
+    decisionChecklist: [
+      "Problem konkret beschrieben",
+      "Datenquelle oder Dokumentbeispiel bekannt",
+      "Owner beim Kunden benannt",
+      "Quick Win oder Pilot eingegrenzt",
+      "Nächstes Datum festgelegt",
+    ],
+    afterCallActions: [
+      "Meeting-Notiz speichern",
+      "Kundenupdate veröffentlichen",
+      "Aufgaben und Meilenstein aktualisieren",
+      "Falls nötig Reminder oder Datei-Anfrage senden",
+    ],
+    customerSummaryDraft: copilot.nextCustomerUpdate.body,
+  };
 }
 
 export function buildCustomerUpdateDraft(bundle: ProjectBundle) {
