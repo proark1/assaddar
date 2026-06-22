@@ -4,7 +4,9 @@ import {
   Building,
   Building2,
   Car,
+  CheckCircle2,
   Factory,
+  FileCheck2,
   GraduationCap,
   HardHat,
   HeartPulse,
@@ -15,6 +17,7 @@ import {
   Stethoscope,
   Truck,
   UtensilsCrossed,
+  Workflow,
   UsersRound,
   type LucideIcon,
 } from "lucide-react";
@@ -277,6 +280,103 @@ export function Proof({ t }: { t: Dict["proof"] }) {
             <p className="mt-5 max-w-2xl text-base leading-relaxed text-ink2">
               {t.body}
             </p>
+          </div>
+        </Reveal>
+      </Container>
+    </Section>
+  );
+}
+
+export function TrustSignals({ locale }: { locale: Locale }) {
+  const isDe = locale === "de";
+  const items = isDe
+    ? [
+        {
+          icon: Workflow,
+          title: "Vom Prozess zum Pilot",
+          body: "Kein abstrakter KI-Vortrag: ein echter Ablauf wird analysiert, priorisiert und in einen testbaren Automatisierungsschritt übersetzt.",
+        },
+        {
+          icon: FileCheck2,
+          title: "Klare Unterlagen",
+          body: "Kunden sehen Status, Aufgaben, Dateien, Angebote, Rechnungen und nächste Schritte im Portal. Interne Beratungsnotizen bleiben privat.",
+        },
+        {
+          icon: CheckCircle2,
+          title: "Messbare nächste Schritte",
+          body: "Jedes Projekt endet nicht bei Ideen, sondern bei konkreten Quick Wins, Verantwortlichkeiten und einer pragmatischen Roadmap.",
+        },
+      ]
+    : [
+        {
+          icon: Workflow,
+          title: "From process to pilot",
+          body: "No abstract AI talk: one real workflow is analyzed, prioritized, and translated into a testable automation step.",
+        },
+        {
+          icon: FileCheck2,
+          title: "Clear project documents",
+          body: "Clients see status, tasks, files, proposals, invoices, and next steps in the portal. Internal consulting notes stay private.",
+        },
+        {
+          icon: CheckCircle2,
+          title: "Measurable next steps",
+          body: "Every project moves from ideas to concrete quick wins, owners, and a pragmatic roadmap.",
+        },
+      ];
+
+  const metrics = isDe
+    ? ["Prozessanalyse", "KI-Potenziale", "Portal-Transparenz", "Umsetzungsplan"]
+    : ["Process analysis", "AI opportunities", "Portal transparency", "Implementation plan"];
+
+  return (
+    <Section className="border-t border-hairline bg-surface2">
+      <Container>
+        <Reveal>
+          <Kicker>{isDe ? "Was Kunden bekommen" : "What clients get"}</Kicker>
+          <h2 className="mt-5 max-w-3xl font-serif text-3xl font-normal text-ink md:text-[40px]">
+            {isDe
+              ? "Beratung, die im Projekt sichtbar bleibt."
+              : "Consulting that stays visible throughout the project."}
+          </h2>
+          <p className="mt-4 max-w-2xl text-base leading-relaxed text-ink2">
+            {isDe
+              ? "Der Kunde sieht Fortschritt, offene Punkte und Ergebnisse. Assad sieht intern die Diagnose, Playbooks, Vorlagen und nächste Beratungsaktionen."
+              : "The client sees progress, open items, and deliverables. Assad sees the internal diagnosis, playbooks, templates, and next consulting actions."}
+          </p>
+        </Reveal>
+
+        <div className="mt-10 grid gap-5 md:grid-cols-3">
+          {items.map((item, index) => {
+            const Icon = item.icon;
+            return (
+              <Reveal key={item.title} delay={index * 0.05}>
+                <article className="h-full rounded-xl border border-hairline bg-surface p-6 shadow-card">
+                  <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-copper/10 text-copper">
+                    <Icon className="h-5 w-5" />
+                  </div>
+                  <h3 className="mt-4 text-base font-medium text-ink">
+                    {item.title}
+                  </h3>
+                  <p className="mt-2 text-sm leading-relaxed text-ink2">
+                    {item.body}
+                  </p>
+                </article>
+              </Reveal>
+            );
+          })}
+        </div>
+
+        <Reveal delay={0.12}>
+          <div className="mt-8 flex flex-wrap gap-2">
+            {metrics.map((metric) => (
+              <span
+                key={metric}
+                className="rounded-md border border-copper/30 bg-copper/10 px-3 py-2 text-[12px] text-copper"
+              >
+                {metric}
+              </span>
+            ))}
           </div>
         </Reveal>
       </Container>

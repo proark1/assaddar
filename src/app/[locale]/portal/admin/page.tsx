@@ -3,11 +3,14 @@ import Link from "next/link";
 import {
   AlertTriangle,
   ArrowRight,
+  Bell,
   BookOpen,
+  CheckCircle2,
   Clock3,
   CreditCard,
   FolderKanban,
   Gauge,
+  History,
   Search,
   Users,
 } from "lucide-react";
@@ -17,11 +20,17 @@ import { buildAttentionItems } from "@/lib/portal/automation";
 import { requireAdmin } from "@/lib/portal/auth";
 import { listProjectBundlesForUser, readStore } from "@/lib/portal/store";
 import {
+  formatDate,
   formatStage,
   formatStatus,
   projectStatuses,
 } from "@/lib/portal/format";
-import { buildAdminCommandCenter } from "@/lib/portal/operations";
+import {
+  buildAdminCommandCenter,
+  buildAdminNotificationCenter,
+  buildAdminProjectActions,
+  buildProjectTimeline,
+} from "@/lib/portal/operations";
 import { effectiveConsultingTemplates } from "@/lib/portal/templates";
 import {
   Badge,
@@ -67,6 +76,18 @@ export default async function AdminPage({
   );
   const attentionItems = allBundles.flatMap(buildAttentionItems);
   const commandCenter = buildAdminCommandCenter(allBundles);
+  const notifications = buildAdminNotificationCenter(allBundles);
+  const latestActivity = allBundles
+    .flatMap((bundle) =>
+      buildProjectTimeline(bundle)
+        .slice(0, 4)
+        .map((item) => ({
+          ...item,
+          organizationName: bundle.organization.name,
+        })),
+    )
+    .sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime())
+    .slice(0, 8);
   const selectedTemplateId =
     consultingTemplates.some((template) => template.id === query.template)
       ? query.template
@@ -239,6 +260,105 @@ export default async function AdminPage({
             </div>
           </PortalCard>
 
+          <div className="grid gap-5 xl:grid-cols-2">
+            <PortalCard>
+              <PortalSectionTitle
+                eyebrow="Inbox"
+                title="Notification Center"
+              >
+                Neue Kundensignale, offene Rechnungen und Projekte, die ein
+                sichtbares Update brauchen.
+              </PortalSectionTitle>
+              <div className="mt-5 space-y-3">
+                {notifications.slice(0, 6).map((item) => (
+                  <Link
+                    key={item.id}
+                    href={`/${safe}/portal/admin/projects/${item.projectId}?view=${item.hrefView}`}
+                    className={`block rounded-lg border p-3 transition-colors hover:border-copper ${
+                      item.tone === "red"
+                        ? "border-critical/30 bg-critical/10"
+                        : item.tone === "green"
+                          ? "border-success/25 bg-success/10"
+                          : "border-hairline bg-bg"
+                    }`}
+                  >
+                    <div className="flex items-start justify-between gap-3">
+                      <div className="flex gap-3">
+                        {item.tone === "green" ? (
+                          <CheckCircle2 className="mt-0.5 h-4 w-4 shrink-0 text-success" />
+                        ) : (
+                          <Bell
+                            className={`mt-0.5 h-4 w-4 shrink-0 ${
+                              item.tone === "red" ? "text-critical" : "text-copper"
+                            }`}
+                          />
+                        )}
+                        <div>
+                          <div className="text-sm font-medium text-ink">
+                            {item.title}
+                          </div>
+                          <p className="mt-1 line-clamp-2 text-[12px] leading-relaxed text-muted">
+                            {item.body}
+                          </p>
+                        </div>
+                      </div>
+                      <span className="shrink-0 text-[12px] font-medium text-copper">
+                        {item.cta}
+                      </span>
+                    </div>
+                  </Link>
+                ))}
+                {notifications.length === 0 && (
+                  <p className="text-sm text-muted">
+                    Keine neuen Benachrichtigungen.
+                  </p>
+                )}
+              </div>
+            </PortalCard>
+
+            <PortalCard>
+              <PortalSectionTitle
+                eyebrow="Timeline"
+                title="Letzte Aktivität"
+              >
+                Der schnellste Blick darauf, wo in den Projekten zuletzt etwas
+                passiert ist.
+              </PortalSectionTitle>
+              <div className="mt-5 space-y-3">
+                {latestActivity.map((item) => (
+                  <Link
+                    key={`${item.projectId}-${item.type}-${item.id}`}
+                    href={`/${safe}/portal/admin/projects/${item.projectId}`}
+                    className="flex gap-3 rounded-lg border border-hairline bg-bg p-3 transition-colors hover:border-copper"
+                  >
+                    <History className="mt-0.5 h-4 w-4 shrink-0 text-copper" />
+                    <div>
+                      <div className="flex flex-wrap items-center gap-2">
+                        <Badge tone={item.tone === "red" ? "red" : "neutral"}>
+                          {item.type}
+                        </Badge>
+                        <span className="text-[12px] text-muted">
+                          {formatDate(item.date)}
+                        </span>
+                      </div>
+                      <div className="mt-2 text-sm font-medium text-ink">
+                        {item.organizationName}: {item.title}
+                      </div>
+                      <p className="mt-1 line-clamp-2 text-[12px] leading-relaxed text-muted">
+                        {item.body}
+                      </p>
+                    </div>
+                  </Link>
+                ))}
+                {latestActivity.length === 0 && (
+                  <p className="text-sm text-muted">
+                    Noch keine Aktivität vorhanden.
+                  </p>
+                )}
+              </div>
+            </PortalCard>
+          </div>
+
           <PortalCard>
             <PortalSectionTitle
               eyebrow="Heute"
@@ -377,7 +497,9 @@ export default async function AdminPage({
             </div>
           </PortalCard>
 
-          {bundles.map((bundle) => (
+          {bundles.map((bundle) => {
+            const nextBestAction = buildAdminProjectActions(bundle)[0];
+            return (
             <Link
               key={bundle.project.id}
               href={`/${safe}/portal/admin/projects/${bundle.project.id}`}
@@ -420,6 +542,29 @@ export default async function AdminPage({
                     "Noch keinen nächsten Schritt definiert."}
                 </p>
               </div>
+              {nextBestAction && (
+                <div
+                  className={`mt-3 rounded-lg border p-3 text-sm ${
+                    nextBestAction.tone === "red"
+                      ? "border-critical/30 bg-critical/10"
+                      : nextBestAction.tone === "green"
+                        ? "border-success/25 bg-success/10"
+                        : "border-copper/25 bg-copper/10"
+                  }`}
+                >
+                  <div className="flex flex-wrap items-center justify-between gap-2">
+                    <div className="font-medium text-ink">
+                      Next Best Action
+                    </div>
+                    <span className="text-[12px] font-medium text-copper">
+                      {nextBestAction.cta}
+                    </span>
+                  </div>
+                  <p className="mt-1 leading-relaxed text-muted">
+                    {nextBestAction.title} · {nextBestAction.body}
+                  </p>
+                </div>
+              )}
               <div className="mt-5 grid gap-3 text-sm sm:grid-cols-4">
                 <div>
                   <div className="font-medium text-ink">
@@ -449,7 +594,8 @@ export default async function AdminPage({
                 </div>
               </div>
             </Link>
-          ))}
+            );
+          })}
           {bundles.length === 0 && (
             <PortalCard>
               <p className="text-sm text-muted">

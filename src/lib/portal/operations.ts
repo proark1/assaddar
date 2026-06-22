@@ -1,6 +1,8 @@
 import {
   isApproval,
+  isCustomerComment,
   isCustomerIntake,
+  isReminder,
   isStructuredUpdate,
 } from "./automation";
 import { formatCurrency, formatDate, formatStage } from "./format";
@@ -51,6 +53,35 @@ export type ConsultantWorkflowBlock = {
   title: string;
   body: string;
   items: string[];
+};
+
+export type ProjectTimelineItem = {
+  id: string;
+  projectId: string;
+  date: string;
+  type: string;
+  title: string;
+  body: string;
+  tone: PortalActionTone;
+};
+
+export type PortalNotification = {
+  id: string;
+  projectId: string;
+  tone: PortalActionTone;
+  title: string;
+  body: string;
+  cta: string;
+  hrefView: AdminProjectAction["hrefView"];
+  createdAt: string;
+  priority: number;
+};
+
+export type ConsultantCopyTemplate = {
+  id: string;
+  title: string;
+  body: string;
+  content: string;
 };
 
 export type AiProviderComparison = {
@@ -105,6 +136,10 @@ function customerUpdates(bundle: ProjectBundle) {
     .sort((a, b) => dateMs(b.createdAt) - dateMs(a.createdAt));
 }
 
+function sortTimeline(items: ProjectTimelineItem[]) {
+  return items.sort((a, b) => dateMs(b.date) - dateMs(a.date));
+}
+
 function approvalIds(bundle: ProjectBundle, type: "FILE" | "MILESTONE") {
   return new Set(
     bundle.updates
@@ -120,6 +155,107 @@ export function hasCustomerIntake(bundle: ProjectBundle) {
 
 export function latestCustomerUpdateDate(bundle: ProjectBundle) {
   return customerUpdates(bundle)[0]?.createdAt;
+}
+
+export function buildProjectTimeline(
+  bundle: ProjectBundle,
+  scope: "admin" | "customer" = "admin",
+): ProjectTimelineItem[] {
+  const customerScope = scope === "customer";
+  const visibleUpdates = bundle.updates.filter((update) =>
+    customerScope ? update.visibility === "customer" : true,
+  );
+  const visibleTasks = bundle.tasks.filter((task) =>
+    customerScope ? task.visibleToCustomer : true,
+  );
+  const visibleMilestones = bundle.milestones.filter((milestone) =>
+    customerScope ? milestone.visibleToCustomer : true,
+  );
+  const visibleFiles = bundle.files.filter((file) =>
+    customerScope ? file.visibility === "customer" : true,
+  );
+  const visibleInvoices = bundle.invoices.filter((invoice) =>
+    customerScope ? invoice.status !== "draft" : true,
+  );
+
+  const timeline: ProjectTimelineItem[] = [
+    ...visibleUpdates.map((update) => ({
+      id: update.id,
+      projectId: bundle.project.id,
+      date: update.createdAt,
+      type: isCustomerComment(update.title)
+        ? "Kommentar"
+        : isCustomerIntake(update.title)
+          ? "Intake"
+          : isApproval(update.title)
+            ? "Freigabe"
+            : isReminder(update.title)
+              ? "Reminder"
+              : update.visibility === "customer"
+                ? "Kundenupdate"
+                : "Intern",
+      title: update.title
+        .replace(/^Audit:\s*/, "")
+        .replace(/^Kommentar:\s*/, "")
+        .replace(/^Intake:\s*/, "")
+        .replace(/^Freigabe:\s*/, "")
+        .replace(/^Erinnerung:\s*/, ""),
+      body: update.body.replace(/^APPROVAL_[A-Z]+:[^\n]+\n/, ""),
+      tone: (update.visibility === "customer" ? "green" : "copper") as PortalActionTone,
+    })),
+    ...visibleTasks.map((task) => ({
+      id: task.id,
+      projectId: bundle.project.id,
+      date: task.createdAt,
+      type: "Aufgabe",
+      title: task.title,
+      body: `Owner: ${task.owner === "assad" ? "Assad" : "Kunde"} · Status: ${task.status}${
+        task.dueDate ? ` · fällig ${formatDate(task.dueDate)}` : ""
+      }`,
+      tone: (task.status === "done"
+        ? "green"
+        : isPast(task.dueDate)
+          ? "red"
+          : "amber") as PortalActionTone,
+    })),
+    ...visibleMilestones.map((milestone) => ({
+      id: milestone.id,
+      projectId: bundle.project.id,
+      date: milestone.createdAt,
+      type: "Meilenstein",
+      title: milestone.title,
+      body: `${milestone.status}${milestone.dueDate ? ` · ${formatDate(milestone.dueDate)}` : ""}`,
+      tone: (milestone.status === "done" ? "green" : "copper") as PortalActionTone,
+    })),
+    ...visibleFiles.map((file) => ({
+      id: file.id,
+      projectId: bundle.project.id,
+      date: file.uploadedAt,
+      type: "Datei",
+      title: file.name,
+      body: file.description || `${file.visibility} · ${Math.ceil(file.size / 1024)} KB`,
+      tone: (file.visibility === "customer" ? "green" : "copper") as PortalActionTone,
+    })),
+    ...visibleInvoices.map((invoice) => ({
+      id: invoice.id,
+      projectId: bundle.project.id,
+      date: invoice.createdAt,
+      type: "Rechnung",
+      title: invoice.number,
+      body: `${formatCurrency(invoice.amountCents, invoice.currency)} · ${invoice.status}${
+        invoice.dueDate ? ` · fällig ${formatDate(invoice.dueDate)}` : ""
+      }`,
+      tone: (
+        invoice.status === "paid"
+          ? "green"
+          : invoice.status === "overdue" || isPast(invoice.dueDate)
+            ? "red"
+            : "amber"
+      ) as PortalActionTone,
+    })),
+  ];
+
+  return sortTimeline(timeline);
 }
 
 export function buildCustomerNextActions(bundle: ProjectBundle): CustomerNextAction[] {
@@ -619,6 +755,215 @@ export function buildAdminCommandCenter(bundles: ProjectBundle[]) {
     },
     focusItems,
   };
+}
+
+export function buildAdminNotificationCenter(
+  bundles: ProjectBundle[],
+): PortalNotification[] {
+  const notifications: PortalNotification[] = [];
+
+  for (const bundle of bundles) {
+    if (bundle.project.status === "completed") continue;
+
+    for (const comment of bundle.updates.filter((update) =>
+      isCustomerComment(update.title),
+    )) {
+      notifications.push({
+        id: `comment-${comment.id}`,
+        projectId: bundle.project.id,
+        tone: "copper",
+        title: `${bundle.organization.name}: neue Kundenfrage`,
+        body: comment.body.split("\n\n").slice(1).join("\n\n") || comment.body,
+        cta: "Antworten",
+        hrefView: "communication",
+        createdAt: comment.createdAt,
+        priority: 7,
+      });
+    }
+
+    for (const intake of bundle.updates.filter((update) =>
+      isCustomerIntake(update.title),
+    )) {
+      notifications.push({
+        id: `intake-${intake.id}`,
+        projectId: bundle.project.id,
+        tone: "green",
+        title: `${bundle.organization.name}: Fragebogen eingereicht`,
+        body: "Die Antworten können jetzt in die interne Analyse übernommen werden.",
+        cta: "Analyse öffnen",
+        hrefView: "guidance",
+        createdAt: intake.createdAt,
+        priority: 6,
+      });
+    }
+
+    for (const approval of bundle.updates.filter((update) =>
+      isApproval(update.title),
+    )) {
+      notifications.push({
+        id: `approval-${approval.id}`,
+        projectId: bundle.project.id,
+        tone: "green",
+        title: `${bundle.organization.name}: Freigabe erhalten`,
+        body: approval.title.replace(/^Freigabe:\s*/, ""),
+        cta: "Projekt prüfen",
+        hrefView: "delivery",
+        createdAt: approval.createdAt,
+        priority: 5,
+      });
+    }
+
+    for (const file of bundle.files.filter(
+      (entry) => entry.visibility === "customer" && entry.category === "customer_upload",
+    )) {
+      notifications.push({
+        id: `file-${file.id}`,
+        projectId: bundle.project.id,
+        tone: "copper",
+        title: `${bundle.organization.name}: Kundendatei hochgeladen`,
+        body: file.name,
+        cta: "Dateien öffnen",
+        hrefView: "delivery",
+        createdAt: file.uploadedAt,
+        priority: 5,
+      });
+    }
+
+    const staleAge = daysSince(latestCustomerUpdateDate(bundle));
+    if (staleAge > 7) {
+      notifications.push({
+        id: `stale-${bundle.project.id}`,
+        projectId: bundle.project.id,
+        tone: "amber",
+        title: `${bundle.organization.name}: Kundenupdate fällig`,
+        body: `Seit ${Number.isFinite(staleAge) ? staleAge : "mehreren"} Tagen kein normales Kundenupdate.`,
+        cta: "Update schreiben",
+        hrefView: "communication",
+        createdAt: bundle.project.updatedAt,
+        priority: 8,
+      });
+    }
+
+    for (const invoice of bundle.invoices.filter(
+      (entry) =>
+        entry.status !== "draft" &&
+        entry.status !== "paid" &&
+        (entry.status === "overdue" || isPast(entry.dueDate)),
+    )) {
+      notifications.push({
+        id: `invoice-${invoice.id}`,
+        projectId: bundle.project.id,
+        tone: "red",
+        title: `${bundle.organization.name}: Rechnung offen`,
+        body: `${invoice.number} · ${formatCurrency(invoice.amountCents, invoice.currency)}`,
+        cta: "Reminder senden",
+        hrefView: "billing",
+        createdAt: invoice.dueDate ?? invoice.createdAt,
+        priority: 9,
+      });
+    }
+  }
+
+  return notifications.sort((a, b) => {
+    if (b.priority !== a.priority) return b.priority - a.priority;
+    return dateMs(b.createdAt) - dateMs(a.createdAt);
+  });
+}
+
+export function buildConsultantCopyTemplates(
+  bundle: ProjectBundle,
+): ConsultantCopyTemplate[] {
+  const template = matchConsultingTemplate(bundle.organization.industry);
+  const diagnosis = buildProjectDiagnosis(bundle);
+  const nextAction = buildCustomerNextActions(bundle)[0];
+  const primaryOpportunity = diagnosis.opportunities[0] ?? template.quickWins[0];
+  const nextStep = bundle.project.nextStep || template.kickoffGoal;
+
+  return [
+    {
+      id: "kickoff",
+      title: "Kickoff E-Mail",
+      body: "Für neue Kunden direkt nach Projektstart.",
+      content: [
+        `Hallo ${bundle.organization.name},`,
+        "",
+        `wir starten mit ${bundle.project.name}. Ziel ist, die wichtigsten Prozesse, Engpässe und Automatisierungschancen strukturiert zu erfassen.`,
+        "",
+        "Als nächstes bitte den Projektfragebogen im Portal ausfüllen. Danach priorisiere ich die ersten Quick Wins und bereite den nächsten Beratungsschritt vor.",
+        "",
+        "Viele Grüße",
+        "Assad",
+      ].join("\n"),
+    },
+    {
+      id: "meeting-summary",
+      title: "Meeting-Zusammenfassung",
+      body: "Nach einem Call als kundenfreundliches Update nutzbar.",
+      content: [
+        "Kurzes Update zum Termin:",
+        "",
+        `Aktueller Fokus: ${primaryOpportunity}`,
+        `ASDAR Phase: ${formatStage(bundle.project.asdarStage)}`,
+        `Nächster Schritt: ${nextStep}`,
+        "",
+        nextAction && nextAction.id !== "no-action"
+          ? `Von Kundenseite offen: ${nextAction.title}`
+          : "Von Kundenseite ist aktuell nichts Dringendes offen.",
+      ].join("\n"),
+    },
+    {
+      id: "proposal",
+      title: "Angebotsstruktur",
+      body: "Schneller Scope für Proposal oder PDF-Angebot.",
+      content: [
+        `Projekt: ${bundle.project.name}`,
+        `Ausgangslage: ${bundle.project.summary || bundle.intelligence.companyContext || "Noch zu konkretisieren."}`,
+        "",
+        "Leistungsumfang:",
+        `- Analyse und Priorisierung nach ASDAR`,
+        `- Quick-Win-Konzept: ${primaryOpportunity}`,
+        "- Umsetzungsfahrplan mit Aufgaben, Meilensteinen und Kundentransparenz",
+        "",
+        "Ergebnis:",
+        "- klare Prozessdiagnose",
+        "- priorisierte Automatisierungschancen",
+        "- nächster Pilot mit Owner, Datenbedarf und Erfolgskriterium",
+      ].join("\n"),
+    },
+    {
+      id: "process-analysis",
+      title: "Prozessanalyse",
+      body: "Interne Struktur für Analyse oder Workshop.",
+      content: [
+        "Prozessanalyse:",
+        "",
+        "1. Auslöser: Wann startet der Prozess?",
+        "2. Input: Welche Daten, Dokumente oder Nachrichten kommen rein?",
+        "3. Entscheidung: Wer entscheidet anhand welcher Kriterien?",
+        "4. Tooling: Welche Systeme werden genutzt?",
+        "5. Output: Was muss am Ende entstehen?",
+        "6. Reibung: Wo entstehen Wartezeit, Fehler oder doppelte Eingaben?",
+        "",
+        `Branchenfragen: ${template.discoveryQuestions.slice(0, 3).join(" · ")}`,
+      ].join("\n"),
+    },
+    {
+      id: "final-report",
+      title: "Abschlussbericht-Outline",
+      body: "Struktur für den letzten Kundenbericht.",
+      content: [
+        `Abschlussbericht: ${bundle.project.name}`,
+        "",
+        "1. Ausgangslage und Ziel",
+        "2. Wichtigste Erkenntnisse",
+        "3. Quick Wins und priorisierte Automatisierungen",
+        "4. Empfohlene Roadmap",
+        "5. Risiken, Voraussetzungen und nächste Entscheidungen",
+        "",
+        `Readiness: ${diagnosis.readinessScore}/100 (${diagnosis.readinessLabel})`,
+      ].join("\n"),
+    },
+  ];
 }
 
 function textFilled(value: string) {

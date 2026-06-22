@@ -13,6 +13,7 @@ import {
   MethodSection,
   Proof,
   ProductsPreview,
+  TrustSignals,
 } from "@/components/sections-server";
 import { AiExamples } from "@/components/examples";
 import { AsdarScore } from "@/components/asdar-score";
@@ -101,6 +102,7 @@ export default async function Home({
         <Angebote t={t.angebote} />
         <Branchen t={t.branchen} />
         <Proof t={t.proof} />
+        <TrustSignals locale={safe} />
         <About t={t.about} locale={safe} />
         <ProductsPreview locale={safe} />
         <Blog t={t.blog} />

@@ -9,10 +9,12 @@ import {
   BookOpen,
   CheckCircle2,
   ClipboardList,
+  Copy,
   CreditCard,
   Download,
   Eye,
   FileUp,
+  History,
   Lightbulb,
   MessagesSquare,
   Plus,
@@ -75,9 +77,11 @@ import {
 import {
   buildAiProviderComparison,
   buildAdminProjectActions,
+  buildConsultantCopyTemplates,
   buildConsultantWorkflow,
   buildCustomerUpdateDraft,
   buildProjectDiagnosis,
+  buildProjectTimeline,
 } from "@/lib/portal/operations";
 import {
   Badge,
@@ -157,8 +161,10 @@ export default async function AdminProjectPage({
   const diagnosis = buildProjectDiagnosis(bundle);
   const adminActions = buildAdminProjectActions(bundle);
   const consultantWorkflow = buildConsultantWorkflow(bundle);
+  const consultantCopyTemplates = buildConsultantCopyTemplates(bundle);
   const customerUpdateDraft = buildCustomerUpdateDraft(bundle);
   const aiComparison = buildAiProviderComparison(bundle);
+  const projectTimeline = buildProjectTimeline(bundle);
   const similar = findSimilarProjectBundles(bundles, bundle);
   const matchedTemplate = matchConsultingTemplate(bundle.organization.industry);
   const template =
@@ -598,6 +604,63 @@ export default async function AdminProjectPage({
             </form>
           </PortalCard>
 
+          <PortalCard className={viewClass("setup")}>
+            <PortalSectionTitle
+              eyebrow="Timeline"
+              title="Projektaktivität auf einen Blick"
+            >
+              Alles Wichtige aus Updates, Aufgaben, Dateien, Rechnungen,
+              Freigaben und internen Aktionen in einer chronologischen Sicht.
+            </PortalSectionTitle>
+            <div className="mt-5 space-y-3">
+              {projectTimeline.slice(0, 12).map((item) => (
+                <article
+                  key={`${item.type}-${item.id}`}
+                  className="flex gap-3 rounded-lg border border-hairline bg-bg p-3"
+                >
+                  <History
+                    className={`mt-0.5 h-4 w-4 shrink-0 ${
+                      item.tone === "red"
+                        ? "text-critical"
+                        : item.tone === "green"
+                          ? "text-success"
+                          : "text-copper"
+                    }`}
+                  />
+                  <div>
+                    <div className="flex flex-wrap items-center gap-2">
+                      <Badge
+                        tone={
+                          item.tone === "red"
+                            ? "red"
+                            : item.tone === "green"
+                              ? "green"
+                              : "neutral"
+                        }
+                      >
+                        {item.type}
+                      </Badge>
+                      <span className="text-[12px] text-muted">
+                        {formatDate(item.date)}
+                      </span>
+                    </div>
+                    <h3 className="mt-2 text-sm font-medium text-ink">
+                      {item.title}
+                    </h3>
+                    <p className="mt-1 line-clamp-3 whitespace-pre-line text-sm leading-relaxed text-ink2">
+                      {item.body}
+                    </p>
+                  </div>
+                </article>
+              ))}
+              {projectTimeline.length === 0 && (
+                <p className="text-sm text-muted">
+                  Noch keine Aktivität vorhanden.
+                </p>
+              )}
+            </div>
+          </PortalCard>
+
           <PortalCard className={viewClass("guidance")}>
             <PortalSectionTitle
               eyebrow="Beratungsmodus"
@@ -902,6 +965,43 @@ export default async function AdminProjectPage({
               {comments.length === 0 && (
                 <p className="text-sm text-muted">Noch keine Kommentare.</p>
               )}
+            </div>
+          </PortalCard>
+
+          <PortalCard className={viewClass("communication")}>
+            <PortalSectionTitle
+              eyebrow="Vorlagen"
+              title="Schnelle Texte für Beratung und Kunde"
+            >
+              Nutzbare Entwürfe für Kickoff, Meeting-Zusammenfassung,
+              Angebot, Prozessanalyse und Abschlussbericht.
+            </PortalSectionTitle>
+            <div className="mt-5 grid gap-4 lg:grid-cols-2">
+              {consultantCopyTemplates.map((templateEntry) => (
+                <details
+                  key={templateEntry.id}
+                  className="rounded-lg border border-hairline bg-bg p-4"
+                >
+                  <summary className="cursor-pointer list-none">
+                    <div className="flex items-start gap-3">
+                      <Copy className="mt-0.5 h-4 w-4 shrink-0 text-copper" />
+                      <div>
+                        <div className="text-sm font-medium text-ink">
+                          {templateEntry.title}
+                        </div>
+                        <p className="mt-1 text-[12px] leading-relaxed text-muted">
+                          {templateEntry.body}
+                        </p>
+                      </div>
+                    </div>
+                  </summary>
+                  <textarea
+                    readOnly
+                    value={templateEntry.content}
+                    className={`${textareaClass} mt-4 min-h-56 font-mono text-[12px] leading-relaxed`}
+                  />
+                </details>
+              ))}
             </div>
           </PortalCard>
         </div>

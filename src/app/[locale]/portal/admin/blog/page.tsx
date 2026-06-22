@@ -7,7 +7,10 @@ import {
   generateBlogHeroAction,
   deleteBlogHeroAction,
 } from "@/app/actions/blog-hero";
-import { BlogHeroCompressor } from "@/components/portal/blog-hero-compressor";
+import {
+  BlogHeroBulkCompressor,
+  BlogHeroCompressor,
+} from "@/components/portal/blog-hero-compressor";
 import {
   Badge,
   PortalCard,
@@ -40,6 +43,11 @@ export default async function BlogHeroAdminPage({
   const user = await requireAdmin(safe);
   const query = await searchParams;
   const heroes = await getBlogHeroMap();
+  const activeHeroCount = Object.keys(heroes).length;
+  const totalHeroSize = Object.values(heroes).reduce(
+    (sum, hero) => sum + hero.size,
+    0,
+  );
 
   return (
     <PortalShell
@@ -74,6 +82,18 @@ export default async function BlogHeroAdminPage({
           gespeichert und sofort auf der Artikelseite ausgespielt. Ohne
           generiertes Bild zeigt der Artikel den gebrandeten SVG-Hero.
         </PortalSectionTitle>
+        <div className="mt-5 flex flex-col gap-4 rounded-lg border border-hairline bg-bg p-4 sm:flex-row sm:items-center sm:justify-between">
+          <div>
+            <div className="text-sm font-medium text-ink">
+              {activeHeroCount} aktive Hero-Bilder · {formatBytes(totalHeroSize)}
+            </div>
+            <p className="mt-1 text-[12px] leading-relaxed text-muted">
+              Bulk-Komprimierung bereitet pro Bild eine Vorschau vor. Gespeichert
+              wird bewusst pro Artikel über den jeweiligen Speichern-Button.
+            </p>
+          </div>
+          <BlogHeroBulkCompressor count={activeHeroCount} />
+        </div>
       </PortalCard>
 
       <div className="grid gap-5 lg:grid-cols-2">
@@ -109,6 +129,7 @@ export default async function BlogHeroAdminPage({
                   slug={post.slug}
                   imageUrl={imageUrl}
                   currentSize={existing.size}
+                  alreadyCompressed={existing.provider.includes("compressed")}
                 />
               )}
 

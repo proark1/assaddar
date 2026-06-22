@@ -1,7 +1,9 @@
 "use client";
 
-import { useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
+
+const RECOMMENDED_IMAGE_SIZE = 350 * 1024;
 
 function formatBytes(value: number) {
   if (!Number.isFinite(value) || value <= 0) return "0 KB";
@@ -27,12 +29,14 @@ type BlogHeroCompressorProps = {
   slug: string;
   imageUrl: string;
   currentSize: number;
+  alreadyCompressed?: boolean;
 };
 
 export function BlogHeroCompressor({
   slug,
   imageUrl,
   currentSize,
+  alreadyCompressed = false,
 }: BlogHeroCompressorProps) {
   const router = useRouter();
   const [compressed, setCompressed] = useState<{
@@ -53,7 +57,7 @@ export function BlogHeroCompressor({
       : 0
     : 0;
 
-  async function compressImage() {
+  const compressImage = useCallback(async () => {
     setError("");
     setStatus("");
     setIsCompressing(true);
@@ -102,7 +106,7 @@ export function BlogHeroCompressor({
     } finally {
       setIsCompressing(false);
     }
-  }
+  }, [compressed?.url, imageUrl]);
 
   function saveCompressed() {
     if (!compressed) return;
@@ -144,6 +148,21 @@ export function BlogHeroCompressor({
     })();
   }
 
+  useEffect(() => {
+    function handleCompressAll() {
+      if (!isCompressing && !isSaving) {
+        void compressImage();
+      }
+    }
+
+    window.addEventListener("blog-heroes:compress-all", handleCompressAll);
+    return () => {
+      window.removeEventListener("blog-heroes:compress-all", handleCompressAll);
+    };
+  }, [compressImage, isCompressing, isSaving]);
+
+  const isOverRecommendedSize = currentSize > RECOMMENDED_IMAGE_SIZE;
+
   return (
     <div className="mt-4 rounded-lg border border-hairline bg-bg p-4">
       <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
@@ -153,6 +172,22 @@ export function BlogHeroCompressor({
           </div>
           <div className="mt-1 text-sm text-ink">
             Aktuell: <span className="font-medium">{formatBytes(currentSize)}</span>
+          </div>
+          <div className="mt-1 flex flex-wrap gap-2 text-[12px]">
+            <span
+              className={`rounded-md border px-2 py-1 ${
+                isOverRecommendedSize
+                  ? "border-copper/30 bg-copper/10 text-copper"
+                  : "border-success/25 bg-success/10 text-success"
+              }`}
+            >
+              Empfehlung: max. {formatBytes(RECOMMENDED_IMAGE_SIZE)}
+            </span>
+            {alreadyCompressed && (
+              <span className="rounded-md border border-success/25 bg-success/10 px-2 py-1 text-success">
+                Komprimiert gespeichert
+              </span>
+            )}
           </div>
           {compressed && (
             <div className="mt-1 text-sm text-ink">
@@ -206,5 +241,26 @@ export function BlogHeroCompressor({
         <p className="mt-3 text-[12px] leading-relaxed text-critical">{error}</p>
       )}
     </div>
+  );
+}
+
+export function BlogHeroBulkCompressor({ count }: { count: number }) {
+  const [isRunning, setIsRunning] = useState(false);
+
+  function compressAll() {
+    setIsRunning(true);
+    window.dispatchEvent(new CustomEvent("blog-heroes:compress-all"));
+    window.setTimeout(() => setIsRunning(false), 1200);
+  }
+
+  return (
+    <button
+      type="button"
+      onClick={compressAll}
+      disabled={isRunning || count === 0}
+      className="inline-flex items-center justify-center rounded-lg border border-hairline px-4 py-2.5 text-sm font-medium text-ink transition-colors hover:border-copper hover:text-copper disabled:cursor-wait disabled:opacity-60"
+    >
+      {isRunning ? "Bilder werden geprüft..." : `Alle Bilder komprimieren (${count})`}
+    </button>
   );
 }
