@@ -1,18 +1,23 @@
 import {
   ArrowRight,
+  BarChart3,
   Briefcase,
   Building,
   Building2,
   Car,
   CheckCircle2,
+  Clock3,
   Factory,
   FileCheck2,
+  FileSpreadsheet,
   GraduationCap,
   HardHat,
   HeartPulse,
   Landmark,
+  Mail,
   ShoppingCart,
   ShieldCheck,
+  Sparkles,
   SprayCan,
   Stethoscope,
   Truck,
@@ -117,6 +122,101 @@ export function Market({ t }: { t: Dict["market"] }) {
   );
 }
 
+export function EvidenceNumbers({ locale }: { locale: Locale }) {
+  const isDe = locale === "de";
+  const stats = isDe
+    ? [
+        {
+          value: "88 %",
+          label:
+            "der befragten Organisationen berichten regelmäßige KI-Nutzung in mindestens einer Business-Funktion.",
+          source: "McKinsey State of AI 2025",
+          href: "https://www.mckinsey.com/capabilities/quantumblack/our-insights/the-state-of-ai",
+        },
+        {
+          value: "80 %",
+          label:
+            "der globalen Belegschaft fehlt laut Microsoft genug Zeit oder Energie für die steigenden Anforderungen.",
+          source: "Microsoft Work Trend Index 2025",
+          href: "https://www.microsoft.com/en-us/worklab/work-trend-index/2025-the-year-the-frontier-firm-is-born",
+        },
+        {
+          value: "0,5-3,4 PP",
+          label:
+            "zusätzliches jährliches Produktivitätswachstum könnte Arbeitsautomation laut McKinsey beitragen.",
+          source: "McKinsey GenAI Productivity Frontier",
+          href: "https://www.mckinsey.com/capabilities/tech-and-ai/our-insights/the-economic-potential-of-generative-ai-the-next-productivity-frontier",
+        },
+      ]
+    : [
+        {
+          value: "88%",
+          label:
+            "of surveyed organizations report regular AI use in at least one business function.",
+          source: "McKinsey State of AI 2025",
+          href: "https://www.mckinsey.com/capabilities/quantumblack/our-insights/the-state-of-ai",
+        },
+        {
+          value: "80%",
+          label:
+            "of the global workforce lacks enough time or energy for rising demands, according to Microsoft.",
+          source: "Microsoft Work Trend Index 2025",
+          href: "https://www.microsoft.com/en-us/worklab/work-trend-index/2025-the-year-the-frontier-firm-is-born",
+        },
+        {
+          value: "0.5-3.4 pp",
+          label:
+            "additional annual productivity growth could be contributed by work automation, according to McKinsey.",
+          source: "McKinsey GenAI Productivity Frontier",
+          href: "https://www.mckinsey.com/capabilities/tech-and-ai/our-insights/the-economic-potential-of-generative-ai-the-next-productivity-frontier",
+        },
+      ];
+
+  return (
+    <Section className="border-t border-hairline">
+      <Container>
+        <Reveal>
+          <Kicker>{isDe ? "Externe Signale" : "External signals"}</Kicker>
+          <h2 className="mt-5 max-w-3xl font-serif text-3xl font-normal leading-tight text-ink md:text-[40px]">
+            {isDe
+              ? "Die Frage ist nicht mehr, ob KI kommt. Die Frage ist, welcher Prozess zuerst einfacher wird."
+              : "The question is no longer whether AI is coming. The question is which process gets simpler first."}
+          </h2>
+          <p className="mt-4 max-w-2xl text-base leading-relaxed text-ink2">
+            {isDe
+              ? "Die Zahlen zeigen den Druck: KI ist angekommen, Teams sind ausgelastet, und Produktivität entsteht nur, wenn aus Tools konkrete Abläufe werden."
+              : "The numbers show the pressure: AI has arrived, teams are stretched, and productivity only appears when tools become concrete workflows."}
+          </p>
+        </Reveal>
+
+        <div className="mt-10 grid gap-5 md:grid-cols-3">
+          {stats.map((item, index) => (
+            <Reveal key={item.source} delay={index * 0.05}>
+              <article className="flex h-full flex-col rounded-xl border border-hairline bg-surface p-6 shadow-card">
+                <div className="font-serif text-4xl text-copper md:text-5xl">
+                  {item.value}
+                </div>
+                <p className="mt-4 flex-1 text-sm leading-relaxed text-ink2">
+                  {item.label}
+                </p>
+                <a
+                  href={item.href}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="mt-5 inline-flex items-center gap-1.5 font-mono text-[11px] uppercase tracking-[0.12em] text-copper transition-colors hover:text-copper-hi"
+                >
+                  {item.source}
+                  <ArrowRight className="h-3.5 w-3.5" />
+                </a>
+              </article>
+            </Reveal>
+          ))}
+        </div>
+      </Container>
+    </Section>
+  );
+}
+
 export function MethodSection({ t }: { t: Dict["method"] }) {
   return (
     <Section id="methode">
@@ -165,6 +265,218 @@ export function MethodSection({ t }: { t: Dict["method"] }) {
         <p className="mt-12 font-mono text-[12px] uppercase tracking-[0.12em] text-copper">
           {t.tagline}
         </p>
+      </Container>
+    </Section>
+  );
+}
+
+export function BeforeAfterWorkflow({ locale }: { locale: Locale }) {
+  const isDe = locale === "de";
+  const before = isDe
+    ? [
+        {
+          icon: Mail,
+          title: "E-Mail-Pingpong",
+          body: "Anfragen, Rückfragen und Status liegen in einzelnen Postfächern.",
+        },
+        {
+          icon: FileSpreadsheet,
+          title: "Excel & Einzeldokumente",
+          body: "Informationen sind verteilt, doppelt gepflegt und schwer auszuwerten.",
+        },
+        {
+          icon: Clock3,
+          title: "Manuelle Nacharbeit",
+          body: "Wiederkehrende Aufgaben kosten Zeit, ohne besser zu werden.",
+        },
+      ]
+    : [
+        {
+          icon: Mail,
+          title: "Email back-and-forth",
+          body: "Requests, follow-ups, and status updates live in individual inboxes.",
+        },
+        {
+          icon: FileSpreadsheet,
+          title: "Excel & separate documents",
+          body: "Information is scattered, duplicated, and hard to evaluate.",
+        },
+        {
+          icon: Clock3,
+          title: "Manual rework",
+          body: "Recurring tasks consume time without improving.",
+        },
+      ];
+
+  const after = isDe
+    ? [
+        {
+          icon: FileCheck2,
+          title: "Geführter Intake",
+          body: "Alle relevanten Projektinformationen landen strukturiert im Portal.",
+        },
+        {
+          icon: Sparkles,
+          title: "KI-gestützte Vorarbeit",
+          body: "Vorlagen, Ideen, Statusentwuerfe und Roadmaps entstehen schneller.",
+        },
+        {
+          icon: BarChart3,
+          title: "Messbare Roadmap",
+          body: "Quick Wins, Aufgaben, Entscheidungen und nächste Schritte bleiben sichtbar.",
+        },
+      ]
+    : [
+        {
+          icon: FileCheck2,
+          title: "Guided intake",
+          body: "All relevant project information lands in the portal in a structured way.",
+        },
+        {
+          icon: Sparkles,
+          title: "AI-supported preparation",
+          body: "Templates, ideas, status drafts, and roadmaps are prepared faster.",
+        },
+        {
+          icon: BarChart3,
+          title: "Measurable roadmap",
+          body: "Quick wins, tasks, decisions, and next steps stay visible.",
+        },
+      ];
+
+  const impact = isDe
+    ? [
+        { label: "Transparenz", before: 35, after: 86 },
+        { label: "Reaktionsgeschwindigkeit", before: 42, after: 82 },
+        { label: "Automatisierbarkeit", before: 28, after: 78 },
+      ]
+    : [
+        { label: "Transparency", before: 35, after: 86 },
+        { label: "Response speed", before: 42, after: 82 },
+        { label: "Automation readiness", before: 28, after: 78 },
+      ];
+
+  return (
+    <Section className="border-t border-hairline bg-surface2">
+      <Container>
+        <Reveal>
+          <Kicker>{isDe ? "Vorher / Nachher" : "Before / after"}</Kicker>
+          <h2 className="mt-5 max-w-3xl font-serif text-3xl font-normal leading-tight text-ink md:text-[40px]">
+            {isDe
+              ? "Die Landingpage soll sofort zeigen, was sich praktisch verbessert."
+              : "The landing page should immediately show what improves in practice."}
+          </h2>
+          <p className="mt-4 max-w-2xl text-base leading-relaxed text-ink2">
+            {isDe
+              ? "ASDAR macht aus gewachsenen Abläufen eine beratbare, digitale und automatisierbare Projektstruktur."
+              : "ASDAR turns grown-over workflows into a consultable, digital, and automatable project structure."}
+          </p>
+        </Reveal>
+
+        <div className="mt-12 grid gap-5 lg:grid-cols-[1fr_0.35fr_1fr] lg:items-stretch">
+          <div className="rounded-xl border border-hairline bg-surface p-5 shadow-card md:p-6">
+            <div className="font-mono text-[11px] uppercase tracking-[0.14em] text-muted">
+              {isDe ? "Heute oft" : "Often today"}
+            </div>
+            <div className="mt-5 space-y-4">
+              {before.map((item) => {
+                const Icon = item.icon;
+                return (
+                  <div key={item.title} className="flex gap-4">
+                    <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg border border-hairline text-muted">
+                      <Icon className="h-5 w-5" />
+                    </div>
+                    <div>
+                      <h3 className="text-sm font-medium text-ink">{item.title}</h3>
+                      <p className="mt-1 text-sm leading-relaxed text-muted">
+                        {item.body}
+                      </p>
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          </div>
+
+          <div className="flex items-center justify-center">
+            <div className="flex w-full items-center justify-center gap-3 rounded-xl border border-copper/30 bg-copper/10 px-5 py-4 text-copper lg:h-full lg:flex-col">
+              <Workflow className="h-6 w-6" />
+              <span className="font-mono text-[12px] uppercase tracking-[0.14em]">
+                ASDAR
+              </span>
+              <ArrowRight className="h-4 w-4 lg:rotate-90" />
+            </div>
+          </div>
+
+          <div className="rounded-xl border border-copper/30 bg-surface p-5 shadow-card md:p-6">
+            <div className="font-mono text-[11px] uppercase tracking-[0.14em] text-copper">
+              {isDe ? "Nach der Analyse" : "After the analysis"}
+            </div>
+            <div className="mt-5 space-y-4">
+              {after.map((item) => {
+                const Icon = item.icon;
+                return (
+                  <div key={item.title} className="flex gap-4">
+                    <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-copper/10 text-copper">
+                      <Icon className="h-5 w-5" />
+                    </div>
+                    <div>
+                      <h3 className="text-sm font-medium text-ink">{item.title}</h3>
+                      <p className="mt-1 text-sm leading-relaxed text-ink2">
+                        {item.body}
+                      </p>
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          </div>
+        </div>
+
+        <Reveal delay={0.1}>
+          <div className="mt-6 rounded-xl border border-hairline bg-surface p-5 shadow-card md:p-6">
+            <div className="grid gap-5 md:grid-cols-3">
+              {impact.map((item) => (
+                <div key={item.label}>
+                  <div className="mb-3 text-sm font-medium text-ink">
+                    {item.label}
+                  </div>
+                  <div className="space-y-2">
+                    <div>
+                      <div className="mb-1 flex justify-between text-[12px] text-muted">
+                        <span>{isDe ? "Vorher" : "Before"}</span>
+                        <span>{item.before}%</span>
+                      </div>
+                      <div className="h-2 overflow-hidden rounded-full bg-hairline">
+                        <div
+                          className="h-full rounded-full bg-muted/50"
+                          style={{ width: `${item.before}%` }}
+                        />
+                      </div>
+                    </div>
+                    <div>
+                      <div className="mb-1 flex justify-between text-[12px] text-copper">
+                        <span>{isDe ? "Mit ASDAR" : "With ASDAR"}</span>
+                        <span>{item.after}%</span>
+                      </div>
+                      <div className="h-2 overflow-hidden rounded-full bg-copper/10">
+                        <div
+                          className="h-full rounded-full bg-copper"
+                          style={{ width: `${item.after}%` }}
+                        />
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              ))}
+            </div>
+            <p className="mt-5 text-[12px] leading-relaxed text-muted">
+              {isDe
+                ? "Visualisierung als Beratungsmodell, keine pauschale Leistungszusage. Die echten Werte entstehen projektspezifisch."
+                : "Visualization as a consulting model, not a generic performance promise. Real values are project-specific."}
+            </p>
+          </div>
+        </Reveal>
       </Container>
     </Section>
   );

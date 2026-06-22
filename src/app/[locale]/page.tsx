@@ -5,8 +5,10 @@ import { AssaddarPlatformWidget } from "@/components/assaddar-platform-widget";
 import {
   About,
   Angebote,
+  BeforeAfterWorkflow,
   Blog,
   Branchen,
+  EvidenceNumbers,
   FinalCta,
   Hero,
   Market,
@@ -19,6 +21,7 @@ import {
 import { AiExamples } from "@/components/examples";
 import { AsdarScore } from "@/components/asdar-score";
 import { Faq } from "@/components/faq";
+import { ReadinessAndRoiTools } from "@/components/landing-tools";
 
 export function generateStaticParams() {
   return locales.map((locale) => ({ locale }));
@@ -97,7 +100,10 @@ export default async function Home({
       <main id="main" tabIndex={-1} className="outline-none">
         <Hero t={t.hero} />
         <Market t={t.market} />
+        <EvidenceNumbers locale={safe} />
+        <ReadinessAndRoiTools locale={safe} />
         <MethodSection t={t.method} />
+        <BeforeAfterWorkflow locale={safe} />
         <AsdarScore t={t.score} />
         <AiExamples t={t.examples} />
         <Angebote t={t.angebote} />
