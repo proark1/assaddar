@@ -1,6 +1,6 @@
 import type { Metadata } from "next";
 import Link from "next/link";
-import { ArrowRight } from "lucide-react";
+import { ArrowRight, ExternalLink } from "lucide-react";
 import { getDict, isLocale, SITE_URL, type Locale } from "@/content";
 import { aboutContent } from "@/about";
 import { Nav } from "@/components/nav";
@@ -120,26 +120,30 @@ export default async function AboutPage({
             </div>
           </section>
 
-          {/* Timeline */}
+          {/* Products */}
           <section className="mt-16">
             <h2 className="font-serif text-2xl font-normal text-ink md:text-3xl">
-              {a.timelineTitle}
+              {a.productsTitle}
             </h2>
-            <div className="mt-8 space-y-8 border-l border-hairline pl-6 md:pl-8">
-              {a.timeline.map((e, i) => (
-                <div key={i} className="relative">
-                  <span className="absolute -left-[31px] top-1.5 h-2.5 w-2.5 rounded-full border-[1.5px] border-copper bg-bg md:-left-[39px]" />
-                  <div className="font-mono text-[11px] uppercase tracking-[0.12em] text-muted">
-                    {e.period} · {e.world}
+            <div className="mt-8 grid gap-5 md:grid-cols-2">
+              {a.products.map((product) => (
+                <article
+                  key={product.name}
+                  className="flex h-full flex-col rounded-xl border border-hairline bg-surface p-6 shadow-card"
+                >
+                  <div className="font-mono text-[11px] uppercase tracking-[0.12em] text-copper">
+                    {product.tagline}
                   </div>
-                  <h3 className="mt-1 text-base font-medium text-ink">
-                    {e.role}{" "}
-                    <span className="text-copper">· {e.org}</span>
+                  <h3 className="mt-3 font-serif text-2xl font-normal text-ink">
+                    {product.name}
                   </h3>
-                  <ul className="mt-3 space-y-1.5">
-                    {e.bullets.map((b, j) => (
+                  <p className="mt-3 text-sm leading-relaxed text-ink2">
+                    {product.text}
+                  </p>
+                  <ul className="mt-5 flex-1 space-y-2">
+                    {product.bullets.map((b) => (
                       <li
-                        key={j}
+                        key={b}
                         className="flex gap-2 text-sm leading-relaxed text-ink2"
                       >
                         <span className="mt-2 h-1 w-1 shrink-0 rounded-full bg-copper" />
@@ -147,7 +151,27 @@ export default async function AboutPage({
                       </li>
                     ))}
                   </ul>
-                </div>
+                  <div className="mt-6 flex flex-wrap gap-3">
+                    <Link
+                      href={product.href}
+                      target="_blank"
+                      rel="noreferrer"
+                      className="inline-flex items-center gap-1.5 text-sm font-medium text-copper transition-colors hover:text-copper-hi"
+                    >
+                      Website
+                      <ExternalLink className="h-3.5 w-3.5" />
+                    </Link>
+                    <Link
+                      href={product.repoHref}
+                      target="_blank"
+                      rel="noreferrer"
+                      className="inline-flex items-center gap-1.5 text-sm font-medium text-ink2 transition-colors hover:text-copper"
+                    >
+                      GitHub: {product.repo}
+                      <ExternalLink className="h-3.5 w-3.5" />
+                    </Link>
+                  </div>
+                </article>
               ))}
             </div>
           </section>

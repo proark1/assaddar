@@ -2,11 +2,13 @@ import type { Locale } from "@/content";
 
 export type AboutStat = { value: string; label: string };
 export type AboutWorld = { tag: string; title: string; org: string; text: string };
-export type AboutTimeline = {
-  period: string;
-  role: string;
-  org: string;
-  world: string;
+export type AboutProduct = {
+  name: string;
+  href: string;
+  repo: string;
+  repoHref: string;
+  tagline: string;
+  text: string;
   bullets: string[];
 };
 export type AboutWhy = { title: string; text: string };
@@ -18,8 +20,8 @@ export type AboutContent = {
   stats: AboutStat[];
   worldsTitle: string;
   worlds: AboutWorld[];
-  timelineTitle: string;
-  timeline: AboutTimeline[];
+  productsTitle: string;
+  products: AboutProduct[];
   expertiseTitle: string;
   expertise: string[];
   reachTitle: string;
@@ -71,50 +73,34 @@ const de: AboutContent = {
       text: "Ich habe zwei internationale Plattform-Unternehmen von null aufgebaut, über 14 Mio. $ eingeworben und KI-gestützte Betriebsarchitekturen selbst entworfen und betrieben — mit voller P&L-Verantwortung.",
     },
   ],
-  timelineTitle: "Werdegang",
-  timeline: [
+  productsTitle: "Meine Produkte",
+  products: [
     {
-      period: "2021 – heute",
-      role: "Founder & CEO",
-      org: "OYA Play",
-      world: "Eigenes Startup",
+      name: "unmutenow.ai",
+      href: "https://unmutenow.ai",
+      repo: "socialpilotai",
+      repoHref: "https://github.com/proark1/socialpilotai",
+      tagline: "AI Communication Training Platform",
+      text:
+        "KI-gestuetzte Trainingsplattform fuer reale Kommunikationssituationen: Nutzer ueben Gespraeche mit AI-Personas, erhalten Coaching und sehen messbare Fortschritte.",
       bullets: [
-        "KI-first Publishing- und Plattform-Unternehmen mit voller Executive-Verantwortung.",
-        "2 Mio. $ Kapital eingeworben, strukturierte Investoren-Governance etabliert.",
-        "KI-gestützte Betriebsarchitektur über Marktintelligenz, Performance-Optimierung und operative Workflows.",
+        "Voice-basierte AI-Praxis-Sessions fuer soziale, berufliche und eigene Szenarien.",
+        "Coaching-Modi, Rollentausch, adaptive Schwierigkeit und Post-Session-Analytics.",
+        "Learning Paths, Voice Training, Situation Prep, Gamification und Credit Wallet.",
       ],
     },
     {
-      period: "2021 – heute",
-      role: "Founder & Chief Visionary Officer",
-      org: "MoonGaming",
-      world: "Eigenes Startup",
+      name: "1tab.ai",
+      href: "https://1tab.ai",
+      repo: "1tabai",
+      repoHref: "https://github.com/proark1/1tabai",
+      tagline: "AI-Powered Startup Operating System",
+      text:
+        "Full-Stack SaaS-Workspace fuer Gruenderteams: Research, Planung, Umsetzung und Launch in einem System statt verteilt ueber Notion, Asana, Miro und weitere Tools.",
       bullets: [
-        "Internationales digitales Plattform-Unternehmen von der Idee an aufgebaut.",
-        "12 Mio. $ Venture Capital von internationalen Investoren eingeworben.",
-        "Multi-Entity-Struktur, Cross-Border-Teams und skalierbare Monetarisierung.",
-      ],
-    },
-    {
-      period: "2019 – 2021",
-      role: "Director Global Digital Transformation",
-      org: "Bionorica",
-      world: "Mittelstand",
-      bullets: [
-        "Globale digitale Transformationsfunktion eines mittelständischen Pharmaunternehmens aufgebaut und geleitet.",
-        "Commercial Operating Model und Go-to-Market neu strukturiert.",
-        "Agile Governance und OKR eingeführt; digitale Transformation auf Board-Ebene verankert.",
-      ],
-    },
-    {
-      period: "2007 – 2019",
-      role: "Digital Lead",
-      org: "Bayer AG",
-      world: "Konzern",
-      bullets: [
-        "Digitale Transformation globaler OTC-Marken (Aspirin, Bepanthen, Rennie u. a.).",
-        "Skalierbare Performance-Marketing-Infrastruktur und datengetriebene Media-Modelle.",
-        "E-Commerce-Integration und cross-funktionale Steuerung (Marketing, IT, Regulatory, Sales).",
+        "25+ Module fuer Strategie, Aufgaben, OKR, CRM, Pitch Deck, Finance, Research und Teamarbeit.",
+        "Credit-basierte Gemini-AI ueber Supabase Edge Functions und kollaborative Workflows.",
+        "Offline-first PWA mit Supabase Auth, Postgres, Realtime, Storage und Edge Functions.",
       ],
     },
   ],
@@ -198,50 +184,34 @@ const en: AboutContent = {
       text: "I built two international platform companies from zero, raised over $14M, and designed and ran AI-enabled operating architectures myself — with full P&L accountability.",
     },
   ],
-  timelineTitle: "Career",
-  timeline: [
+  productsTitle: "My products",
+  products: [
     {
-      period: "2021 – today",
-      role: "Founder & CEO",
-      org: "OYA Play",
-      world: "Own startup",
+      name: "unmutenow.ai",
+      href: "https://unmutenow.ai",
+      repo: "socialpilotai",
+      repoHref: "https://github.com/proark1/socialpilotai",
+      tagline: "AI Communication Training Platform",
+      text:
+        "AI-powered communication training for real-world confidence: users practice conversations with AI personas, get coaching, and track measurable progress.",
       bullets: [
-        "AI-first publishing and platform company with full executive accountability.",
-        "$2M raised; structured investor governance established.",
-        "AI-enabled operating architecture across market intelligence, performance optimization, and operational workflows.",
+        "Voice-based AI practice sessions for social, business, and custom scenarios.",
+        "Coaching modes, role reversal, adaptive difficulty, and post-session analytics.",
+        "Learning paths, voice training, situation prep, gamification, and a credit wallet.",
       ],
     },
     {
-      period: "2021 – today",
-      role: "Founder & Chief Visionary Officer",
-      org: "MoonGaming",
-      world: "Own startup",
+      name: "1tab.ai",
+      href: "https://1tab.ai",
+      repo: "1tabai",
+      repoHref: "https://github.com/proark1/1tabai",
+      tagline: "AI-Powered Startup Operating System",
+      text:
+        "A full-stack SaaS workspace for startup teams: research, planning, execution, and launch in one system instead of scattered across Notion, Asana, Miro, and other tools.",
       bullets: [
-        "International digital platform company built from inception.",
-        "$12M venture capital raised from international investors.",
-        "Multi-entity structure, cross-border teams, and scalable monetization.",
-      ],
-    },
-    {
-      period: "2019 – 2021",
-      role: "Director Global Digital Transformation",
-      org: "Bionorica",
-      world: "Mittelstand",
-      bullets: [
-        "Built and led the global digital transformation function of a mid-sized pharma company.",
-        "Re-architected the commercial operating model and go-to-market.",
-        "Introduced Agile governance and OKRs; elevated transformation to board level.",
-      ],
-    },
-    {
-      period: "2007 – 2019",
-      role: "Digital Lead",
-      org: "Bayer AG",
-      world: "Corporate",
-      bullets: [
-        "Digital transformation of global OTC brands (Aspirin, Bepanthen, Rennie, and more).",
-        "Scalable performance-marketing infrastructure and data-driven media models.",
-        "E-commerce integration and cross-functional steering (marketing, IT, regulatory, sales).",
+        "25+ modules for strategy, tasks, OKRs, CRM, pitch deck, finance, research, and teamwork.",
+        "Credit-based Gemini AI through Supabase Edge Functions and collaborative workflows.",
+        "Offline-first PWA with Supabase Auth, Postgres, Realtime, Storage, and Edge Functions.",
       ],
     },
   ],
