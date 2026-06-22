@@ -1,10 +1,128 @@
 import type { Metadata } from "next";
+import Image from "next/image";
 import Link from "next/link";
-import { ArrowRight, ExternalLink } from "lucide-react";
+import {
+  ArrowRight,
+  BrainCircuit,
+  ExternalLink,
+  Layers3,
+  Mic2,
+  Rocket,
+  Sparkles,
+  Workflow,
+} from "lucide-react";
 import { aboutContent } from "@/about";
 import { getDict, isLocale, locales, SITE_URL, type Locale } from "@/content";
 import { Nav } from "@/components/nav";
 import { Footer } from "@/components/footer";
+
+type ProductStory = {
+  logoSrc: string;
+  logoAlt: string;
+  eyebrow: string;
+  headline: string;
+  summary: string;
+  audience: string;
+  core: string[];
+  proof: string[];
+  stack: string[];
+  icon: typeof Mic2;
+};
+
+const PRODUCT_STORIES: Record<Locale, Record<string, ProductStory>> = {
+  de: {
+    "unmutenow.ai": {
+      logoSrc: "/products/unmutenow-logo.png",
+      logoAlt: "unmutenow.ai Logo",
+      eyebrow: "Voice-first AI Training",
+      headline: "Ein sicherer Raum, um echte Gespräche zu üben.",
+      summary:
+        "unmutenow.ai trainiert Kommunikation nicht abstrakt, sondern in konkreten Situationen: Vorstellungsgespräch, Sales Call, schwieriges Feedback, Networking oder eigene Szenarien. Nutzer sprechen mit AI-Personas, bekommen Coaching und sehen, wo sie besser werden.",
+      audience:
+        "Für Menschen, die selbstbewusster sprechen, besser reagieren und schwierige Gespräche vorher praktisch trainieren wollen.",
+      core: [
+        "AI-Rollenspiele mit realistischen Gesprächspartnern und adaptiver Schwierigkeit.",
+        "Voice Training mit direktem Feedback zu Klarheit, Struktur und Wirkung.",
+        "Learning Paths, Situation Prep, Gamification und Fortschrittsanalyse.",
+      ],
+      proof: [
+        "Zeigt, wie KI nicht nur Text erzeugt, sondern Verhalten trainiert.",
+        "Verbindet Voice, Persona-Design, Coaching-Logik und Nutzerdaten zu einem echten Produkt.",
+        "Relevanter Beratungsbeweis für Kundenservice, Sales Enablement, HR-Training und interne Schulung.",
+      ],
+      stack: ["React", "TypeScript", "Supabase", "Gemini", "ElevenLabs", "Anam AI", "PWA"],
+      icon: Mic2,
+    },
+    "1tab.ai": {
+      logoSrc: "/products/1tab-logo.png",
+      logoAlt: "1tab.ai Logo",
+      eyebrow: "Startup Operating System",
+      headline: "Ein Arbeitsraum, der Gründerteams aus Tool-Chaos holt.",
+      summary:
+        "1tab.ai bündelt die wichtigsten Startup-Workflows in einem System: Strategie, Aufgaben, OKRs, CRM, Research, Pitch Deck, Finance, Docs und Teamarbeit. Ziel ist weniger Kontextwechsel und mehr operative Klarheit.",
+      audience:
+        "Für Gründer, kleine Teams und Startup-Operatoren, die schneller von Idee zu Umsetzung, Investorengespräch und Wachstum kommen wollen.",
+      core: [
+        "25+ Module für Strategie, Execution, CRM, Finance, Research und Teamsteuerung.",
+        "Credit-basierte Gemini-AI für Gründeraufgaben, Analysen, Texte und operative Workflows.",
+        "Offline-first PWA, Realtime-Zusammenarbeit und strukturierte Daten statt verstreuter Tools.",
+      ],
+      proof: [
+        "Zeigt, wie komplexe SaaS-Produkte modular und trotzdem nutzbar aufgebaut werden.",
+        "Verbindet Datenmodell, Workflows, AI-Credits, Rollenlogik und Produktivität in einem System.",
+        "Relevanter Beratungsbeweis für Prozessplattformen, interne Tools und AI-gestützte Workspaces.",
+      ],
+      stack: ["React", "TypeScript", "Supabase", "Postgres", "Realtime", "Gemini", "IndexedDB"],
+      icon: Layers3,
+    },
+  },
+  en: {
+    "unmutenow.ai": {
+      logoSrc: "/products/unmutenow-logo.png",
+      logoAlt: "unmutenow.ai logo",
+      eyebrow: "Voice-first AI training",
+      headline: "A safe space to practice real conversations.",
+      summary:
+        "unmutenow.ai trains communication in concrete situations: interviews, sales calls, difficult feedback, networking, or custom scenarios. Users speak with AI personas, receive coaching, and see where they improve.",
+      audience:
+        "For people who want to speak with more confidence, respond better, and rehearse difficult conversations before they matter.",
+      core: [
+        "AI roleplays with realistic conversation partners and adaptive difficulty.",
+        "Voice training with direct feedback on clarity, structure, and impact.",
+        "Learning paths, situation prep, gamification, and progress analytics.",
+      ],
+      proof: [
+        "Shows how AI can train behavior, not only generate text.",
+        "Combines voice, persona design, coaching logic, and user data into a real product.",
+        "Relevant consulting proof for customer service, sales enablement, HR training, and internal learning.",
+      ],
+      stack: ["React", "TypeScript", "Supabase", "Gemini", "ElevenLabs", "Anam AI", "PWA"],
+      icon: Mic2,
+    },
+    "1tab.ai": {
+      logoSrc: "/products/1tab-logo.png",
+      logoAlt: "1tab.ai logo",
+      eyebrow: "Startup operating system",
+      headline: "A workspace that gets startup teams out of tool chaos.",
+      summary:
+        "1tab.ai combines the core workflows of a startup in one system: strategy, tasks, OKRs, CRM, research, pitch deck, finance, docs, and teamwork. The goal is less context switching and more operational clarity.",
+      audience:
+        "For founders, small teams, and startup operators who want to move faster from idea to execution, investor conversations, and growth.",
+      core: [
+        "25+ modules for strategy, execution, CRM, finance, research, and team steering.",
+        "Credit-based Gemini AI for founder tasks, analysis, writing, and operating workflows.",
+        "Offline-first PWA, realtime collaboration, and structured data instead of scattered tools.",
+      ],
+      proof: [
+        "Shows how complex SaaS products can be modular and still usable.",
+        "Combines data model, workflows, AI credits, roles, and productivity in one system.",
+        "Relevant consulting proof for process platforms, internal tools, and AI-assisted workspaces.",
+      ],
+      stack: ["React", "TypeScript", "Supabase", "Postgres", "Realtime", "Gemini", "IndexedDB"],
+      icon: Layers3,
+    },
+  },
+};
 
 export function generateStaticParams() {
   return locales.map((locale) => ({ locale }));
@@ -49,6 +167,7 @@ export default async function MeineProduktePage({
   const t = getDict(safe);
   const a = aboutContent[safe];
   const isDe = safe === "de";
+  const stories = PRODUCT_STORIES[safe];
 
   const productsLd = {
     "@context": "https://schema.org",
@@ -94,7 +213,8 @@ export default async function MeineProduktePage({
             <span className="text-ink2">{a.productsTitle}</span>
           </nav>
 
-          <header className="mt-6 max-w-3xl">
+          <header className="mt-6 grid gap-10 lg:grid-cols-[1.1fr_0.9fr] lg:items-end">
+            <div className="max-w-3xl">
             <span className="font-mono text-[11px] uppercase tracking-[0.16em] text-copper">
               {a.productsTitle}
             </span>
@@ -108,90 +228,248 @@ export default async function MeineProduktePage({
                 ? "Diese Produkte sind mehr als Referenzen: Sie zeigen, dass ich KI-Systeme, Datenmodelle, Nutzerführung, Automatisierung und Betrieb nicht nur konzeptionell verstehe, sondern selbst umsetze."
                 : "These products are more than references: they show that I understand AI systems, data models, user flows, automation, and operations not only conceptually, but from building them myself."}
             </p>
+            </div>
+            <div className="grid grid-cols-2 gap-4">
+              {a.products.map((product) => {
+                const story = stories[product.name];
+
+                return (
+                  <div
+                    key={product.name}
+                    className="rounded-xl border border-hairline bg-surface p-5 shadow-card"
+                  >
+                    <div className="flex h-16 items-center justify-center rounded-lg bg-surface2">
+                      <Image
+                        src={story.logoSrc}
+                        alt={story.logoAlt}
+                        width={72}
+                        height={72}
+                        className="h-12 w-12 object-contain"
+                      />
+                    </div>
+                    <div className="mt-3 text-center text-sm font-medium text-ink">
+                      {product.name}
+                    </div>
+                    <div className="mt-1 text-center font-mono text-[10px] uppercase tracking-[0.1em] text-muted">
+                      {story.eyebrow}
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
           </header>
 
-          <section className="mt-14 grid gap-5 md:grid-cols-2">
+          <section className="mt-14 space-y-8">
             {a.products.map((product) => (
               <article
                 key={product.name}
-                className="flex h-full flex-col rounded-xl border border-hairline bg-surface p-6 shadow-card"
+                className="overflow-hidden rounded-xl border border-hairline bg-surface shadow-card"
               >
-                <div className="font-mono text-[10.5px] uppercase tracking-[0.12em] text-copper">
-                  {product.tagline}
-                </div>
-                <h2 className="mt-3 font-serif text-2xl font-normal text-ink">
-                  {product.name}
-                </h2>
-                <p className="mt-4 text-sm leading-relaxed text-ink2">
-                  {product.text}
-                </p>
-                <ul className="mt-5 flex-1 space-y-2">
-                  {product.bullets.map((bullet) => (
-                    <li
-                      key={bullet}
-                      className="flex gap-2 text-sm leading-relaxed text-ink2"
-                    >
-                      <span className="mt-2 h-1 w-1 shrink-0 rounded-full bg-copper" />
-                      {bullet}
-                    </li>
-                  ))}
-                </ul>
-                <div className="mt-6 flex flex-wrap gap-3">
-                  <Link
-                    href={product.href}
-                    target="_blank"
-                    rel="noreferrer"
-                    className="inline-flex items-center gap-1.5 text-sm font-medium text-copper transition-colors hover:text-copper-hi"
-                  >
-                    Website
-                    <ExternalLink className="h-3.5 w-3.5" />
-                  </Link>
-                  <Link
-                    href={product.repoHref}
-                    target="_blank"
-                    rel="noreferrer"
-                    className="inline-flex items-center gap-1.5 text-sm font-medium text-ink2 transition-colors hover:text-copper"
-                  >
-                    GitHub: {product.repo}
-                    <ExternalLink className="h-3.5 w-3.5" />
-                  </Link>
-                </div>
+                {(() => {
+                  const story = stories[product.name];
+                  const Icon = story.icon;
+
+                  return (
+                    <div className="grid gap-0 lg:grid-cols-[360px_1fr]">
+                      <div className="border-b border-hairline bg-surface2 p-8 lg:border-b-0 lg:border-r">
+                        <div className="flex h-28 w-28 items-center justify-center rounded-2xl border border-hairline bg-bg shadow-card">
+                          <Image
+                            src={story.logoSrc}
+                            alt={story.logoAlt}
+                            width={128}
+                            height={128}
+                            className="h-20 w-20 object-contain"
+                            priority={product.name === "unmutenow.ai"}
+                          />
+                        </div>
+                        <div className="mt-6 font-mono text-[10.5px] uppercase tracking-[0.12em] text-copper">
+                          {story.eyebrow}
+                        </div>
+                        <h2 className="mt-3 font-serif text-3xl font-normal leading-tight text-ink">
+                          {product.name}
+                        </h2>
+                        <p className="mt-4 text-sm leading-relaxed text-ink2">
+                          {story.audience}
+                        </p>
+                        <div className="mt-6 flex flex-wrap gap-3">
+                          <Link
+                            href={product.href}
+                            target="_blank"
+                            rel="noreferrer"
+                            className="inline-flex items-center gap-1.5 text-sm font-medium text-copper transition-colors hover:text-copper-hi"
+                          >
+                            Website
+                            <ExternalLink className="h-3.5 w-3.5" />
+                          </Link>
+                          <Link
+                            href={product.repoHref}
+                            target="_blank"
+                            rel="noreferrer"
+                            className="inline-flex items-center gap-1.5 text-sm font-medium text-ink2 transition-colors hover:text-copper"
+                          >
+                            GitHub: {product.repo}
+                            <ExternalLink className="h-3.5 w-3.5" />
+                          </Link>
+                        </div>
+                      </div>
+
+                      <div className="p-8">
+                        <div className="flex items-start gap-3">
+                          <div className="mt-1 flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-copper/10 text-copper">
+                            <Icon className="h-4 w-4" />
+                          </div>
+                          <div>
+                            <h3 className="font-serif text-2xl font-normal leading-tight text-ink">
+                              {story.headline}
+                            </h3>
+                            <p className="mt-3 text-sm leading-relaxed text-ink2">
+                              {story.summary}
+                            </p>
+                          </div>
+                        </div>
+
+                        <div className="mt-8 grid gap-6 md:grid-cols-2">
+                          <div>
+                            <div className="flex items-center gap-2 font-mono text-[10.5px] uppercase tracking-[0.12em] text-copper">
+                              <Sparkles className="h-3.5 w-3.5" />
+                              {isDe ? "Was es kann" : "What it does"}
+                            </div>
+                            <ul className="mt-4 space-y-2">
+                              {story.core.map((item) => (
+                                <li
+                                  key={item}
+                                  className="flex gap-2 text-sm leading-relaxed text-ink2"
+                                >
+                                  <span className="mt-2 h-1 w-1 shrink-0 rounded-full bg-copper" />
+                                  {item}
+                                </li>
+                              ))}
+                            </ul>
+                          </div>
+
+                          <div>
+                            <div className="flex items-center gap-2 font-mono text-[10.5px] uppercase tracking-[0.12em] text-copper">
+                              <BrainCircuit className="h-3.5 w-3.5" />
+                              {isDe ? "Was es beweist" : "What it proves"}
+                            </div>
+                            <ul className="mt-4 space-y-2">
+                              {story.proof.map((item) => (
+                                <li
+                                  key={item}
+                                  className="flex gap-2 text-sm leading-relaxed text-ink2"
+                                >
+                                  <span className="mt-2 h-1 w-1 shrink-0 rounded-full bg-copper" />
+                                  {item}
+                                </li>
+                              ))}
+                            </ul>
+                          </div>
+                        </div>
+
+                        <div className="mt-8 rounded-xl border border-hairline bg-surface2 p-5">
+                          <div className="flex items-center gap-2 font-mono text-[10.5px] uppercase tracking-[0.12em] text-copper">
+                            <Workflow className="h-3.5 w-3.5" />
+                            {isDe ? "Produktarchitektur" : "Product architecture"}
+                          </div>
+                          <div className="mt-4 flex flex-wrap gap-2">
+                            {story.stack.map((tech) => (
+                              <span
+                                key={tech}
+                                className="rounded-md border border-hairline bg-bg px-3 py-1.5 text-[12px] text-ink2"
+                              >
+                                {tech}
+                              </span>
+                            ))}
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+                  );
+                })()}
               </article>
             ))}
           </section>
 
-          <section className="mt-16 rounded-xl border border-hairline bg-surface2 p-8 shadow-card">
-            <h2 className="font-serif text-2xl font-normal text-ink md:text-3xl">
-              {isDe
-                ? "Warum das für Beratung wichtig ist"
-                : "Why this matters for consulting"}
-            </h2>
-            <div className="mt-6 grid gap-5 md:grid-cols-3">
-              {(isDe
-                ? [
-                    "Ich denke nicht nur in Folien, sondern in nutzbaren Systemen.",
-                    "Ich kenne die technischen und operativen Kompromisse aus eigener Umsetzung.",
-                    "Ich kann Kunden helfen, von Idee zu Pilot und Betrieb zu kommen.",
-                  ]
-                : [
-                    "I do not only think in slides, but in usable systems.",
-                    "I know the technical and operational tradeoffs from building myself.",
-                    "I can help clients move from idea to pilot and operations.",
-                  ]
-              ).map((point) => (
-                <div key={point} className="flex gap-2 text-sm leading-relaxed text-ink2">
-                  <span className="mt-2 h-1 w-1 shrink-0 rounded-full bg-copper" />
-                  {point}
+          <section className="mt-16 grid gap-5 md:grid-cols-3">
+            {(isDe
+              ? [
+                  {
+                    icon: Rocket,
+                    title: "Vom Konzept zum Produkt",
+                    text: "Beide Produkte zeigen, dass ich nicht bei Strategie stehenbleibe, sondern Produktlogik, UX, Datenmodell und Betrieb zusammenbringe.",
+                  },
+                  {
+                    icon: Workflow,
+                    title: "Automatisierung im echten Betrieb",
+                    text: "Die Systeme arbeiten mit Auth, Datenbanken, AI-APIs, Credits, Realtime-Funktionen und wiederkehrenden Workflows.",
+                  },
+                  {
+                    icon: BrainCircuit,
+                    title: "Relevanz für Beratung",
+                    text: "Genau diese Erfahrung fließt in Kundenprojekte ein: Prozesse analysieren, sauber strukturieren und erst dann sinnvoll mit KI automatisieren.",
+                  },
+                ]
+              : [
+                  {
+                    icon: Rocket,
+                    title: "From concept to product",
+                    text: "Both products show that I do not stop at strategy, but connect product logic, UX, data models, and operations.",
+                  },
+                  {
+                    icon: Workflow,
+                    title: "Automation in real operations",
+                    text: "The systems use auth, databases, AI APIs, credits, realtime features, and recurring workflows.",
+                  },
+                  {
+                    icon: BrainCircuit,
+                    title: "Relevant for consulting",
+                    text: "This experience feeds directly into client work: analyze processes, structure them cleanly, then automate with AI where it makes sense.",
+                  },
+                ]
+            ).map((item) => {
+              const Icon = item.icon;
+
+              return (
+                <div
+                  key={item.title}
+                  className="rounded-xl border border-hairline bg-surface p-6 shadow-card"
+                >
+                  <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-copper/10 text-copper">
+                    <Icon className="h-5 w-5" />
+                  </div>
+                  <h2 className="mt-4 text-base font-medium text-ink">
+                    {item.title}
+                  </h2>
+                  <p className="mt-2 text-sm leading-relaxed text-ink2">
+                    {item.text}
+                  </p>
                 </div>
-              ))}
+              );
+            })}
+          </section>
+
+          <section className="mt-16 rounded-xl border border-hairline bg-surface2 p-8 shadow-card">
+            <div className="grid gap-8 md:grid-cols-[1fr_auto] md:items-center">
+              <div>
+                <h2 className="font-serif text-2xl font-normal text-ink md:text-3xl">
+                  {isDe
+                    ? "Was meine Produkte über meine Beratung sagen"
+                    : "What my products say about my consulting"}
+                </h2>
+                <p className="mt-4 max-w-2xl text-sm leading-relaxed text-ink2">
+                  {isDe
+                    ? "Ich bringe die Perspektive eines Beraters und eines Builders zusammen. Dadurch kann ich nicht nur erklären, was KI leisten könnte, sondern realistisch einschätzen, was technisch, organisatorisch und wirtschaftlich tragfähig ist."
+                    : "I combine the perspective of an advisor and a builder. That means I can not only explain what AI could do, but judge what is technically, organizationally, and economically viable."}
+                </p>
+              </div>
+              <Link
+                href={`/${safe}/termin`}
+                className="group inline-flex items-center gap-1.5 text-sm font-medium text-copper"
+              >
+                {isDe ? "Über ein Projekt sprechen" : "Talk about a project"}
+                <ArrowRight className="h-3.5 w-3.5 transition-transform group-hover:translate-x-0.5" />
+              </Link>
             </div>
-            <Link
-              href={`/${safe}/termin`}
-              className="group mt-8 inline-flex items-center gap-1.5 text-sm font-medium text-copper"
-            >
-              {isDe ? "Über ein Projekt sprechen" : "Talk about a project"}
-              <ArrowRight className="h-3.5 w-3.5 transition-transform group-hover:translate-x-0.5" />
-            </Link>
           </section>
         </div>
       </main>

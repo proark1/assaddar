@@ -373,6 +373,36 @@ const de = {
         title: "Agenturen & Dienstleister",
         copy: "Mehr Output ohne mehr Chaos. Briefings, Angebote, Recherchen, Protokolle und Reportings lassen sich standardisieren und automatisieren.",
       },
+      {
+        icon: "Factory",
+        title: "Produktion & Industrie",
+        copy: "Stabilere Abläufe auf Shopfloor und im Backoffice. KI hilft bei Qualitätsdokumentation, Schichtübergaben, Wartung, Arbeitsanweisungen und Produktionsreporting.",
+      },
+      {
+        icon: "Truck",
+        title: "Logistik & Transport",
+        copy: "Weniger manuelle Koordination bei Touren, Sendungen und Kundenupdates. Digitale Workflows verbessern Disposition, Statusmeldungen und Ausnahmemanagement.",
+      },
+      {
+        icon: "GraduationCap",
+        title: "Bildung & Weiterbildung",
+        copy: "Lerninhalte, Kursorganisation und Teilnehmerkommunikation effizienter steuern. KI unterstützt bei Materialien, Feedback, Planung und Wissenszugang.",
+      },
+      {
+        icon: "ShieldCheck",
+        title: "Finanzen & Versicherungen",
+        copy: "Anfragen, Dokumente und Prüfprozesse sauberer strukturieren. KI unterstützt bei Vorqualifizierung, Zusammenfassungen, Standardkommunikation und Compliance-naher Dokumentation.",
+      },
+      {
+        icon: "UsersRound",
+        title: "HR & Recruiting",
+        copy: "Bewerbungen, Onboarding und interne HR-Anfragen schneller bearbeiten. KI hilft bei Vorsortierung, Kommunikation, Wissensmanagement und Mitarbeiterprozessen.",
+      },
+      {
+        icon: "Building",
+        title: "Kommunen & Verwaltung",
+        copy: "Bürgeranfragen, Formulare und interne Vorgänge verständlicher und schneller bearbeiten. KI unterstützt bei Vorsortierung, Textentwürfen, Wissensdatenbanken und Prozessklarheit.",
+      },
     ],
   },
   proof: {
@@ -916,6 +946,36 @@ const en: Dict = {
         icon: "Briefcase",
         title: "Agencies & service providers",
         copy: "More output without more chaos. Briefings, quotes, research, minutes, and reporting can be standardized and automated.",
+      },
+      {
+        icon: "Factory",
+        title: "Manufacturing & industry",
+        copy: "More stable workflows on the shop floor and in the back office. AI supports quality documentation, shift handovers, maintenance, work instructions, and production reporting.",
+      },
+      {
+        icon: "Truck",
+        title: "Logistics & transport",
+        copy: "Less manual coordination around routes, shipments, and customer updates. Digital workflows improve dispatching, status messages, and exception management.",
+      },
+      {
+        icon: "GraduationCap",
+        title: "Education & training",
+        copy: "Run learning content, course organization, and participant communication more efficiently. AI supports materials, feedback, planning, and knowledge access.",
+      },
+      {
+        icon: "ShieldCheck",
+        title: "Finance & insurance",
+        copy: "Structure inquiries, documents, and review processes more cleanly. AI supports pre-qualification, summaries, standard communication, and compliance-adjacent documentation.",
+      },
+      {
+        icon: "UsersRound",
+        title: "HR & recruiting",
+        copy: "Handle applications, onboarding, and internal HR questions faster. AI helps with pre-sorting, communication, knowledge management, and employee workflows.",
+      },
+      {
+        icon: "Building",
+        title: "Municipalities & administration",
+        copy: "Process citizen inquiries, forms, and internal cases more clearly and quickly. AI supports triage, draft replies, knowledge bases, and process clarity.",
       },
     ],
   },

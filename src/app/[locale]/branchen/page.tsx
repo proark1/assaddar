@@ -2,15 +2,21 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import {
   Briefcase,
+  Building,
   Building2,
   Car,
+  Factory,
+  GraduationCap,
   HardHat,
   HeartPulse,
   Landmark,
   ShoppingCart,
+  ShieldCheck,
   SprayCan,
   Stethoscope,
+  Truck,
   UtensilsCrossed,
+  UsersRound,
   type LucideIcon,
 } from "lucide-react";
 import { getDict, isLocale, locales, SITE_URL, type Locale } from "@/content";
@@ -29,6 +35,12 @@ const ICONS: Record<string, LucideIcon> = {
   UtensilsCrossed,
   ShoppingCart,
   Briefcase,
+  Factory,
+  Truck,
+  GraduationCap,
+  ShieldCheck,
+  UsersRound,
+  Building,
 };
 
 const INDUSTRY_LEVERS: Record<string, Record<Locale, string[]>> = {
@@ -150,6 +162,78 @@ const INDUSTRY_LEVERS: Record<string, Record<Locale, string[]>> = {
       "Standardize briefings, proposals, and project handovers.",
       "Prepare meeting notes, reporting, and research.",
       "Make customer status and internal tasks more reliably visible.",
+    ],
+  },
+  Factory: {
+    de: [
+      "Schichtübergaben, Qualitätsdaten und Produktionsabweichungen strukturieren.",
+      "Wartung, Arbeitsanweisungen und Prüfprotokolle schneller zugänglich machen.",
+      "Produktions- und Managementreporting aus vorhandenen Daten vorbereiten.",
+    ],
+    en: [
+      "Structure shift handovers, quality data, and production deviations.",
+      "Make maintenance, work instructions, and inspection logs easier to access.",
+      "Prepare production and management reporting from existing data.",
+    ],
+  },
+  Truck: {
+    de: [
+      "Touren, Sendungsstatus und Ausnahmen zentral sichtbar machen.",
+      "Kundenupdates, Lieferavis und interne Eskalationen automatisiert vorbereiten.",
+      "Disposition, Dokumente und Nachweise besser verbinden.",
+    ],
+    en: [
+      "Make routes, shipment status, and exceptions centrally visible.",
+      "Prepare customer updates, delivery notices, and internal escalations automatically.",
+      "Connect dispatching, documents, and proof of delivery more cleanly.",
+    ],
+  },
+  GraduationCap: {
+    de: [
+      "Lernmaterialien, Kursunterlagen und Wissensdatenbanken schneller erstellen.",
+      "Teilnehmerfragen, Feedback und Zertifikatsprozesse strukturieren.",
+      "Interne Trainings und Onboarding-Inhalte leichter aktuell halten.",
+    ],
+    en: [
+      "Create learning materials, course documents, and knowledge bases faster.",
+      "Structure participant questions, feedback, and certificate workflows.",
+      "Keep internal training and onboarding content easier to update.",
+    ],
+  },
+  ShieldCheck: {
+    de: [
+      "Anfragen, Unterlagen und Risikoinformationen vorqualifizieren.",
+      "Beratungsdokumentation, Standardantworten und Zusammenfassungen vorbereiten.",
+      "Compliance-nahe Prüf- und Freigabeprozesse nachvollziehbarer machen.",
+    ],
+    en: [
+      "Pre-qualify inquiries, documents, and risk information.",
+      "Prepare advisory documentation, standard replies, and summaries.",
+      "Make compliance-adjacent review and approval processes more traceable.",
+    ],
+  },
+  UsersRound: {
+    de: [
+      "Bewerbungen, Profile und Gesprächsnotizen strukturiert vorsortieren.",
+      "Onboarding, HR-Wissen und Mitarbeiteranfragen schneller beantworten.",
+      "Standardkommunikation und interne Übergaben konsistenter machen.",
+    ],
+    en: [
+      "Pre-sort applications, profiles, and interview notes in a structured way.",
+      "Answer onboarding, HR knowledge, and employee questions faster.",
+      "Make standard communication and internal handovers more consistent.",
+    ],
+  },
+  Building: {
+    de: [
+      "Bürgeranfragen, Formulare und Vorgänge nach Thema und Dringlichkeit vorsortieren.",
+      "Antwortentwürfe, Wissensdatenbanken und interne Arbeitsanweisungen vorbereiten.",
+      "Medienbrüche zwischen E-Mail, PDF, Fachverfahren und Akten reduzieren.",
+    ],
+    en: [
+      "Pre-sort citizen inquiries, forms, and cases by topic and urgency.",
+      "Prepare draft replies, knowledge bases, and internal work instructions.",
+      "Reduce handoff breaks between email, PDFs, specialist systems, and files.",
     ],
   },
 };

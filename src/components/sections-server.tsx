@@ -1,15 +1,21 @@
 import {
   ArrowRight,
   Briefcase,
+  Building,
   Building2,
   Car,
+  Factory,
+  GraduationCap,
   HardHat,
   HeartPulse,
   Landmark,
   ShoppingCart,
+  ShieldCheck,
   SprayCan,
   Stethoscope,
+  Truck,
   UtensilsCrossed,
+  UsersRound,
   type LucideIcon,
 } from "lucide-react";
 import Link from "next/link";
@@ -218,6 +224,12 @@ const BRANCHEN_ICONS: Record<string, LucideIcon> = {
   UtensilsCrossed,
   ShoppingCart,
   Briefcase,
+  Factory,
+  Truck,
+  GraduationCap,
+  ShieldCheck,
+  UsersRound,
+  Building,
 };
 
 export function Branchen({ t }: { t: Dict["branchen"] }) {
