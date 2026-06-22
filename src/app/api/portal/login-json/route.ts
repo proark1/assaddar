@@ -35,7 +35,7 @@ export async function POST(request: NextRequest) {
   const locale = safeLocale(payload.locale);
   const email = String(payload.email || "").trim().toLowerCase();
   const password = String(payload.password || "");
-  const rateLimit = checkRateLimit(
+  const rateLimit = await checkRateLimit(
     `login:${clientIpFromHeaders(request.headers)}:${email || "unknown"}`,
     8,
     10 * 60 * 1000,
@@ -51,11 +51,11 @@ export async function POST(request: NextRequest) {
   const user = await findUserByEmailForLogin(email);
 
   if (!user || !verifyPassword(password, user.passwordHash)) {
-    return jsonError("Login nicht moeglich. Bitte pruefen Sie E-Mail und Passwort.", 401);
+    return jsonError("Login nicht möglich. Bitte prüfen Sie E-Mail und Passwort.", 401);
   }
 
   if (requireEmailVerification() && !user.emailVerifiedAt) {
-    return jsonError("Bitte bestaetigen Sie zuerst Ihre E-Mail-Adresse.", 403);
+    return jsonError("Bitte bestätigen Sie zuerst Ihre E-Mail-Adresse.", 403);
   }
 
   const response = NextResponse.json({

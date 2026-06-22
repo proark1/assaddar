@@ -47,12 +47,17 @@ export function Badge({
 export function PortalCard({
   children,
   className = "",
+  id,
 }: {
   children: React.ReactNode;
   className?: string;
+  id?: string;
 }) {
   return (
-    <section className={`rounded-lg border border-hairline bg-surface p-5 shadow-card ${className}`}>
+    <section
+      id={id}
+      className={`rounded-lg border border-hairline bg-surface p-5 shadow-card ${className}`}
+    >
       {children}
     </section>
   );

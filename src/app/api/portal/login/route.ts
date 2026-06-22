@@ -29,7 +29,7 @@ export async function POST(request: NextRequest) {
   const locale = safeLocale(formData.get("locale"));
   const email = String(formData.get("email") || "").trim().toLowerCase();
   const password = String(formData.get("password") || "");
-  const rateLimit = checkRateLimit(
+  const rateLimit = await checkRateLimit(
     `login:${clientIpFromHeaders(request.headers)}:${email || "unknown"}`,
     8,
     10 * 60 * 1000,

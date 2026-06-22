@@ -5,7 +5,8 @@
   "scripts": {
     "dev": "next dev",
     "build": "next build",
-    "start": "next start"
+    "start": "next start",
+    "test:portal": "node scripts/portal-smoke.mjs"
   },
   "dependencies": {
     "@tailwindcss/typography": "^0.5.20",

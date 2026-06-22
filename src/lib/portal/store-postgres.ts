@@ -15,6 +15,8 @@ import type {
   ProjectMilestone,
   ProjectTask,
   ProjectUpdate,
+  PortalTemplateOverride,
+  RateLimitBucket,
   User,
 } from "./types";
 
@@ -234,6 +236,32 @@ function toProjectFile(row: Row): ProjectFile {
     mimeType: value(row.mime_type),
     size: number(row.size),
     visibility: value(row.visibility) === "customer" ? "customer" : "internal",
+    category:
+      value(row.category) === "customer_upload"
+        ? "customer_upload"
+        : value(row.category) === "consultant_deliverable"
+          ? "consultant_deliverable"
+          : value(row.category) === "proposal"
+            ? "proposal"
+            : value(row.category) === "project_brief"
+              ? "project_brief"
+              : value(row.category) === "final_report"
+                ? "final_report"
+                : value(row.category) === "invoice"
+                  ? "invoice"
+                  : value(row.category)
+                    ? "other"
+                    : undefined,
+    approvalStatus:
+      value(row.approval_status) === "pending"
+        ? "pending"
+        : value(row.approval_status) === "approved"
+          ? "approved"
+          : value(row.approval_status)
+            ? "not_required"
+            : undefined,
+    approvedBy: value(row.approved_by) || undefined,
+    approvedAt: optionalIso(row.approved_at),
     uploadedBy: value(row.uploaded_by),
     uploadedAt: iso(row.uploaded_at),
   };
@@ -277,6 +305,46 @@ function toAiInsight(row: Row): AiInsight {
             ? "next_step"
             : "guidance",
     createdAt: iso(row.created_at),
+  };
+}
+
+function stringList(value: unknown): string[] {
+  if (Array.isArray(value)) return value.map(String).filter(Boolean);
+  if (typeof value !== "string") return [];
+  try {
+    const parsed = JSON.parse(value);
+    return Array.isArray(parsed) ? parsed.map(String).filter(Boolean) : [];
+  } catch {
+    return value
+      .split(/\r?\n/)
+      .map((item) => item.trim())
+      .filter(Boolean);
+  }
+}
+
+function toTemplateOverride(row: Row): PortalTemplateOverride {
+  return {
+    id: value(row.id),
+    templateId: value(row.template_id),
+    label: value(row.label),
+    bestFor: value(row.best_for),
+    kickoffGoal: value(row.kickoff_goal),
+    summary: value(row.summary),
+    discoveryQuestions: stringList(row.discovery_questions),
+    quickWins: stringList(row.quick_wins),
+    automationIdeas: stringList(row.automation_ideas),
+    risks: stringList(row.risks),
+    updatedBy: value(row.updated_by),
+    updatedAt: iso(row.updated_at),
+  };
+}
+
+function toRateLimitBucket(row: Row): RateLimitBucket {
+  return {
+    key: value(row.key),
+    count: number(row.count),
+    resetAt: iso(row.reset_at),
+    updatedAt: iso(row.updated_at),
   };
 }
 
@@ -618,6 +686,8 @@ export async function readPostgresStore(): Promise<PortalStore> {
     invoices,
     aiInsights,
     authTokens,
+    templateOverrides,
+    rateLimitBuckets,
   ] = await Promise.all([
     sql`select * from portal_users order by created_at asc`,
     sql`select * from portal_organizations order by created_at asc`,
@@ -631,6 +701,8 @@ export async function readPostgresStore(): Promise<PortalStore> {
     sql`select * from portal_invoices order by created_at desc`,
     sql`select * from portal_ai_insights order by created_at desc`,
     sql`select * from portal_auth_tokens order by created_at desc`,
+    sql`select * from portal_template_overrides order by updated_at desc`,
+    sql`select * from portal_rate_limits order by updated_at desc`,
   ]);
 
   return {
@@ -769,6 +841,32 @@ export async function readPostgresStore(): Promise<PortalStore> {
         mimeType: value(row.mime_type),
         size: number(row.size),
         visibility: value(row.visibility) === "customer" ? "customer" : "internal",
+        category:
+          value(row.category) === "customer_upload"
+            ? "customer_upload"
+            : value(row.category) === "consultant_deliverable"
+              ? "consultant_deliverable"
+              : value(row.category) === "proposal"
+                ? "proposal"
+                : value(row.category) === "project_brief"
+                  ? "project_brief"
+                  : value(row.category) === "final_report"
+                    ? "final_report"
+                    : value(row.category) === "invoice"
+                      ? "invoice"
+                      : value(row.category)
+                        ? "other"
+                        : undefined,
+        approvalStatus:
+          value(row.approval_status) === "pending"
+            ? "pending"
+            : value(row.approval_status) === "approved"
+              ? "approved"
+              : value(row.approval_status)
+                ? "not_required"
+                : undefined,
+        approvedBy: value(row.approved_by) || undefined,
+        approvedAt: optionalIso(row.approved_at),
         uploadedBy: value(row.uploaded_by),
         uploadedAt: iso(row.uploaded_at),
       }),
@@ -828,6 +926,8 @@ export async function readPostgresStore(): Promise<PortalStore> {
         createdAt: iso(row.created_at),
       }),
     ),
+    templateOverrides: (templateOverrides as Row[]).map(toTemplateOverride),
+    rateLimitBuckets: (rateLimitBuckets as Row[]).map(toRateLimitBucket),
   };
 }
 
@@ -949,15 +1049,29 @@ export async function writePostgresStore(store: PortalStore) {
 
     for (const file of store.files) {
       await tx`
-        insert into portal_project_files (id, project_id, name, description, storage_path, mime_type, size, visibility, uploaded_by, uploaded_at)
-        values (${file.id}, ${file.projectId}, ${file.name}, ${file.description}, ${file.storagePath}, ${file.mimeType}, ${file.size}, ${file.visibility}, ${file.uploadedBy}, ${file.uploadedAt})
+        insert into portal_project_files (
+          id, project_id, name, description, storage_path, mime_type, size,
+          visibility, category, approval_status, approved_by, approved_at,
+          uploaded_by, uploaded_at
+        )
+        values (
+          ${file.id}, ${file.projectId}, ${file.name}, ${file.description},
+          ${file.storagePath}, ${file.mimeType}, ${file.size}, ${file.visibility},
+          ${file.category ?? null}, ${file.approvalStatus ?? null},
+          ${file.approvedBy ?? null}, ${file.approvedAt ?? null},
+          ${file.uploadedBy}, ${file.uploadedAt}
+        )
         on conflict (id) do update set
           name = excluded.name,
           description = excluded.description,
           storage_path = excluded.storage_path,
           mime_type = excluded.mime_type,
           size = excluded.size,
-          visibility = excluded.visibility
+          visibility = excluded.visibility,
+          category = excluded.category,
+          approval_status = excluded.approval_status,
+          approved_by = excluded.approved_by,
+          approved_at = excluded.approved_at
       `;
     }
 
@@ -996,6 +1110,47 @@ export async function writePostgresStore(store: PortalStore) {
           token_hash = excluded.token_hash,
           expires_at = excluded.expires_at,
           consumed_at = excluded.consumed_at
+      `;
+    }
+
+    for (const template of store.templateOverrides ?? []) {
+      await tx`
+        insert into portal_template_overrides (
+          id, template_id, label, best_for, kickoff_goal, summary,
+          discovery_questions, quick_wins, automation_ideas, risks,
+          updated_by, updated_at
+        )
+        values (
+          ${template.id}, ${template.templateId}, ${template.label},
+          ${template.bestFor}, ${template.kickoffGoal}, ${template.summary},
+          ${JSON.stringify(template.discoveryQuestions)},
+          ${JSON.stringify(template.quickWins)},
+          ${JSON.stringify(template.automationIdeas)},
+          ${JSON.stringify(template.risks)},
+          ${template.updatedBy}, ${template.updatedAt}
+        )
+        on conflict (template_id) do update set
+          label = excluded.label,
+          best_for = excluded.best_for,
+          kickoff_goal = excluded.kickoff_goal,
+          summary = excluded.summary,
+          discovery_questions = excluded.discovery_questions,
+          quick_wins = excluded.quick_wins,
+          automation_ideas = excluded.automation_ideas,
+          risks = excluded.risks,
+          updated_by = excluded.updated_by,
+          updated_at = excluded.updated_at
+      `;
+    }
+
+    for (const bucket of store.rateLimitBuckets ?? []) {
+      await tx`
+        insert into portal_rate_limits (key, count, reset_at, updated_at)
+        values (${bucket.key}, ${bucket.count}, ${bucket.resetAt}, ${bucket.updatedAt})
+        on conflict (key) do update set
+          count = excluded.count,
+          reset_at = excluded.reset_at,
+          updated_at = excluded.updated_at
       `;
     }
   });

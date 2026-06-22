@@ -29,6 +29,42 @@ export type AdminFocusItem = {
   priority: number;
 };
 
+export type CustomerChecklistItem = {
+  id: string;
+  title: string;
+  body: string;
+  status: "done" | "current" | "open";
+  hrefView: CustomerNextAction["hrefView"];
+};
+
+export type AdminProjectAction = {
+  id: string;
+  tone: PortalActionTone;
+  title: string;
+  body: string;
+  hrefView: "setup" | "guidance" | "communication" | "delivery" | "billing" | "access";
+  cta: string;
+  priority: number;
+};
+
+export type ConsultantWorkflowBlock = {
+  title: string;
+  body: string;
+  items: string[];
+};
+
+export type AiProviderComparison = {
+  provider: string;
+  status: "ok" | "not_configured" | "error" | "unknown";
+  createdAt: string;
+  summary: string[];
+  automationIdeas: string[];
+  risks: string[];
+  nextQuestions: string[];
+  nextActions: string[];
+  raw: string;
+};
+
 export type ProjectDiagnosis = {
   readinessScore: number;
   readinessLabel: string;
@@ -61,9 +97,12 @@ function daysSince(value?: string) {
 }
 
 function customerUpdates(bundle: ProjectBundle) {
-  return bundle.updates.filter(
-    (update) => update.visibility === "customer" && !isStructuredUpdate(update.title),
-  );
+  return bundle.updates
+    .filter(
+      (update) =>
+        update.visibility === "customer" && !isStructuredUpdate(update.title),
+    )
+    .sort((a, b) => dateMs(b.createdAt) - dateMs(a.createdAt));
 }
 
 function approvalIds(bundle: ProjectBundle, type: "FILE" | "MILESTONE") {
@@ -91,7 +130,11 @@ export function buildCustomerNextActions(bundle: ProjectBundle): CustomerNextAct
     (task) => task.visibleToCustomer && task.owner === "customer" && task.status !== "done",
   );
   const pendingFiles = bundle.files.filter(
-    (file) => file.visibility === "customer" && !fileApprovals.has(file.id),
+    (file) =>
+      file.visibility === "customer" &&
+      file.approvalStatus !== "not_required" &&
+      file.approvalStatus !== "approved" &&
+      !fileApprovals.has(file.id),
   );
   const pendingMilestones = bundle.milestones.filter(
     (milestone) =>
@@ -179,6 +222,313 @@ export function buildCustomerNextActions(bundle: ProjectBundle): CustomerNextAct
   }
 
   return actions.sort((a, b) => b.priority - a.priority);
+}
+
+export function buildCustomerChecklist(
+  bundle: ProjectBundle,
+): CustomerChecklistItem[] {
+  const hasIntake = hasCustomerIntake(bundle);
+  const customerTaskOpen = bundle.tasks.some(
+    (task) =>
+      task.visibleToCustomer &&
+      task.owner === "customer" &&
+      task.status !== "done",
+  );
+  const customerFiles = bundle.files.some(
+    (file) => file.visibility === "customer",
+  );
+  const hasVisibleUpdate = customerUpdates(bundle).length > 0;
+  const paidOrNoInvoices = bundle.invoices
+    .filter((invoice) => invoice.status !== "draft")
+    .every((invoice) => invoice.status === "paid");
+
+  return [
+    {
+      id: "intake",
+      title: "Informationen bereitstellen",
+      body: hasIntake
+        ? "Der Projektfragebogen liegt vor und kann bei Änderungen ergänzt werden."
+        : "Füllen Sie den kurzen Fragebogen aus, damit Assad fundiert starten kann.",
+      status: hasIntake ? "done" : "current",
+      hrefView: "input",
+    },
+    {
+      id: "analysis",
+      title: "Analyse und Priorisierung",
+      body: hasVisibleUpdate
+        ? "Assad hat erste Informationen oder Statusupdates für Sie freigegeben."
+        : "Assad prüft die Eingaben und bereitet die nächsten Schritte vor.",
+      status: hasIntake ? (hasVisibleUpdate ? "done" : "current") : "open",
+      hrefView: "overview",
+    },
+    {
+      id: "actions",
+      title: "Aufgaben und Freigaben",
+      body: customerTaskOpen
+        ? "Es gibt noch mindestens eine Aufgabe oder Rückmeldung von Ihrer Seite."
+        : "Aktuell blockiert keine Kundenaufgabe den Projektfortschritt.",
+      status: customerTaskOpen ? "current" : hasIntake ? "done" : "open",
+      hrefView: "actions",
+    },
+    {
+      id: "delivery",
+      title: "Deliverables und Rechnung",
+      body: customerFiles
+        ? "Dateien, Ergebnisse und Rechnungen sind im Portal gebündelt."
+        : "Sobald Ergebnisse bereitstehen, erscheinen sie hier klar getrennt von Aufgaben.",
+      status: customerFiles || paidOrNoInvoices ? "done" : "open",
+      hrefView: "files",
+    },
+  ];
+}
+
+export function buildAdminProjectActions(
+  bundle: ProjectBundle,
+): AdminProjectAction[] {
+  const actions: AdminProjectAction[] = [];
+  const diagnosis = buildProjectDiagnosis(bundle);
+  const latestUpdateAge = daysSince(latestCustomerUpdateDate(bundle));
+  const hasCustomer = bundle.customerUsers.length > 0;
+  const customerTaskOverdue = bundle.tasks.filter(
+    (task) =>
+      task.visibleToCustomer &&
+      task.owner === "customer" &&
+      task.status !== "done" &&
+      isPast(task.dueDate),
+  );
+  const openAssadTasks = bundle.tasks.filter(
+    (task) => task.owner === "assad" && task.status !== "done",
+  );
+  const openInvoices = bundle.invoices.filter(
+    (invoice) =>
+      invoice.status !== "draft" &&
+      invoice.status !== "paid" &&
+      (invoice.status === "overdue" || isPast(invoice.dueDate)),
+  );
+
+  if (!hasCustomer) {
+    actions.push({
+      id: "customer-access",
+      tone: "red",
+      title: "Kundenkonto fehlt",
+      body: "Ohne zugeordneten Kunden sieht niemand Status, Aufgaben oder Dateien.",
+      hrefView: "access",
+      cta: "Kunden einladen",
+      priority: 10,
+    });
+  }
+
+  if (!hasCustomerIntake(bundle)) {
+    actions.push({
+      id: "missing-intake",
+      tone: "amber",
+      title: "Intake fehlt",
+      body: "Der Kunde sollte zuerst den Fragebogen ausfüllen oder einen Reminder erhalten.",
+      hrefView: "communication",
+      cta: "Reminder senden",
+      priority: 9,
+    });
+  }
+
+  if (diagnosis.missingInputs.length > 0) {
+    actions.push({
+      id: "missing-diagnosis-input",
+      tone: diagnosis.readinessScore < 55 ? "red" : "amber",
+      title: `${diagnosis.missingInputs.length} Analysefelder fehlen`,
+      body: `Ergänzen: ${diagnosis.missingInputs.slice(0, 3).join(", ")}.`,
+      hrefView: "guidance",
+      cta: "Intelligence ergänzen",
+      priority: diagnosis.readinessScore < 55 ? 8 : 6,
+    });
+  }
+
+  if (customerTaskOverdue.length > 0) {
+    actions.push({
+      id: "overdue-customer-task",
+      tone: "red",
+      title: "Kundenaufgabe überfällig",
+      body: `${customerTaskOverdue.length} offene Aufgabe(n) brauchen Nachfassung.`,
+      hrefView: "delivery",
+      cta: "Nachfassen",
+      priority: 9,
+    });
+  }
+
+  if (latestUpdateAge > 7) {
+    actions.push({
+      id: "customer-update",
+      tone: "amber",
+      title: "Kundenupdate fällig",
+      body: "Seit mehr als sieben Tagen gibt es kein normales Kundenupdate.",
+      hrefView: "communication",
+      cta: "Update schreiben",
+      priority: 7,
+    });
+  }
+
+  if (openAssadTasks.length === 0) {
+    actions.push({
+      id: "assad-task",
+      tone: "copper",
+      title: "Nächste Assad-Aufgabe definieren",
+      body: "Ein klares internes To-do macht den nächsten Beratungsschritt sichtbar.",
+      hrefView: "delivery",
+      cta: "Aufgabe anlegen",
+      priority: 5,
+    });
+  }
+
+  if (openInvoices.length > 0) {
+    actions.push({
+      id: "invoice-overdue",
+      tone: "red",
+      title: "Rechnung nachfassen",
+      body: `${openInvoices.length} Rechnung(en) sind offen oder überfällig.`,
+      hrefView: "billing",
+      cta: "Billing öffnen",
+      priority: 8,
+    });
+  }
+
+  if (actions.length === 0) {
+    actions.push({
+      id: "healthy",
+      tone: "green",
+      title: "Projekt ist operativ sauber",
+      body: "Keine kritischen Lücken erkannt. Nutze den nächsten Termin für Priorisierung und Umsetzung.",
+      hrefView: "guidance",
+      cta: "Guidance öffnen",
+      priority: 1,
+    });
+  }
+
+  return actions.sort((a, b) => b.priority - a.priority);
+}
+
+export function buildConsultantWorkflow(
+  bundle: ProjectBundle,
+): ConsultantWorkflowBlock[] {
+  const template = matchConsultingTemplate(bundle.organization.industry);
+  const diagnosis = buildProjectDiagnosis(bundle);
+  const firstQuickWin = diagnosis.opportunities[0] ?? template.quickWins[0];
+
+  return [
+    {
+      title: "Vor dem nächsten Termin",
+      body: "Klären, was noch fehlt, und den Call mit einem konkreten Ziel starten.",
+      items: [
+        diagnosis.missingInputs.length
+          ? `Fehlende Inputs prüfen: ${diagnosis.missingInputs.slice(0, 3).join(", ")}`
+          : "Keine kritischen Intake-Lücken offen.",
+        `Call-Fokus setzen: ${template.callAgenda[0]}`,
+        `Quick Win vorbereiten: ${firstQuickWin}`,
+      ],
+    },
+    {
+      title: "Während des Termins",
+      body: "Nicht zu breit werden: Problem, Daten, Entscheidung und Pilot festhalten.",
+      items: [
+        template.meetingMoves[0],
+        "Eine echte Situation live durchgehen: Auslöser, Tool, Daten, Entscheidung, Output.",
+        "Am Ende einen nächsten Schritt mit Owner und Datum festlegen.",
+      ],
+    },
+    {
+      title: "Nach dem Termin",
+      body: "Sofort sichtbaren Fortschritt erzeugen, damit der Kunde merkt, dass gearbeitet wird.",
+      items: [
+        "Meeting-Notiz speichern und relevante Aufgaben erzeugen.",
+        "Kurzes Kundenupdate veröffentlichen: Fortschritt, nächster Schritt, benötigter Input.",
+        "Diagnosis Pack aktualisieren, wenn neue Informationen eingegangen sind.",
+      ],
+    },
+  ];
+}
+
+export function buildCustomerUpdateDraft(bundle: ProjectBundle) {
+  const diagnosis = buildProjectDiagnosis(bundle);
+  const nextAction = buildCustomerNextActions(bundle)[0];
+  const title =
+    diagnosis.readinessScore >= 80
+      ? "Update: Priorisierung der nächsten Umsetzungsschritte"
+      : "Update: Analyse und nächste Schritte";
+  const body = [
+    `Aktueller Stand: Das Projekt ist in der ASDAR Phase ${formatStage(
+      bundle.project.asdarStage,
+    )}.`,
+    diagnosis.customerSummary,
+    nextAction && nextAction.id !== "no-action"
+      ? `Was wir von Ihnen brauchen: ${nextAction.title}.`
+      : "Von Kundenseite ist aktuell nichts Dringendes offen.",
+    bundle.project.nextStep
+      ? `Nächster Schritt: ${bundle.project.nextStep}`
+      : "Nächster Schritt: Assad bereitet die nächste Priorisierung vor.",
+  ].join("\n\n");
+
+  return { title, body };
+}
+
+function cleanBullet(value: string) {
+  return value.trim().replace(/^[-*•]\s*/, "").trim();
+}
+
+function parseAiSection(text: string, heading: string) {
+  const headings = [
+    "Summary",
+    "Automation ideas",
+    "Risks",
+    "Next questions",
+    "Next actions",
+  ];
+  const pattern = new RegExp(
+    `${heading}:\\s*([\\s\\S]*?)(?=\\n(?:${headings
+      .filter((item) => item !== heading)
+      .map((item) => item.replace(/[.*+?^${}()|[\]\\]/g, "\\$&"))
+      .join("|")}):|$)`,
+    "i",
+  );
+  const match = text.match(pattern)?.[1] ?? "";
+  return match
+    .split(/\r?\n/)
+    .map(cleanBullet)
+    .filter(Boolean)
+    .slice(0, 6);
+}
+
+export function buildAiProviderComparison(
+  bundle: ProjectBundle,
+): AiProviderComparison[] {
+  const latestByProvider = new Map<string, AiProviderComparison>();
+
+  for (const insight of bundle.aiInsights) {
+    const match = insight.title.match(/^AI Scan:\s*([a-z]+)(?:\s*\(([^)]+)\))?/i);
+    if (!match) continue;
+    const provider = match[1].toLowerCase();
+    if (latestByProvider.has(provider)) continue;
+    const statusValue = match[2] ?? "unknown";
+    const status =
+      statusValue === "ok" ||
+      statusValue === "not_configured" ||
+      statusValue === "error"
+        ? statusValue
+        : "unknown";
+
+    latestByProvider.set(provider, {
+      provider,
+      status,
+      createdAt: insight.createdAt,
+      summary: parseAiSection(insight.body, "Summary"),
+      automationIdeas: parseAiSection(insight.body, "Automation ideas"),
+      risks: parseAiSection(insight.body, "Risks"),
+      nextQuestions: parseAiSection(insight.body, "Next questions"),
+      nextActions: parseAiSection(insight.body, "Next actions"),
+      raw: insight.body,
+    });
+  }
+
+  return ["openai", "gemini", "grok"]
+    .map((provider) => latestByProvider.get(provider))
+    .filter((entry): entry is AiProviderComparison => Boolean(entry));
 }
 
 export function buildAdminCommandCenter(bundles: ProjectBundle[]) {

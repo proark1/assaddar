@@ -52,14 +52,14 @@ export function buildIntakeQuestions(bundle: ProjectBundle): IntakeQuestion[] {
       id: "companyContext",
       label: "Unternehmenskontext",
       prompt:
-        "Was macht Ihr Unternehmen, wie arbeitet Ihr Team, und welche Bereiche sind fuer das Projekt wichtig?",
-      placeholder: "Geschaeftsmodell, Teamgroesse, Standorte, wichtige Ablaeufe...",
+        "Was macht Ihr Unternehmen, wie arbeitet Ihr Team, und welche Bereiche sind für das Projekt wichtig?",
+      placeholder: "Geschäftsmodell, Teamgröße, Standorte, wichtige Abläufe...",
     },
     {
       id: "issues",
-      label: "Probleme und Engpaesse",
+      label: "Probleme und Engpässe",
       prompt:
-        "Wo verlieren Sie aktuell Zeit, Qualitaet, Transparenz oder Umsatz?",
+        "Wo verlieren Sie aktuell Zeit, Qualität, Transparenz oder Umsatz?",
       placeholder: "Manuelle Arbeit, doppelte Eingaben, Wartezeiten, Fehler...",
     },
     {
@@ -87,8 +87,8 @@ export function buildIntakeQuestions(bundle: ProjectBundle): IntakeQuestion[] {
       id: "constraints",
       label: "Rahmenbedingungen",
       prompt:
-        "Welche Einschraenkungen muss Assad beachten?",
-      placeholder: "Datenschutz, Budget, IT-Kapazitaet, Timeline, interne Freigaben...",
+        "Welche Einschränkungen muss Assad beachten?",
+      placeholder: "Datenschutz, Budget, IT-Kapazität, Timeline, interne Freigaben...",
     },
     ...template.discoveryQuestions.map((question, index) => ({
       id: `template_${index}`,

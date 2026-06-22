@@ -39,7 +39,10 @@ import {
   formatStage,
   formatStatus,
 } from "@/lib/portal/format";
-import { buildCustomerNextActions } from "@/lib/portal/operations";
+import {
+  buildCustomerChecklist,
+  buildCustomerNextActions,
+} from "@/lib/portal/operations";
 import {
   Badge,
   EmptyState,
@@ -270,9 +273,25 @@ export default async function CustomerProjectPage({
     (milestone) => !approvedMilestoneIds.has(milestone.id),
   );
   const pendingFileApprovals = files.filter(
-    (file) => !approvedFileIds.has(file.id),
+    (file) =>
+      file.approvalStatus !== "not_required" &&
+      file.approvalStatus !== "approved" &&
+      !approvedFileIds.has(file.id),
   );
   const nextActions = buildCustomerNextActions(bundle);
+  const customerChecklist = buildCustomerChecklist(bundle);
+  const primaryAction = nextActions[0];
+  const requiredIntakeQuestions = intakeQuestions.filter((question) =>
+    ["companyContext", "issues", "goals"].includes(question.id),
+  );
+  const optionalIntakeQuestions = intakeQuestions.filter(
+    (question) =>
+      !question.id.startsWith("template_") &&
+      !["companyContext", "issues", "goals"].includes(question.id),
+  );
+  const templateIntakeQuestions = intakeQuestions.filter((question) =>
+    question.id.startsWith("template_"),
+  );
   const defaultView: CustomerView = !intakeSubmitted
     ? "input"
     : pendingCustomerTasks.length ||
@@ -294,7 +313,7 @@ export default async function CustomerProjectPage({
       id: "overview",
       eyebrow: "1",
       title: "Überblick",
-      body: "Status, Fortschritt und letzte Aktivitaet.",
+      body: "Status, Fortschritt und letzte Aktivität.",
       count: timeline.length,
     },
     {
@@ -370,12 +389,79 @@ export default async function CustomerProjectPage({
           <p className="mt-5 text-base leading-relaxed text-ink2">
             {bundle.project.summary || "Die Projektbeschreibung folgt."}
           </p>
-          <div className="mt-6 rounded-lg border border-copper/25 bg-copper/10 p-4">
-            <div className="text-sm font-medium text-ink">Nächster Schritt</div>
-            <p className="mt-2 text-sm leading-relaxed text-ink2">
-              {bundle.project.nextStep ||
-                "Der nächste Schritt wird vorbereitet."}
-            </p>
+          <div className="mt-6 grid gap-4 lg:grid-cols-[1.15fr_0.85fr]">
+            <div className="rounded-lg border border-copper/25 bg-copper/10 p-4">
+              <div className="text-sm font-medium text-ink">
+                Nächster Schritt
+              </div>
+              <p className="mt-2 text-sm leading-relaxed text-ink2">
+                {bundle.project.nextStep ||
+                  "Der nächste Schritt wird vorbereitet."}
+              </p>
+            </div>
+            {primaryAction && (
+              <Link
+                href={stepHref(primaryAction.hrefView)}
+                className={`group rounded-lg border p-4 transition-colors hover:border-copper ${
+                  primaryAction.tone === "green"
+                    ? "border-success/25 bg-success/10"
+                    : primaryAction.tone === "red"
+                      ? "border-critical/30 bg-critical/10"
+                      : "border-copper/25 bg-copper/10"
+                }`}
+              >
+                <div className="text-sm font-medium text-ink">
+                  Heute zuerst: {primaryAction.title}
+                </div>
+                <p className="mt-2 text-sm leading-relaxed text-ink2">
+                  {primaryAction.body}
+                </p>
+                <span className="mt-3 inline-flex items-center gap-1.5 text-sm font-medium text-copper">
+                  {primaryAction.cta}
+                  <ArrowRight className="h-4 w-4 transition-transform group-hover:translate-x-0.5" />
+                </span>
+              </Link>
+            )}
+          </div>
+        </PortalCard>
+
+        <PortalCard>
+          <PortalSectionTitle
+            eyebrow="Einfacher Ablauf"
+            title="So läuft dieses Projekt"
+          >
+            Vier Bereiche reichen aus: Informationen, Analyse, Aufgaben und
+            Ergebnisse.
+          </PortalSectionTitle>
+          <div className="mt-5 grid gap-3 md:grid-cols-4">
+            {customerChecklist.map((item, index) => (
+              <Link
+                key={item.id}
+                href={stepHref(item.hrefView)}
+                className={`rounded-lg border p-4 transition-colors hover:border-copper ${
+                  item.status === "done"
+                    ? "border-success/25 bg-success/10"
+                    : item.status === "current"
+                      ? "border-copper/30 bg-copper/10"
+                      : "border-hairline bg-bg"
+                }`}
+              >
+                <div className="flex items-center justify-between gap-3">
+                  <span className="font-mono text-[10.5px] uppercase tracking-[0.14em] text-copper">
+                    Schritt {index + 1}
+                  </span>
+                  {item.status === "done" && (
+                    <CheckCircle2 className="h-4 w-4 text-success" />
+                  )}
+                </div>
+                <h3 className="mt-3 text-sm font-medium text-ink">
+                  {item.title}
+                </h3>
+                <p className="mt-1 text-[12px] leading-relaxed text-muted">
+                  {item.body}
+                </p>
+              </Link>
+            ))}
           </div>
         </PortalCard>
 
@@ -522,56 +608,100 @@ export default async function CustomerProjectPage({
                 <input type="hidden" name="locale" value={safe} />
                 <input type="hidden" name="projectId" value={projectId} />
                 <div className="rounded-lg border border-copper/25 bg-copper/10 p-4 text-sm leading-relaxed text-ink2">
-                  Antworten Sie so konkret wie möglich. Beispiele, Tools,
-                  Dokumente und echte Fälle helfen Assad, schneller eine
-                  belastbare Beratung abzuleiten.
+                  Starten Sie mit den drei Pflichtantworten. Alles Weitere ist
+                  optional und hilft Assad, die Beratung schneller und genauer
+                  vorzubereiten.
                 </div>
-                {intakeQuestions.map((question, index) =>
-                  question.id.startsWith("template_") ? (
-                    <div
-                      key={question.id}
-                      className="rounded-lg border border-hairline bg-bg p-4"
-                    >
-                      <input
-                        type="hidden"
-                        name="questionLabel"
-                        value={question.prompt}
-                      />
-                      <div className="mb-3 font-mono text-[10.5px] uppercase tracking-[0.14em] text-copper">
-                        Schritt {index + 1}
+                <div className="rounded-lg border border-hairline bg-bg p-4">
+                  <div className="font-mono text-[10.5px] uppercase tracking-[0.14em] text-copper">
+                    Teil 1 · Pflicht
+                  </div>
+                  <h3 className="mt-2 text-sm font-medium text-ink">
+                    Die drei wichtigsten Antworten
+                  </h3>
+                  <p className="mt-1 text-[12px] leading-relaxed text-muted">
+                    Kurz und konkret reicht. Beispiele, Tools und echte Fälle
+                    sind hilfreicher als perfekte Formulierungen.
+                  </p>
+                  <div className="mt-4 space-y-4">
+                    {requiredIntakeQuestions.map((question, index) => (
+                      <div key={question.id}>
+                        <div className="mb-2 font-mono text-[10.5px] uppercase tracking-[0.14em] text-copper">
+                          Frage {index + 1}
+                        </div>
+                        <label className="mb-1.5 block text-sm text-ink2">
+                          {question.label}
+                        </label>
+                        <p className="mb-2 text-[12px] leading-relaxed text-muted">
+                          {question.prompt}
+                        </p>
+                        <textarea
+                          name={question.id}
+                          placeholder={question.placeholder}
+                          defaultValue={intakeDefaults[question.id] ?? ""}
+                          className={textareaClass}
+                        />
                       </div>
-                      <label className="mb-1.5 block text-sm text-ink2">
-                        {question.prompt}
-                      </label>
-                      <textarea
-                        name="questionAnswer"
-                        placeholder={question.placeholder}
-                        defaultValue={intakeDefaults[question.id] ?? ""}
-                        className={textareaClass}
-                      />
-                    </div>
-                  ) : (
-                    <div
-                      key={question.id}
-                      className="rounded-lg border border-hairline bg-bg p-4"
-                    >
-                      <div className="mb-3 font-mono text-[10.5px] uppercase tracking-[0.14em] text-copper">
-                        Schritt {index + 1}
+                    ))}
+                  </div>
+                </div>
+
+                <details className="rounded-lg border border-hairline bg-bg p-4">
+                  <summary className="cursor-pointer text-sm font-medium text-copper">
+                    Teil 2 · Tools, Daten und Rahmenbedingungen
+                  </summary>
+                  <div className="mt-4 space-y-4">
+                    {optionalIntakeQuestions.map((question, index) => (
+                      <div key={question.id}>
+                        <div className="mb-2 font-mono text-[10.5px] uppercase tracking-[0.14em] text-copper">
+                          Zusatzfrage {index + 1}
+                        </div>
+                        <label className="mb-1.5 block text-sm text-ink2">
+                          {question.label}
+                        </label>
+                        <p className="mb-2 text-[12px] leading-relaxed text-muted">
+                          {question.prompt}
+                        </p>
+                        <textarea
+                          name={question.id}
+                          placeholder={question.placeholder}
+                          defaultValue={intakeDefaults[question.id] ?? ""}
+                          className={textareaClass}
+                        />
                       </div>
-                      <label className="mb-1.5 block text-sm text-ink2">
-                        {question.label}
-                      </label>
-                      <p className="mb-2 text-[12px] leading-relaxed text-muted">
-                        {question.prompt}
-                      </p>
-                      <textarea
-                        name={question.id}
-                        placeholder={question.placeholder}
-                        defaultValue={intakeDefaults[question.id] ?? ""}
-                        className={textareaClass}
-                      />
+                    ))}
+                  </div>
+                </details>
+
+                {templateIntakeQuestions.length > 0 && (
+                  <details className="rounded-lg border border-hairline bg-bg p-4">
+                    <summary className="cursor-pointer text-sm font-medium text-copper">
+                      Teil 3 · Branchenfragen
+                    </summary>
+                    <div className="mt-4 space-y-4">
+                      {templateIntakeQuestions.map((question, index) => (
+                        <div key={question.id}>
+                          <input
+                            type="hidden"
+                            name="questionLabel"
+                            value={question.prompt}
+                          />
+                          <div className="mb-2 font-mono text-[10.5px] uppercase tracking-[0.14em] text-copper">
+                            Branchenfrage {index + 1}
+                          </div>
+                          <label className="mb-1.5 block text-sm text-ink2">
+                            {question.prompt}
+                          </label>
+                          <textarea
+                            name="questionAnswer"
+                            placeholder={question.placeholder}
+                            defaultValue={intakeDefaults[question.id] ?? ""}
+                            className={textareaClass}
+                          />
+                        </div>
+                      ))}
                     </div>
-                  ),
+                  </details>
                 )}
                 <button
                   type="submit"
@@ -832,7 +962,9 @@ export default async function CustomerProjectPage({
                         className="inline-flex items-center gap-2 rounded-lg border border-hairline px-3 py-2 text-[12px] font-medium text-ink transition-colors hover:border-copper hover:text-copper"
                       >
                         <CheckCircle2 className="h-3.5 w-3.5" />
-                        Datei freigeben
+                        {file.category === "proposal"
+                          ? "Angebot annehmen"
+                          : "Datei freigeben"}
                       </button>
                     </form>
                   </div>
@@ -921,25 +1053,37 @@ export default async function CustomerProjectPage({
                         </div>
                       </div>
                     </a>
-                    {approvedFileIds.has(file.id) ? (
+                    {approvedFileIds.has(file.id) ||
+                    file.approvalStatus === "approved" ? (
                       <Badge tone="green">Freigegeben</Badge>
+                    ) : file.approvalStatus === "not_required" ? (
+                      <Badge>Keine Freigabe nötig</Badge>
                     ) : (
-                      <form action={approveFileAction}>
-                        <input type="hidden" name="locale" value={safe} />
-                        <input
-                          type="hidden"
-                          name="projectId"
-                          value={projectId}
-                        />
-                        <input type="hidden" name="fileId" value={file.id} />
-                        <button
-                          type="submit"
-                          className="inline-flex items-center gap-2 rounded-lg border border-hairline px-3 py-2 text-[12px] font-medium text-ink transition-colors hover:border-copper hover:text-copper"
-                        >
-                          <CheckCircle2 className="h-3.5 w-3.5" />
-                          Datei freigeben
-                        </button>
-                      </form>
+                      <div className="flex flex-wrap items-center gap-2">
+                        <Badge tone="amber">
+                          {file.category === "proposal"
+                            ? "Annahme offen"
+                            : "Freigabe offen"}
+                        </Badge>
+                        <form action={approveFileAction}>
+                          <input type="hidden" name="locale" value={safe} />
+                          <input
+                            type="hidden"
+                            name="projectId"
+                            value={projectId}
+                          />
+                          <input type="hidden" name="fileId" value={file.id} />
+                          <button
+                            type="submit"
+                            className="inline-flex items-center gap-2 rounded-lg border border-hairline px-3 py-2 text-[12px] font-medium text-ink transition-colors hover:border-copper hover:text-copper"
+                          >
+                            <CheckCircle2 className="h-3.5 w-3.5" />
+                            {file.category === "proposal"
+                              ? "Angebot annehmen"
+                              : "Datei freigeben"}
+                          </button>
+                        </form>
+                      </div>
                     )}
                   </div>
                 ))}

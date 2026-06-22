@@ -3,6 +3,7 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 import {
   Archive,
+  ArrowRight,
   Bell,
   BrainCircuit,
   BookOpen,
@@ -32,6 +33,7 @@ import {
   assignCustomerAction,
   completeSetupWizardAction,
   generateDiagnosisPackAction,
+  generateFinalReportAction,
   generateProposalAction,
   generateProjectBriefAction,
   inviteCustomerAction,
@@ -58,9 +60,9 @@ import {
   isReminder,
   isStructuredUpdate,
 } from "@/lib/portal/automation";
-import { listProjectBundlesForUser } from "@/lib/portal/store";
+import { listProjectBundlesForUser, readStore } from "@/lib/portal/store";
 import {
-  consultingTemplates,
+  effectiveConsultingTemplates,
   matchConsultingTemplate,
 } from "@/lib/portal/templates";
 import {
@@ -70,7 +72,13 @@ import {
   formatStage,
   projectStatuses,
 } from "@/lib/portal/format";
-import { buildProjectDiagnosis } from "@/lib/portal/operations";
+import {
+  buildAiProviderComparison,
+  buildAdminProjectActions,
+  buildConsultantWorkflow,
+  buildCustomerUpdateDraft,
+  buildProjectDiagnosis,
+} from "@/lib/portal/operations";
 import {
   Badge,
   fieldClass,
@@ -137,14 +145,25 @@ export default async function AdminProjectPage({
   const safe: Locale = isLocale(locale) ? locale : "de";
   const user = await requireAdmin(safe);
   const bundles = await listProjectBundlesForUser(user);
+  const portalStore = await readStore();
+  const consultingTemplates = effectiveConsultingTemplates(
+    portalStore.templateOverrides,
+  );
   const bundle = bundles.find((entry) => entry.project.id === projectId);
   if (!bundle) notFound();
 
   const query = await searchParams;
   const guidance = buildConsultantGuidance(bundle);
   const diagnosis = buildProjectDiagnosis(bundle);
+  const adminActions = buildAdminProjectActions(bundle);
+  const consultantWorkflow = buildConsultantWorkflow(bundle);
+  const customerUpdateDraft = buildCustomerUpdateDraft(bundle);
+  const aiComparison = buildAiProviderComparison(bundle);
   const similar = findSimilarProjectBundles(bundles, bundle);
-  const template = matchConsultingTemplate(bundle.organization.industry);
+  const matchedTemplate = matchConsultingTemplate(bundle.organization.industry);
+  const template =
+    consultingTemplates.find((entry) => entry.id === matchedTemplate.id) ??
+    matchedTemplate;
   const auditUpdates = bundle.updates.filter((update) =>
     update.title.startsWith("Audit:"),
   );
@@ -170,6 +189,7 @@ export default async function AdminProjectPage({
     activeView === view ? "" : "hidden";
   const stepHref = (view: AdminProjectView) =>
     `/${safe}/portal/admin/projects/${projectId}?view=${view}`;
+  const primaryAdminAction = adminActions[0];
   const openCustomerTasks = bundle.tasks.filter(
     (task) => task.owner === "customer" && task.status !== "done",
   ).length;
@@ -257,6 +277,53 @@ export default async function AdminProjectPage({
           {query.error === "comment" && " Bitte einen Kommentar eintragen."}
         </div>
       )}
+
+      <PortalCard className="mb-6 border-copper/30 bg-copper/10">
+        <div className="grid gap-5 lg:grid-cols-[1fr_1.25fr] lg:items-center">
+          <div>
+            <div className="font-mono text-[10.5px] uppercase tracking-[0.14em] text-copper">
+              Projekt Cockpit
+            </div>
+            <h2 className="mt-2 text-xl font-medium text-ink">
+              {primaryAdminAction.title}
+            </h2>
+            <p className="mt-2 text-sm leading-relaxed text-ink2">
+              {primaryAdminAction.body}
+            </p>
+            <Link
+              href={stepHref(primaryAdminAction.hrefView)}
+              className="mt-4 inline-flex items-center gap-2 rounded-lg bg-copper px-4 py-2.5 text-sm font-medium text-oncopper transition-colors hover:bg-copper-hi"
+            >
+              {primaryAdminAction.cta}
+              <ArrowRight className="h-4 w-4" />
+            </Link>
+          </div>
+          <div className="grid gap-3 sm:grid-cols-4">
+            <div className="rounded-lg border border-hairline bg-surface p-3">
+              <div className="text-xl font-medium text-ink">
+                {diagnosis.readinessScore}
+              </div>
+              <div className="mt-1 text-[12px] text-muted">Readiness</div>
+            </div>
+            <div className="rounded-lg border border-hairline bg-surface p-3">
+              <div className="text-xl font-medium text-ink">
+                {diagnosis.missingInputs.length}
+              </div>
+              <div className="mt-1 text-[12px] text-muted">Lücken</div>
+            </div>
+            <div className="rounded-lg border border-hairline bg-surface p-3">
+              <div className="text-xl font-medium text-ink">
+                {openCustomerTasks}
+              </div>
+              <div className="mt-1 text-[12px] text-muted">Kunden-To-dos</div>
+            </div>
+            <div className="rounded-lg border border-hairline bg-surface p-3">
+              <div className="text-xl font-medium text-ink">{openInvoices}</div>
+              <div className="mt-1 text-[12px] text-muted">Rechnungen</div>
+            </div>
+          </div>
+        </div>
+      </PortalCard>
 
       <nav
         className="mb-6 grid gap-3 md:grid-cols-3 xl:grid-cols-6"
@@ -533,6 +600,39 @@ export default async function AdminProjectPage({
 
           <PortalCard className={viewClass("guidance")}>
             <PortalSectionTitle
+              eyebrow="Beratungsmodus"
+              title="Was Assad vor, während und nach dem Termin tut"
+            >
+              Ein praktischer Ablauf, damit jeder Call zu klaren Entscheidungen,
+              Aufgaben und sichtbarem Kundenfortschritt führt.
+            </PortalSectionTitle>
+            <div className="mt-5 grid gap-4 lg:grid-cols-3">
+              {consultantWorkflow.map((block) => (
+                <div
+                  key={block.title}
+                  className="rounded-lg border border-hairline bg-bg p-4"
+                >
+                  <h3 className="text-sm font-medium text-ink">
+                    {block.title}
+                  </h3>
+                  <p className="mt-2 text-[12px] leading-relaxed text-muted">
+                    {block.body}
+                  </p>
+                  <ul className="mt-3 space-y-2 text-sm leading-relaxed text-ink2">
+                    {block.items.map((item) => (
+                      <li key={item} className="flex gap-2">
+                        <CheckCircle2 className="mt-0.5 h-4 w-4 shrink-0 text-copper" />
+                        <span>{item}</span>
+                      </li>
+                    ))}
+                  </ul>
+                </div>
+              ))}
+            </div>
+          </PortalCard>
+
+          <PortalCard className={viewClass("guidance")}>
+            <PortalSectionTitle
               eyebrow="Private Intelligence"
               title="ASDAR Intake und Beratungsnotizen"
             >
@@ -655,6 +755,14 @@ export default async function AdminProjectPage({
               Interne Updates bleiben privat. Kundenupdates erscheinen direkt im
               Kundenportal.
             </PortalSectionTitle>
+            <div className="mt-5 rounded-lg border border-copper/25 bg-copper/10 p-4">
+              <div className="text-sm font-medium text-ink">
+                Vorschlag aus Projektstand
+              </div>
+              <p className="mt-2 whitespace-pre-line text-sm leading-relaxed text-ink2">
+                {customerUpdateDraft.body}
+              </p>
+            </div>
             <form action={addUpdateAction} className="mt-5 space-y-4">
               <HiddenProjectFields locale={safe} projectId={projectId} />
               <div className="grid gap-4 md:grid-cols-3">
@@ -662,7 +770,11 @@ export default async function AdminProjectPage({
                   <label className="mb-1.5 block text-sm text-ink2">
                     Titel
                   </label>
-                  <input name="title" className={fieldClass} />
+                  <input
+                    name="title"
+                    defaultValue={customerUpdateDraft.title}
+                    className={fieldClass}
+                  />
                 </div>
                 <div>
                   <label className="mb-1.5 block text-sm text-ink2">
@@ -692,7 +804,11 @@ export default async function AdminProjectPage({
               </div>
               <div>
                 <label className="mb-1.5 block text-sm text-ink2">Text</label>
-                <textarea name="body" className={textareaClass} />
+                <textarea
+                  name="body"
+                  defaultValue={customerUpdateDraft.body}
+                  className={textareaClass}
+                />
               </div>
               <button
                 type="submit"
@@ -738,7 +854,7 @@ export default async function AdminProjectPage({
 
           <PortalCard className={viewClass("communication")}>
             <PortalSectionTitle eyebrow="Nachrichten" title="Kundenkommentare">
-              Kurze Rueckfragen und Antworten, ohne daraus ein formales
+              Kurze Rückfragen und Antworten, ohne daraus ein formales
               Statusupdate zu machen.
             </PortalSectionTitle>
             <form action={addProjectCommentAction} className="mt-5 space-y-3">
@@ -747,7 +863,7 @@ export default async function AdminProjectPage({
               <textarea
                 name="message"
                 required
-                placeholder="Antwort oder Rueckfrage"
+                placeholder="Antwort oder Rückfrage"
                 className={textareaClass}
               />
               <button
@@ -794,9 +910,9 @@ export default async function AdminProjectPage({
           <PortalCard className={viewClass("guidance")}>
             <PortalSectionTitle
               eyebrow="Industry Playbook"
-              title="Template fuer dieses Projekt"
+              title="Template für dieses Projekt"
             >
-              Branchenbezogene Diagnose, Quick Wins und ASDAR-Schritte fuer den
+              Branchenbezogene Diagnose, Quick Wins und ASDAR-Schritte für den
               Beratungsablauf.
             </PortalSectionTitle>
             <form
@@ -971,7 +1087,7 @@ export default async function AdminProjectPage({
 
               <div>
                 <h3 className="text-sm font-medium text-ink">
-                  Meeting-Moves fuer Assad
+                  Meeting-Moves für Assad
                 </h3>
                 <ul className="mt-2 space-y-2 text-sm leading-relaxed text-ink2">
                   {template.meetingMoves.map((item) => (
@@ -1201,20 +1317,20 @@ export default async function AdminProjectPage({
               <div className="mt-3 space-y-2 text-sm text-ink2">
                 <label className="flex items-center gap-2">
                   <input
-                    name="publishSummary"
-                    type="checkbox"
-                    className="h-4 w-4 accent-[var(--color-copper)]"
-                  />
-                  Kundensichere Zusammenfassung veroeffentlichen
+                  name="publishSummary"
+                  type="checkbox"
+                  className="h-4 w-4 accent-[var(--color-copper)]"
+                />
+                  Kundensichere Zusammenfassung veröffentlichen
                 </label>
                 <label className="flex items-center gap-2">
                   <input
-                    name="createActions"
-                    type="checkbox"
-                    defaultChecked
-                    className="h-4 w-4 accent-[var(--color-copper)]"
-                  />
-                  Quick-Win-Aufgaben fuer Assad anlegen
+                  name="createActions"
+                  type="checkbox"
+                  defaultChecked
+                  className="h-4 w-4 accent-[var(--color-copper)]"
+                />
+                  Quick-Win-Aufgaben für Assad anlegen
                 </label>
               </div>
               <button
@@ -1225,6 +1341,72 @@ export default async function AdminProjectPage({
                 Projektbrief generieren
               </button>
             </form>
+            {aiComparison.length > 0 && (
+              <div className="mt-5 space-y-3">
+                <div className="text-sm font-medium text-ink">
+                  Provider-Vergleich
+                </div>
+                {aiComparison.map((entry) => (
+                  <div
+                    key={entry.provider}
+                    className="rounded-lg border border-hairline bg-bg p-3"
+                  >
+                    <div className="flex flex-wrap items-center justify-between gap-2">
+                      <div className="text-sm font-medium capitalize text-ink">
+                        {entry.provider}
+                      </div>
+                      <Badge
+                        tone={
+                          entry.status === "ok"
+                            ? "green"
+                            : entry.status === "not_configured"
+                              ? "amber"
+                              : "red"
+                        }
+                      >
+                        {entry.status}
+                      </Badge>
+                    </div>
+                    <div className="mt-3 grid gap-3 text-[12px] leading-relaxed text-ink2 md:grid-cols-2">
+                      <div>
+                        <div className="font-medium text-ink">Summary</div>
+                        <ul className="mt-1 space-y-1">
+                          {(entry.summary.length
+                            ? entry.summary
+                            : [entry.raw.slice(0, 180)]).map((item) => (
+                            <li key={item}>- {item}</li>
+                          ))}
+                        </ul>
+                      </div>
+                      <div>
+                        <div className="font-medium text-ink">Automation</div>
+                        <ul className="mt-1 space-y-1">
+                          {entry.automationIdeas.slice(0, 3).map((item) => (
+                            <li key={item}>- {item}</li>
+                          ))}
+                        </ul>
+                      </div>
+                      <div>
+                        <div className="font-medium text-ink">Risiken</div>
+                        <ul className="mt-1 space-y-1">
+                          {entry.risks.slice(0, 3).map((item) => (
+                            <li key={item}>- {item}</li>
+                          ))}
+                        </ul>
+                      </div>
+                      <div>
+                        <div className="font-medium text-ink">Nächste Schritte</div>
+                        <ul className="mt-1 space-y-1">
+                          {entry.nextActions.slice(0, 3).map((item) => (
+                            <li key={item}>- {item}</li>
+                          ))}
+                        </ul>
+                      </div>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
             <div className="mt-5 space-y-3">
               {bundle.aiInsights.map((insight) => (
                 <article
@@ -1471,6 +1653,26 @@ export default async function AdminProjectPage({
           <PortalCard className={viewClass("delivery")}>
             <PortalSectionTitle eyebrow="Dateien" title="Upload" />
             <form
+              action={generateFinalReportAction}
+              className="mt-5 rounded-lg border border-copper/25 bg-copper/10 p-3"
+            >
+              <HiddenProjectFields locale={safe} projectId={projectId} />
+              <div className="text-sm font-medium text-ink">
+                Abschlussbericht PDF
+              </div>
+              <p className="mt-1 text-[12px] leading-relaxed text-ink2">
+                Erstellt einen kundensichtbaren Abschlussbericht aus
+                Projektstand, Deliverables, Chancen und nächsten Schritten.
+              </p>
+              <button
+                type="submit"
+                className="mt-3 inline-flex w-full items-center justify-center gap-2 rounded-lg bg-copper px-4 py-2.5 text-sm font-medium text-oncopper transition-colors hover:bg-copper-hi"
+              >
+                <FileUp className="h-4 w-4" />
+                Abschlussbericht erstellen
+              </button>
+            </form>
+            <form
               action={addFileAction}
               encType="multipart/form-data"
               className="mt-5 space-y-3"
@@ -1522,7 +1724,9 @@ export default async function AdminProjectPage({
                       )}
                     </div>
                     <div className="mt-1 text-[12px] text-muted">
-                      {file.visibility} · {Math.ceil(file.size / 1024)} KB
+                      {file.visibility} · {file.category ?? "other"} ·{" "}
+                      {file.approvalStatus ?? "not_required"} ·{" "}
+                      {Math.ceil(file.size / 1024)} KB
                     </div>
                   </div>
                 </a>
@@ -1727,7 +1931,7 @@ export default async function AdminProjectPage({
                   Proposal Generator
                 </div>
                 <p className="mt-1 text-[12px] leading-relaxed text-ink2">
-                  Erstellt ein kunden sichtbares Angebot als Datei und optional
+                  Erstellt ein kundensichtbares Angebot als Datei und optional
                   eine Rechnung.
                 </p>
               </div>

@@ -1,4 +1,9 @@
-import type { AsdarStage, ProjectBundle, ProjectIntelligence } from "./types";
+import type {
+  AsdarStage,
+  PortalTemplateOverride,
+  ProjectBundle,
+  ProjectIntelligence,
+} from "./types";
 
 type TemplateTask = {
   title: string;
@@ -905,6 +910,52 @@ export const consultingTemplates: ConsultingTemplate[] = [
     },
   },
 ];
+
+export function applyTemplateOverride(
+  template: ConsultingTemplate,
+  override?: PortalTemplateOverride,
+): ConsultingTemplate {
+  if (!override) return template;
+
+  return {
+    ...template,
+    label: override.label || template.label,
+    bestFor: override.bestFor || template.bestFor,
+    kickoffGoal: override.kickoffGoal || template.kickoffGoal,
+    summary: override.summary || template.summary,
+    discoveryQuestions: override.discoveryQuestions.length
+      ? override.discoveryQuestions
+      : template.discoveryQuestions,
+    quickWins: override.quickWins.length ? override.quickWins : template.quickWins,
+    automationIdeas: override.automationIdeas.length
+      ? override.automationIdeas
+      : template.automationIdeas,
+    risks: override.risks.length ? override.risks : template.risks,
+  };
+}
+
+export function effectiveConsultingTemplates(
+  overrides: PortalTemplateOverride[] = [],
+) {
+  return consultingTemplates.map((template) =>
+    applyTemplateOverride(
+      template,
+      overrides.find((override) => override.templateId === template.id),
+    ),
+  );
+}
+
+export function getEffectiveConsultingTemplate(
+  templateId: string,
+  overrides: PortalTemplateOverride[] = [],
+) {
+  const template = getConsultingTemplate(templateId);
+  if (!template) return undefined;
+  return applyTemplateOverride(
+    template,
+    overrides.find((override) => override.templateId === template.id),
+  );
+}
 
 export function getConsultingTemplate(id?: string | null) {
   if (!id) return undefined;

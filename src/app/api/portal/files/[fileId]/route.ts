@@ -5,10 +5,15 @@ import { readPortalFile } from "@/lib/portal/storage";
 
 export const dynamic = "force-dynamic";
 
-function contentDispositionFilename(name: string) {
-  const fallback = name.replace(/[^\w. -]/g, "_").slice(0, 120) || "download";
+function contentDispositionFilename(name: string, mimeType: string) {
+  const withExtension =
+    mimeType === "application/pdf" && !name.toLowerCase().endsWith(".pdf")
+      ? `${name}.pdf`
+      : name;
+  const fallback =
+    withExtension.replace(/[^\w. -]/g, "_").slice(0, 120) || "download";
   return `attachment; filename="${fallback.replaceAll("\"", "_")}"; filename*=UTF-8''${encodeURIComponent(
-    name,
+    withExtension,
   )}`;
 }
 
@@ -42,7 +47,10 @@ export async function GET(
       headers: {
         "Content-Type": stored.contentType,
         "Content-Length": String(stored.size),
-        "Content-Disposition": contentDispositionFilename(file.name),
+        "Content-Disposition": contentDispositionFilename(
+          file.name,
+          stored.contentType,
+        ),
         "Cache-Control": "private, no-store",
         "X-Content-Type-Options": "nosniff",
       },

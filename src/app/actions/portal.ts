@@ -25,11 +25,18 @@ import { createInvoiceCheckoutUrl } from "@/lib/portal/payments";
 import { hashPassword } from "@/lib/portal/password";
 import { savePortalFile } from "@/lib/portal/storage";
 import {
+  createFinalReportPdf,
+  createProjectBriefPdf,
+  createProposalPdf,
+} from "@/lib/portal/documents";
+import {
   buildProjectDiagnosis,
   formatDiagnosisReport,
 } from "@/lib/portal/operations";
 import {
   buildTemplatePrompt,
+  effectiveConsultingTemplates,
+  getEffectiveConsultingTemplate,
   getConsultingTemplate,
   matchConsultingTemplate,
   mergeTemplateIntake,
@@ -155,6 +162,13 @@ function appendNote(existing: string, title: string, body: string) {
   return [existing, `${title}\n${body}`].filter(Boolean).join("\n\n");
 }
 
+function lines(formData: FormData, key: string) {
+  return text(formData, key)
+    .split(/\r?\n/)
+    .map((line) => line.trim().replace(/^[-*]\s*/, ""))
+    .filter(Boolean);
+}
+
 async function requireProjectAccessForAction(locale: Locale, projectId: string) {
   const user = await requireUser(locale);
   const store = await readStore();
@@ -215,7 +229,11 @@ export async function createProjectAction(formData: FormData) {
   const user = await requireAdmin(locale);
 
   const company = text(formData, "company");
-  const template = getConsultingTemplate(text(formData, "templateId"));
+  const sourceStore = await readStore();
+  const template = getEffectiveConsultingTemplate(
+    text(formData, "templateId"),
+    sourceStore.templateOverrides,
+  );
   const industry =
     text(formData, "industry") || template?.industryLabel || "Noch nicht gesetzt";
   const projectName =
@@ -237,6 +255,47 @@ export async function createProjectAction(formData: FormData) {
 
   revalidatePath(`/${locale}/portal`);
   redirect(adminProjectPath(locale, projectId));
+}
+
+export async function saveTemplateOverrideAction(formData: FormData) {
+  const locale = safeLocale(formData.get("locale"));
+  const user = await requireAdmin(locale);
+  const templateId = text(formData, "templateId");
+  const sourceStore = await readStore();
+  const base = getConsultingTemplate(templateId);
+  if (!base) redirect(`/${locale}/portal/admin/templates?error=template`);
+
+  await mutateStore((store) => {
+    const now = new Date().toISOString();
+    const existing = store.templateOverrides.find(
+      (entry) => entry.templateId === templateId,
+    );
+    const next = {
+      id: existing?.id ?? id("template"),
+      templateId,
+      label: text(formData, "label") || base.label,
+      bestFor: text(formData, "bestFor") || base.bestFor,
+      kickoffGoal: text(formData, "kickoffGoal") || base.kickoffGoal,
+      summary: text(formData, "summary") || base.summary,
+      discoveryQuestions: lines(formData, "discoveryQuestions"),
+      quickWins: lines(formData, "quickWins"),
+      automationIdeas: lines(formData, "automationIdeas"),
+      risks: lines(formData, "risks"),
+      updatedBy: user.id,
+      updatedAt: now,
+    };
+
+    if (existing) Object.assign(existing, next);
+    else store.templateOverrides.push(next);
+  });
+
+  const query = sourceStore.templateOverrides.some(
+    (entry) => entry.templateId === templateId,
+  )
+    ? "updated=template"
+    : "created=template";
+  revalidatePath(`/${locale}/portal/admin/templates`);
+  redirect(`/${locale}/portal/admin/templates?${query}#${templateId}`);
 }
 
 export async function assignCustomerAction(formData: FormData) {
@@ -448,7 +507,7 @@ export async function submitCustomerIntakeAction(formData: FormData) {
 
   const answers = [
     ["Unternehmenskontext", text(formData, "companyContext")],
-    ["Probleme und Engpaesse", text(formData, "issues")],
+    ["Probleme und Engpässe", text(formData, "issues")],
     ["Ziele", text(formData, "goals")],
     ["Aktuelle Tools", text(formData, "currentTools")],
     ["Daten und Dokumente", text(formData, "dataSituation")],
@@ -491,7 +550,7 @@ export async function submitCustomerIntakeAction(formData: FormData) {
       stakeholders: bundle.intelligence.stakeholders,
       issues: appendNote(
         bundle.intelligence.issues,
-        "Kundeninput: Probleme und Engpaesse",
+        "Kundeninput: Probleme und Engpässe",
         text(formData, "issues"),
       ),
       goals: appendNote(
@@ -583,8 +642,12 @@ export async function applyConsultingTemplateAction(formData: FormData) {
   const locale = safeLocale(formData.get("locale"));
   const user = await requireAdmin(locale);
   const projectId = text(formData, "projectId");
+  const sourceStore = await readStore();
   const template =
-    getConsultingTemplate(text(formData, "templateId")) ??
+    getEffectiveConsultingTemplate(
+      text(formData, "templateId"),
+      sourceStore.templateOverrides,
+    ) ??
     matchConsultingTemplate(text(formData, "industry"));
 
   await mutateStore((store) => {
@@ -826,7 +889,7 @@ export async function addMeetingNoteAction(formData: FormData) {
       body: [
         notes && `Notizen:\n${notes}`,
         decisions && `Entscheidungen:\n${decisions}`,
-        nextActions && `Naechste Aktionen:\n${nextActions}`,
+        nextActions && `Nächste Aktionen:\n${nextActions}`,
       ]
         .filter(Boolean)
         .join("\n\n"),
@@ -917,12 +980,12 @@ export async function saveKnowledgeSnapshotAction(formData: FormData) {
         "Risiken:",
         ...template.risks.map((item) => `- ${item}`),
         "",
-        "Naechste Fragen:",
+        "Nächste Fragen:",
         ...template.discoveryQuestions.map((item) => `- ${item}`),
         "",
         similar.length > 0
-          ? `Aehnliche Projektbasis: ${similar.join(", ")}`
-          : "Aehnliche Projektbasis: noch zu wenig Projekthistorie",
+          ? `Ähnliche Projektbasis: ${similar.join(", ")}`
+          : "Ähnliche Projektbasis: noch zu wenig Projekthistorie",
       ].join("\n"),
       kind: "guidance",
       createdAt: new Date().toISOString(),
@@ -1441,6 +1504,8 @@ export async function customerTaskFileAction(formData: FormData) {
       mimeType: upload.type || "application/octet-stream",
       size: upload.size,
       visibility: "customer",
+      category: "customer_upload",
+      approvalStatus: "not_required",
       uploadedBy: user.id,
       uploadedAt: now,
     });
@@ -1537,11 +1602,14 @@ export async function approveFileAction(formData: FormData) {
     if (hasApproval) return;
 
     const now = new Date().toISOString();
+    file.approvalStatus = "approved";
+    file.approvedBy = user.id;
+    file.approvedAt = now;
     store.updates.push({
       id: id("update"),
       projectId,
       title: `Freigabe: ${file.name}`,
-      body: `APPROVAL_FILE:${file.id}\n${user.name} hat diese Datei / dieses Deliverable freigegeben.`,
+      body: `APPROVAL_FILE:${file.id}\n${user.name} hat ${file.category === "proposal" ? "dieses Angebot angenommen" : "diese Datei / dieses Deliverable freigegeben"}.`,
       visibility: "customer",
       asdarStage: bundle.project.asdarStage,
       createdBy: user.id,
@@ -1552,8 +1620,8 @@ export async function approveFileAction(formData: FormData) {
       store,
       projectId,
       userId: user.id,
-      title: "Deliverable freigegeben",
-      body: `${file.name} wurde durch ${user.name} freigegeben.`,
+      title: file.category === "proposal" ? "Proposal angenommen" : "Deliverable freigegeben",
+      body: `${file.name} wurde durch ${user.name} ${file.category === "proposal" ? "angenommen" : "freigegeben"}.`,
     });
   });
 
@@ -1598,6 +1666,10 @@ export async function addFileAction(formData: FormData) {
       mimeType: upload.type || "application/octet-stream",
       size: upload.size,
       visibility: fileVisibility,
+      category:
+        fileVisibility === "customer" ? "consultant_deliverable" : "other",
+      approvalStatus:
+        fileVisibility === "customer" ? "pending" : "not_required",
       uploadedBy: user.id,
       uploadedAt: new Date().toISOString(),
     });
@@ -1808,17 +1880,14 @@ export async function generateProjectBriefAction(formData: FormData) {
   const briefText = buildConsultantBrief(bundle);
   const customerSummary = buildCustomerSafeSummary(bundle);
   const briefId = id("brief");
-  const filename = `ASDAR-Projektbrief-${nowIso.slice(0, 10)}.txt`;
-  const buffer = Buffer.from(
-    [briefText, "", "Customer Safe Summary", "", customerSummary].join("\n"),
-    "utf8",
-  );
+  const filename = `ASDAR-Projektbrief-${nowIso.slice(0, 10)}.pdf`;
+  const buffer = createProjectBriefPdf(bundle);
   const storagePath = await savePortalFile({
     projectId,
     fileId: briefId,
     filename,
     bytes: buffer,
-    contentType: "text/plain; charset=utf-8",
+    contentType: "application/pdf",
   });
 
   await mutateStore((store) => {
@@ -1839,11 +1908,13 @@ export async function generateProjectBriefAction(formData: FormData) {
       id: briefId,
       projectId,
       name: `ASDAR Projektbrief ${nowIso.slice(0, 10)}`,
-      description: "Interner Consultant Brief mit Kunden-Zusammenfassung.",
+      description: "Interner Consultant Brief als PDF.",
       storagePath,
-      mimeType: "text/plain; charset=utf-8",
+      mimeType: "application/pdf",
       size: buffer.length,
       visibility: "internal",
+      category: "project_brief",
+      approvalStatus: "not_required",
       uploadedBy: user.id,
       uploadedAt: nowIso,
     });
@@ -1924,36 +1995,20 @@ export async function generateProposalAction(formData: FormData) {
     .toString()
     .slice(-5)}`;
   const amountCents = cents(amount);
-  const proposalText = [
-    "Assad Dar - AI & Digitalisierung",
-    `Proposal: ${proposalNumber}`,
-    "",
-    `Kunde: ${bundle.organization.name}`,
-    `Projekt: ${bundle.project.name}`,
-    `Branche: ${bundle.organization.industry}`,
-    "",
-    "Ausgangslage",
-    bundle.project.summary || bundle.intelligence.companyContext || "Wird im Projekt konkretisiert.",
-    "",
-    "Leistungsumfang",
-    scope || "ASDAR Analyse, Prozessstrukturierung und Pilotdefinition.",
-    "",
-    "Erwartete Ergebnisse",
-    outcomes || "Konkrete Automatisierungshebel, priorisierte Roadmap und nächste Umsetzungsschritte.",
-    "",
-    "Zeitrahmen",
-    timeline || "Nach Abstimmung.",
-    "",
-    amountCents > 0 ? `Budget: ${amount}` : "Budget: nach Abstimmung",
-  ].join("\n");
-
-  const buffer = Buffer.from(proposalText, "utf8");
+  const buffer = createProposalPdf({
+    bundle,
+    proposalNumber,
+    scope,
+    outcomes,
+    timeline,
+    amountCents,
+  });
   const storagePath = await savePortalFile({
     projectId,
     fileId: proposalId,
-    filename: `${proposalNumber}.txt`,
+    filename: `${proposalNumber}.pdf`,
     bytes: buffer,
-    contentType: "text/plain; charset=utf-8",
+    contentType: "application/pdf",
   });
 
   await mutateStore((store) => {
@@ -1963,11 +2018,13 @@ export async function generateProposalAction(formData: FormData) {
       id: proposalId,
       projectId,
       name: `Proposal ${proposalNumber}`,
-      description: "Kundenangebot aus dem Portal",
+      description: "Kundenangebot als PDF. Bitte prüfen und im Portal freigeben.",
       storagePath,
-      mimeType: "text/plain; charset=utf-8",
+      mimeType: "application/pdf",
       size: buffer.length,
       visibility: "customer",
+      category: "proposal",
+      approvalStatus: "pending",
       uploadedBy: user.id,
       uploadedAt: createdAt,
     });
@@ -2018,6 +2075,78 @@ export async function generateProposalAction(formData: FormData) {
   redirect(`${adminProjectPath(locale, projectId)}?saved=proposal`);
 }
 
+export async function generateFinalReportAction(formData: FormData) {
+  const locale = safeLocale(formData.get("locale"));
+  const user = await requireAdmin(locale);
+  const projectId = text(formData, "projectId");
+  const sourceStore = await readStore();
+  const bundle = getProjectBundle(sourceStore, projectId);
+  if (!bundle) redirect(`/${locale}/portal/admin`);
+
+  const now = new Date().toISOString();
+  const reportId = id("report");
+  const filename = `ASDAR-Abschlussbericht-${now.slice(0, 10)}.pdf`;
+  const buffer = createFinalReportPdf(bundle);
+  const storagePath = await savePortalFile({
+    projectId,
+    fileId: reportId,
+    filename,
+    bytes: buffer,
+    contentType: "application/pdf",
+  });
+
+  await mutateStore((store) => {
+    const nextBundle = getProjectBundle(store, projectId);
+    if (!nextBundle) return;
+
+    store.files.push({
+      id: reportId,
+      projectId,
+      name: `ASDAR Abschlussbericht ${now.slice(0, 10)}`,
+      description:
+        "Kundenbericht mit Projektstand, Deliverables, Chancen und nächsten Schritten.",
+      storagePath,
+      mimeType: "application/pdf",
+      size: buffer.length,
+      visibility: "customer",
+      category: "final_report",
+      approvalStatus: "pending",
+      uploadedBy: user.id,
+      uploadedAt: now,
+    });
+
+    store.updates.push({
+      id: id("update"),
+      projectId,
+      title: "Abschlussbericht bereitgestellt",
+      body:
+        "Der Abschlussbericht wurde im Portal bereitgestellt. Bitte prüfen Sie den Bericht und geben Sie ihn im Portal frei, wenn alles passt.",
+      visibility: "customer",
+      asdarStage: nextBundle.project.asdarStage,
+      createdBy: user.id,
+      createdAt: now,
+    });
+
+    addAuditUpdate({
+      store,
+      projectId,
+      userId: user.id,
+      title: "Abschlussbericht generiert",
+      body: "Ein kundensichtbarer Abschlussbericht wurde als PDF erzeugt.",
+    });
+  });
+
+  await notifyProjectCustomers({
+    locale,
+    projectId,
+    subject: "Assad Dar Portal: Abschlussbericht bereitgestellt",
+    body: "Der Abschlussbericht wurde im Projektportal bereitgestellt.",
+  });
+
+  revalidateProjectViews(locale, projectId);
+  redirect(`${adminProjectPath(locale, projectId)}?saved=final-report`);
+}
+
 export async function runAiScanAction(formData: FormData) {
   const locale = safeLocale(formData.get("locale"));
   const user = await requireAdmin(locale);
@@ -2050,7 +2179,14 @@ export async function runAiScanAction(formData: FormData) {
     "",
     buildTemplatePrompt(bundle, matchConsultingTemplate(bundle.organization.industry)),
     "",
-    "Return concise consulting ideas for Assad as the consultant. Focus on practical next steps, automation opportunities, risks, and what to ask the customer next. Do not write a customer-facing strategy.",
+    "Return concise consulting ideas for Assad as the consultant. Do not write a customer-facing strategy.",
+    "Use exactly these section headings:",
+    "Summary:",
+    "Automation ideas:",
+    "Risks:",
+    "Next questions:",
+    "Next actions:",
+    "Use short bullet points under each heading. Do not use a table.",
   ].join("\n");
 
   const system =
@@ -2065,17 +2201,17 @@ export async function runAiScanAction(formData: FormData) {
   const savedCount = await mutateStore((store) => {
     if (!getProjectBundle(store, projectId)) return 0;
     const now = new Date().toISOString();
-    const okResults = results.filter((result) => result.status === "ok");
-    for (const result of okResults) {
+    for (const result of results) {
       store.aiInsights.push({
         id: id("insight"),
         projectId,
-        title: `AI Scan: ${result.provider}`,
+        title: `AI Scan: ${result.provider} (${result.status})`,
         body: result.text,
-        kind: "guidance",
+        kind: result.status === "ok" ? "guidance" : "risk",
         createdAt: now,
       });
     }
+    const okResults = results.filter((result) => result.status === "ok");
     if (okResults.length > 0) {
       addAuditUpdate({
         store,

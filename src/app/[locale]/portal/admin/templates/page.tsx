@@ -3,15 +3,18 @@ import Link from "next/link";
 import {
   ArrowRight,
   BookOpen,
+  CheckCircle2,
   ClipboardList,
   Lightbulb,
   ShieldAlert,
   Sparkles,
 } from "lucide-react";
+import { saveTemplateOverrideAction } from "@/app/actions/portal";
 import { isLocale, type Locale } from "@/content";
 import { requireAdmin } from "@/lib/portal/auth";
 import { asdarStages } from "@/lib/portal/format";
-import { consultingTemplates } from "@/lib/portal/templates";
+import { readStore } from "@/lib/portal/store";
+import { effectiveConsultingTemplates } from "@/lib/portal/templates";
 import {
   Badge,
   fieldClass,
@@ -32,14 +35,17 @@ export default async function AdminTemplatesPage({
   searchParams,
 }: {
   params: Promise<{ locale: string }>;
-  searchParams: Promise<{ q?: string }>;
+  searchParams: Promise<{ q?: string; created?: string; updated?: string; error?: string }>;
 }) {
   const { locale } = await params;
   const safe: Locale = isLocale(locale) ? locale : "de";
   const user = await requireAdmin(safe);
   const query = await searchParams;
+  const store = await readStore();
+  const templateOverrides = store.templateOverrides ?? [];
+  const effectiveTemplates = effectiveConsultingTemplates(templateOverrides);
   const q = query.q?.trim().toLowerCase() ?? "";
-  const templates = consultingTemplates.filter((template) =>
+  const templates = effectiveTemplates.filter((template) =>
     [
       template.label,
       template.category,
@@ -98,16 +104,28 @@ export default async function AdminTemplatesPage({
             Suchen
           </button>
         </form>
+        {(query.created || query.updated || query.error) && (
+          <div className="mt-4 rounded-lg border border-copper/30 bg-copper/10 px-4 py-3 text-sm text-ink">
+            {query.created && "Template-Anpassung gespeichert."}
+            {query.updated && "Template-Anpassung aktualisiert."}
+            {query.error === "template" && "Template wurde nicht gefunden."}
+          </div>
+        )}
       </PortalCard>
 
       <div className="mt-6 grid gap-6">
-        {templates.map((template) => (
-          <PortalCard key={template.id}>
+        {templates.map((template) => {
+          const override = templateOverrides.find(
+            (entry) => entry.templateId === template.id,
+          );
+          return (
+          <PortalCard key={template.id} className="scroll-mt-24" id={template.id}>
             <div className="grid gap-6 lg:grid-cols-[0.9fr_1.4fr]">
               <div>
                 <div className="flex flex-wrap items-center gap-2">
                   <Badge tone="copper">{template.category}</Badge>
                   <Badge>{template.industryLabel}</Badge>
+                  {override && <Badge tone="green">Bearbeitet</Badge>}
                 </div>
                 <h2 className="mt-4 text-xl font-medium text-ink">
                   {template.label}
@@ -208,8 +226,109 @@ export default async function AdminTemplatesPage({
                 </div>
               ))}
             </div>
+
+            <details className="mt-6 rounded-lg border border-hairline bg-bg p-4">
+              <summary className="cursor-pointer text-sm font-medium text-copper">
+                Template bearbeiten
+              </summary>
+              <form
+                action={saveTemplateOverrideAction}
+                className="mt-5 grid gap-4 lg:grid-cols-2"
+              >
+                <input type="hidden" name="locale" value={safe} />
+                <input type="hidden" name="templateId" value={template.id} />
+                <div>
+                  <label className="mb-1.5 block text-sm text-ink2">
+                    Name
+                  </label>
+                  <input
+                    name="label"
+                    defaultValue={template.label}
+                    className={fieldClass}
+                  />
+                </div>
+                <div>
+                  <label className="mb-1.5 block text-sm text-ink2">
+                    Kickoff-Ziel
+                  </label>
+                  <input
+                    name="kickoffGoal"
+                    defaultValue={template.kickoffGoal}
+                    className={fieldClass}
+                  />
+                </div>
+                <div className="lg:col-span-2">
+                  <label className="mb-1.5 block text-sm text-ink2">
+                    Geeignet für
+                  </label>
+                  <textarea
+                    name="bestFor"
+                    defaultValue={template.bestFor}
+                    className="min-h-20 w-full rounded-lg border border-hairline bg-bg px-3 py-2 text-sm text-ink outline-none transition-colors placeholder:text-muted focus:border-copper"
+                  />
+                </div>
+                <div className="lg:col-span-2">
+                  <label className="mb-1.5 block text-sm text-ink2">
+                    Zusammenfassung
+                  </label>
+                  <textarea
+                    name="summary"
+                    defaultValue={template.summary}
+                    className="min-h-20 w-full rounded-lg border border-hairline bg-bg px-3 py-2 text-sm text-ink outline-none transition-colors placeholder:text-muted focus:border-copper"
+                  />
+                </div>
+                <div>
+                  <label className="mb-1.5 block text-sm text-ink2">
+                    Quick Wins, eine Zeile pro Punkt
+                  </label>
+                  <textarea
+                    name="quickWins"
+                    defaultValue={template.quickWins.join("\n")}
+                    className="min-h-36 w-full rounded-lg border border-hairline bg-bg px-3 py-2 text-sm text-ink outline-none transition-colors placeholder:text-muted focus:border-copper"
+                  />
+                </div>
+                <div>
+                  <label className="mb-1.5 block text-sm text-ink2">
+                    Automatisierungsideen
+                  </label>
+                  <textarea
+                    name="automationIdeas"
+                    defaultValue={template.automationIdeas.join("\n")}
+                    className="min-h-36 w-full rounded-lg border border-hairline bg-bg px-3 py-2 text-sm text-ink outline-none transition-colors placeholder:text-muted focus:border-copper"
+                  />
+                </div>
+                <div>
+                  <label className="mb-1.5 block text-sm text-ink2">
+                    Diagnosefragen
+                  </label>
+                  <textarea
+                    name="discoveryQuestions"
+                    defaultValue={template.discoveryQuestions.join("\n")}
+                    className="min-h-36 w-full rounded-lg border border-hairline bg-bg px-3 py-2 text-sm text-ink outline-none transition-colors placeholder:text-muted focus:border-copper"
+                  />
+                </div>
+                <div>
+                  <label className="mb-1.5 block text-sm text-ink2">
+                    Risiken
+                  </label>
+                  <textarea
+                    name="risks"
+                    defaultValue={template.risks.join("\n")}
+                    className="min-h-36 w-full rounded-lg border border-hairline bg-bg px-3 py-2 text-sm text-ink outline-none transition-colors placeholder:text-muted focus:border-copper"
+                  />
+                </div>
+                <button
+                  type="submit"
+                  className="inline-flex items-center justify-center gap-2 rounded-lg bg-copper px-4 py-2.5 text-sm font-medium text-oncopper transition-colors hover:bg-copper-hi lg:col-span-2"
+                >
+                  <CheckCircle2 className="h-4 w-4" />
+                  Template speichern
+                </button>
+              </form>
+            </details>
           </PortalCard>
-        ))}
+        );
+        })}
 
         {templates.length === 0 && (
           <PortalCard>

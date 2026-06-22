@@ -27,7 +27,7 @@ export async function loginAction(formData: FormData) {
   const email = String(formData.get("email") || "").trim().toLowerCase();
   const password = String(formData.get("password") || "");
   const requestHeaders = await headers();
-  const rateLimit = checkRateLimit(
+  const rateLimit = await checkRateLimit(
     `login:${clientIpFromHeaders(requestHeaders)}:${email}`,
     8,
     15 * 60 * 1000,
@@ -63,7 +63,7 @@ export async function registerAction(formData: FormData) {
   }
 
   const requestHeaders = await headers();
-  const rateLimit = checkRateLimit(
+  const rateLimit = await checkRateLimit(
     `register:${clientIpFromHeaders(requestHeaders)}:${email}`,
     4,
     60 * 60 * 1000,
@@ -132,7 +132,7 @@ export async function requestPasswordResetAction(formData: FormData) {
   const locale = safeLocale(formData.get("locale"));
   const email = String(formData.get("email") || "").trim().toLowerCase();
   const requestHeaders = await headers();
-  const rateLimit = checkRateLimit(
+  const rateLimit = await checkRateLimit(
     `password-reset:${clientIpFromHeaders(requestHeaders)}:${email}`,
     4,
     60 * 60 * 1000,

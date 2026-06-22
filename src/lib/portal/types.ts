@@ -110,6 +110,17 @@ export type ProjectFile = {
   mimeType: string;
   size: number;
   visibility: Visibility;
+  category?:
+    | "customer_upload"
+    | "consultant_deliverable"
+    | "proposal"
+    | "project_brief"
+    | "final_report"
+    | "invoice"
+    | "other";
+  approvalStatus?: "not_required" | "pending" | "approved";
+  approvedBy?: string;
+  approvedAt?: string;
   uploadedBy: string;
   uploadedAt: string;
 };
@@ -147,6 +158,28 @@ export type AuthToken = {
   createdAt: string;
 };
 
+export type PortalTemplateOverride = {
+  id: string;
+  templateId: string;
+  label: string;
+  bestFor: string;
+  kickoffGoal: string;
+  summary: string;
+  discoveryQuestions: string[];
+  quickWins: string[];
+  automationIdeas: string[];
+  risks: string[];
+  updatedBy: string;
+  updatedAt: string;
+};
+
+export type RateLimitBucket = {
+  key: string;
+  count: number;
+  resetAt: string;
+  updatedAt: string;
+};
+
 export type PortalStore = {
   users: User[];
   organizations: Organization[];
@@ -160,6 +193,8 @@ export type PortalStore = {
   invoices: Invoice[];
   aiInsights: AiInsight[];
   authTokens: AuthToken[];
+  templateOverrides: PortalTemplateOverride[];
+  rateLimitBuckets: RateLimitBucket[];
 };
 
 export type ProjectBundle = {

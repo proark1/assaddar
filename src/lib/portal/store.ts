@@ -233,6 +233,8 @@ function buildSeedStore(): PortalStore {
     ],
     aiInsights: [],
     authTokens: [],
+    templateOverrides: [],
+    rateLimitBuckets: [],
   };
 }
 
@@ -251,6 +253,8 @@ function normalizeStore(store: PortalStore): PortalStore {
     invoices: store.invoices ?? [],
     aiInsights: store.aiInsights ?? [],
     authTokens: store.authTokens ?? [],
+    templateOverrides: store.templateOverrides ?? [],
+    rateLimitBuckets: store.rateLimitBuckets ?? [],
   };
 }
 

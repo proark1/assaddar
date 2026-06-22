@@ -6,6 +6,7 @@ import {
   BookOpen,
   Clock3,
   CreditCard,
+  FolderKanban,
   Gauge,
   Search,
   Users,
@@ -14,14 +15,14 @@ import { createProjectAction } from "@/app/actions/portal";
 import { isLocale, type Locale } from "@/content";
 import { buildAttentionItems } from "@/lib/portal/automation";
 import { requireAdmin } from "@/lib/portal/auth";
-import { listProjectBundlesForUser } from "@/lib/portal/store";
+import { listProjectBundlesForUser, readStore } from "@/lib/portal/store";
 import {
   formatStage,
   formatStatus,
   projectStatuses,
 } from "@/lib/portal/format";
 import { buildAdminCommandCenter } from "@/lib/portal/operations";
-import { consultingTemplates } from "@/lib/portal/templates";
+import { effectiveConsultingTemplates } from "@/lib/portal/templates";
 import {
   Badge,
   fieldClass,
@@ -60,6 +61,10 @@ export default async function AdminPage({
   const statusFilter = query.status ?? "all";
   const healthFilter = query.health ?? "all";
   const allBundles = await listProjectBundlesForUser(user);
+  const portalStore = await readStore();
+  const consultingTemplates = effectiveConsultingTemplates(
+    portalStore.templateOverrides,
+  );
   const attentionItems = allBundles.flatMap(buildAttentionItems);
   const commandCenter = buildAdminCommandCenter(allBundles);
   const selectedTemplateId =
@@ -122,7 +127,42 @@ export default async function AdminPage({
               Der schnelle Überblick darüber, wo Assad jetzt handeln,
               nachfassen oder ein Update veröffentlichen sollte.
             </PortalSectionTitle>
-            <div className="mt-5 grid gap-3 sm:grid-cols-2 xl:grid-cols-3">
+            {commandCenter.focusItems[0] && (
+              <Link
+                href={`/${safe}/portal/admin/projects/${commandCenter.focusItems[0].projectId}?view=${commandCenter.focusItems[0].action === "Reminder senden" ? "communication" : "guidance"}`}
+                className={`mt-5 block rounded-lg border p-4 transition-colors hover:border-copper ${
+                  commandCenter.focusItems[0].tone === "red"
+                    ? "border-critical/30 bg-critical/10"
+                    : "border-copper/30 bg-copper/10"
+                }`}
+              >
+                <div className="font-mono text-[10.5px] uppercase tracking-[0.14em] text-copper">
+                  Heute zuerst
+                </div>
+                <div className="mt-2 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+                  <div>
+                    <h2 className="text-lg font-medium text-ink">
+                      {commandCenter.focusItems[0].title}
+                    </h2>
+                    <p className="mt-1 text-sm leading-relaxed text-ink2">
+                      {commandCenter.focusItems[0].body}
+                    </p>
+                  </div>
+                  <span className="inline-flex shrink-0 items-center gap-1.5 text-sm font-medium text-copper">
+                    {commandCenter.focusItems[0].action}
+                    <ArrowRight className="h-4 w-4" />
+                  </span>
+                </div>
+              </Link>
+            )}
+            <div className="mt-5 grid gap-3 sm:grid-cols-2 xl:grid-cols-6">
+              <div className="rounded-lg border border-hairline bg-bg p-4">
+                <FolderKanban className="h-4 w-4 text-copper" />
+                <div className="mt-3 text-2xl font-medium text-ink">
+                  {commandCenter.stats.activeProjects}
+                </div>
+                <div className="text-sm text-muted">Aktive Projekte</div>
+              </div>
               <div className="rounded-lg border border-hairline bg-bg p-4">
                 <Gauge className="h-4 w-4 text-copper" />
                 <div className="mt-3 text-2xl font-medium text-ink">
@@ -131,11 +171,25 @@ export default async function AdminPage({
                 <div className="text-sm text-muted">Riskante Projekte</div>
               </div>
               <div className="rounded-lg border border-hairline bg-bg p-4">
+                <AlertTriangle className="h-4 w-4 text-copper" />
+                <div className="mt-3 text-2xl font-medium text-ink">
+                  {commandCenter.stats.missingIntake}
+                </div>
+                <div className="text-sm text-muted">Intakes offen</div>
+              </div>
+              <div className="rounded-lg border border-hairline bg-bg p-4">
                 <Clock3 className="h-4 w-4 text-copper" />
                 <div className="mt-3 text-2xl font-medium text-ink">
                   {commandCenter.stats.staleUpdates}
                 </div>
                 <div className="text-sm text-muted">Updates fällig</div>
+              </div>
+              <div className="rounded-lg border border-hairline bg-bg p-4">
+                <Users className="h-4 w-4 text-copper" />
+                <div className="mt-3 text-2xl font-medium text-ink">
+                  {commandCenter.stats.overdueCustomerTasks}
+                </div>
+                <div className="text-sm text-muted">Kunden überfällig</div>
               </div>
               <div className="rounded-lg border border-hairline bg-bg p-4">
                 <CreditCard className="h-4 w-4 text-copper" />
@@ -359,6 +413,13 @@ export default async function AdminPage({
               <p className="mt-4 text-sm leading-relaxed text-ink2">
                 {bundle.project.summary || "Noch keine Zusammenfassung."}
               </p>
+              <div className="mt-4 rounded-lg border border-hairline bg-bg p-3 text-sm">
+                <div className="font-medium text-ink">Nächster Schritt</div>
+                <p className="mt-1 leading-relaxed text-muted">
+                  {bundle.project.nextStep ||
+                    "Noch keinen nächsten Schritt definiert."}
+                </p>
+              </div>
               <div className="mt-5 grid gap-3 text-sm sm:grid-cols-4">
                 <div>
                   <div className="font-medium text-ink">
@@ -399,25 +460,28 @@ export default async function AdminPage({
         </div>
 
         <PortalCard>
-          <PortalSectionTitle eyebrow="Neu" title="Projekt anlegen">
-            Ein Kunde muss zuerst registriert sein. Danach kann die E-Mail hier
-            zugeordnet werden.
+          <PortalSectionTitle eyebrow="Neu" title="Projekt in 3 Schritten anlegen">
+            Vorlage wählen, Kundendaten eintragen, starten. Das Template füllt
+            danach erste Aufgaben, Meilensteine und ein Kundenupdate vor.
           </PortalSectionTitle>
           {query.error === "company" && (
             <p className="mt-4 rounded-md border border-critical/30 bg-critical/10 px-3 py-2 text-sm text-critical">
               Bitte mindestens den Unternehmensnamen eintragen.
             </p>
           )}
-          <form action={createProjectAction} className="mt-5 space-y-4">
+          <form action={createProjectAction} className="mt-5 space-y-5">
             <input type="hidden" name="locale" value={safe} />
-            <div>
-              <label className="mb-1.5 block text-sm text-ink2">
+            <div className="rounded-lg border border-hairline bg-bg p-4">
+              <div className="font-mono text-[10.5px] uppercase tracking-[0.14em] text-copper">
+                Schritt 1
+              </div>
+              <label className="mt-2 block text-sm font-medium text-ink">
                 Industrie-Template
               </label>
               <select
                 name="templateId"
                 defaultValue={selectedTemplateId}
-                className={fieldClass}
+                className={`${fieldClass} mt-2`}
               >
                 <option value="">Kein Template / manuell</option>
                 {consultingTemplates.map((template) => (
@@ -426,38 +490,56 @@ export default async function AdminPage({
                   </option>
                 ))}
               </select>
-              <p className="mt-1 text-[12px] leading-relaxed text-muted">
-                Füllt ASDAR Intake, erste Aufgaben, Meilensteine und ein
-                Kunden-Kickoff-Update vor.
-              </p>
             </div>
-            <div>
-              <label className="mb-1.5 block text-sm text-ink2">
-                Unternehmen
-              </label>
-              <input name="company" required className={fieldClass} />
+
+            <div className="rounded-lg border border-hairline bg-bg p-4">
+              <div className="font-mono text-[10.5px] uppercase tracking-[0.14em] text-copper">
+                Schritt 2
+              </div>
+              <div className="mt-3 space-y-3">
+                <div>
+                  <label className="mb-1.5 block text-sm text-ink2">
+                    Unternehmen
+                  </label>
+                  <input name="company" required className={fieldClass} />
+                </div>
+                <div>
+                  <label className="mb-1.5 block text-sm text-ink2">
+                    Branche
+                  </label>
+                  <input name="industry" className={fieldClass} />
+                </div>
+                <div>
+                  <label className="mb-1.5 block text-sm text-ink2">
+                    Kunden-E-Mail
+                  </label>
+                  <input
+                    name="customerEmail"
+                    type="email"
+                    className={fieldClass}
+                  />
+                </div>
+              </div>
             </div>
-            <div>
-              <label className="mb-1.5 block text-sm text-ink2">Branche</label>
-              <input name="industry" className={fieldClass} />
-            </div>
-            <div>
-              <label className="mb-1.5 block text-sm text-ink2">
-                Projektname
-              </label>
-              <input name="projectName" className={fieldClass} />
-            </div>
-            <div>
-              <label className="mb-1.5 block text-sm text-ink2">
-                Kunden-E-Mail
-              </label>
-              <input name="customerEmail" type="email" className={fieldClass} />
-            </div>
-            <div>
-              <label className="mb-1.5 block text-sm text-ink2">
-                Kurzbeschreibung
-              </label>
-              <textarea name="summary" className={textareaClass} />
+
+            <div className="rounded-lg border border-hairline bg-bg p-4">
+              <div className="font-mono text-[10.5px] uppercase tracking-[0.14em] text-copper">
+                Schritt 3
+              </div>
+              <div className="mt-3 space-y-3">
+                <div>
+                  <label className="mb-1.5 block text-sm text-ink2">
+                    Projektname
+                  </label>
+                  <input name="projectName" className={fieldClass} />
+                </div>
+                <div>
+                  <label className="mb-1.5 block text-sm text-ink2">
+                    Kurzbeschreibung
+                  </label>
+                  <textarea name="summary" className={textareaClass} />
+                </div>
+              </div>
             </div>
             <ProjectCreateSubmit />
           </form>
