@@ -43,12 +43,12 @@ export function AiExamples({ t }: { t: Dict["examples"] }) {
         </h2>
         <p className="mt-4 max-w-2xl text-base text-ink2">{t.intro}</p>
 
-        <div className="mt-12 grid gap-6 md:grid-cols-[280px_1fr]">
-          <div>
+        <div className="mt-12 grid min-w-0 gap-6 md:grid-cols-[280px_1fr]">
+          <div className="min-w-0">
             <div className="mb-3 font-mono text-[11px] uppercase tracking-[0.12em] text-muted md:hidden">
               {t.labels.select}
             </div>
-            <div className="flex gap-2 overflow-x-auto pb-2 md:flex-col md:gap-1.5 md:overflow-visible md:pb-0">
+            <div className="flex max-w-full gap-2 overflow-x-auto pb-2 md:flex-col md:gap-1.5 md:overflow-visible md:pb-0">
               {t.items.map((item, i) => {
                 const Icon = ICONS[item.icon] ?? FileText;
                 const isActive = i === active;

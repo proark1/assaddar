@@ -1,7 +1,14 @@
 "use client";
 
 import { useMemo, useState } from "react";
-import { ArrowRight, Calculator, Gauge, Sparkles } from "lucide-react";
+import {
+  ArrowRight,
+  BarChart3,
+  Calculator,
+  Gauge,
+  Sparkles,
+  Target,
+} from "lucide-react";
 import type { Locale } from "@/content";
 import { Container, Kicker, Section } from "./ui";
 
@@ -30,7 +37,7 @@ function SliderRow({
 }: SliderRowProps) {
   return (
     <div className="rounded-lg border border-hairline bg-bg p-4">
-      <div className="mb-2 flex items-start justify-between gap-4">
+      <div className="mb-3 flex items-start justify-between gap-4">
         <div>
           <label htmlFor={id} className="text-sm font-medium text-ink">
             {label}
@@ -59,17 +66,14 @@ function SliderRow({
 
 const content = {
   de: {
-    kicker: "Schnelltest & Beispielrechnung",
-    heading: "In 2 Minuten sehen, ob sich eine ASDAR Analyse lohnt.",
+    kicker: "ASDAR Potenzial-Check",
+    heading: "Finden Sie in 2 Minuten den ersten sinnvollen Automatisierungshebel.",
     intro:
-      "Der Check macht das Problem greifbar: Wo steht Ihr Unternehmen heute, welche Phase passt als nächstes und was könnte konservativ an Zeit zurückkommen?",
-    readinessTitle: "KI-Readiness Check",
-    readinessIntro:
-      "Schieben Sie die Regler nach Bauchgefühl. Das Ergebnis ist keine Diagnose, sondern ein guter Startpunkt für das Erstgespräch.",
+      "Ein Check statt drei Tools: Reifegrad, Engpass, grober Zeitwert und der nächste Beratungsschritt auf einen Blick.",
     sliders: [
       {
-        label: "Wiederholbare Prozesse",
-        description: "Es gibt Aufgaben, die jede Woche ähnlich ablaufen.",
+        label: "Prozessklarheit",
+        description: "Die wichtigsten Abläufe sind bekannt und wiederholbar.",
       },
       {
         label: "Daten & Dokumente",
@@ -90,26 +94,32 @@ const content = {
     ],
     bands: [
       {
+        max: 44,
         label: "Erst Klarheit schaffen",
-        phase: "Start mit Analysieren + Strukturieren",
+        phase: "Analysieren + Strukturieren",
         body: "Der größte Hebel liegt wahrscheinlich darin, Abläufe, Daten und Verantwortlichkeiten sauber sichtbar zu machen.",
+        nextStep: "90 Minuten Prozessaufnahme und ASDAR Baseline.",
       },
       {
+        max: 71,
         label: "Pilot vorbereiten",
-        phase: "Start mit Strukturieren + Digitalisieren",
+        phase: "Strukturieren + Digitalisieren",
         body: "Es gibt genug Substanz für Quick Wins. Jetzt braucht es Priorisierung, Datenbasis und einen kleinen Testfall.",
+        nextStep: "Use-Case-Auswahl, Aufwand/Nutzen-Matrix und Pilotplan.",
       },
       {
+        max: 100,
         label: "Automatisierung starten",
-        phase: "Start mit Automatisieren + Realisieren",
+        phase: "Automatisieren + Realisieren",
         body: "Die Grundlage wirkt belastbar. Jetzt lohnt sich ein konkreter Workflow-Pilot mit klaren Messpunkten.",
+        nextStep: "Automatisierungs-Sprint mit Zielmetriken und Portal-Status.",
       },
     ],
-    scoreLabel: "Readiness",
-    cta: "Ergebnis besprechen",
-    roiTitle: "ROI-Beispielrechner",
-    roiIntro:
-      "Eine konservative Beispielrechnung für wiederkehrende manuelle Arbeit. Die echte Bewertung passiert im Projekt mit echten Prozessdaten.",
+    inputsTitle: "1. Lage einschätzen",
+    valueTitle: "2. Zeitwert grob rechnen",
+    resultTitle: "Live-Ergebnis",
+    bottleneck: "Größter Engpass",
+    nextStep: "Nächster Schritt",
     people: "Beteiligte Personen",
     hours: "Manuelle Stunden pro Person/Woche",
     rate: "Interner Stundensatz",
@@ -117,21 +127,20 @@ const content = {
     monthlyHours: "Stunden pro Monat frei",
     monthlyValue: "Wert pro Monat",
     annualValue: "Wert pro Jahr",
+    cta: "ASDAR Analyse anfragen",
     disclaimer:
-      "Beispielrechnung, keine Garantie. Sie hilft nur, ein Gespür für die Größenordnung zu bekommen.",
+      "Beispielrechnung, keine Garantie. Die echte Bewertung passiert mit echten Prozessdaten im Projekt.",
+    sliderHint: "0-20 pro Bereich. Bewegen Sie die Regler nach Bauchgefühl.",
   },
   en: {
-    kicker: "Quick check & example calculation",
-    heading: "See in 2 minutes whether an ASDAR analysis is worth it.",
+    kicker: "ASDAR potential check",
+    heading: "Find the first useful automation lever in 2 minutes.",
     intro:
-      "The check makes the problem tangible: where does your company stand today, which phase fits next, and what time could conservatively come back?",
-    readinessTitle: "AI Readiness Check",
-    readinessIntro:
-      "Move the sliders by intuition. The result is not a diagnosis, but a useful starting point for the first call.",
+      "One check instead of three tools: readiness, bottleneck, rough time value, and the next consulting step in one view.",
     sliders: [
       {
-        label: "Repeatable processes",
-        description: "There are tasks that run in a similar way every week.",
+        label: "Process clarity",
+        description: "The key workflows are known and repeatable.",
       },
       {
         label: "Data & documents",
@@ -142,8 +151,8 @@ const content = {
         description: "The key systems are known and usable.",
       },
       {
-        label: "Capacity pressure",
-        description: "Manual work visibly blocks the team.",
+        label: "Team capacity pressure",
+        description: "Manual work visibly blocks capacity.",
       },
       {
         label: "Willingness to execute",
@@ -152,26 +161,32 @@ const content = {
     ],
     bands: [
       {
+        max: 44,
         label: "Create clarity first",
-        phase: "Start with Analyze + Structure",
+        phase: "Analyze + Structure",
         body: "The biggest lever is likely to make workflows, data, and responsibilities clearly visible first.",
+        nextStep: "90-minute process intake and ASDAR baseline.",
       },
       {
+        max: 71,
         label: "Prepare a pilot",
-        phase: "Start with Structure + Digitize",
+        phase: "Structure + Digitize",
         body: "There is enough substance for quick wins. Now it needs prioritization, data foundations, and a small test case.",
+        nextStep: "Use-case selection, effort/value matrix, and pilot plan.",
       },
       {
+        max: 100,
         label: "Start automation",
-        phase: "Start with Automate + Realize",
+        phase: "Automate + Realize",
         body: "The foundation looks solid. A concrete workflow pilot with clear measurements is likely worth it.",
+        nextStep: "Automation sprint with target metrics and portal status.",
       },
     ],
-    scoreLabel: "Readiness",
-    cta: "Discuss the result",
-    roiTitle: "ROI example calculator",
-    roiIntro:
-      "A conservative example calculation for recurring manual work. The real assessment happens in the project with real process data.",
+    inputsTitle: "1. Estimate your current state",
+    valueTitle: "2. Estimate time value",
+    resultTitle: "Live result",
+    bottleneck: "Biggest bottleneck",
+    nextStep: "Next step",
     people: "People involved",
     hours: "Manual hours per person/week",
     rate: "Internal hourly rate",
@@ -179,8 +194,10 @@ const content = {
     monthlyHours: "Hours freed per month",
     monthlyValue: "Value per month",
     annualValue: "Value per year",
+    cta: "Request an ASDAR analysis",
     disclaimer:
-      "Example calculation, not a guarantee. It only helps estimate the order of magnitude.",
+      "Example calculation, not a guarantee. The real assessment happens with real process data in the project.",
+    sliderHint: "0-20 per area. Move the sliders by intuition.",
   },
 } as const;
 
@@ -194,7 +211,12 @@ export function ReadinessAndRoiTools({ locale }: { locale: Locale }) {
 
   const readinessScore = readiness.reduce((sum, value) => sum + value, 0);
   const readinessBand =
-    readinessScore < 45 ? t.bands[0] : readinessScore < 72 ? t.bands[1] : t.bands[2];
+    t.bands.find((band) => readinessScore <= band.max) ?? t.bands[t.bands.length - 1];
+  const bottleneckIndex = readiness.reduce(
+    (lowestIndex, value, index) =>
+      value < readiness[lowestIndex] ? index : lowestIndex,
+    0,
+  );
 
   const numberFormatter = useMemo(
     () => new Intl.NumberFormat(locale === "de" ? "de-DE" : "en-US"),
@@ -217,9 +239,9 @@ export function ReadinessAndRoiTools({ locale }: { locale: Locale }) {
   const annualValue = monthlyValue * 12;
 
   return (
-    <Section id="readiness-check" className="border-t border-hairline">
+    <Section id="readiness-check" className="border-t border-hairline bg-surface2">
       <Container>
-        <div className="grid gap-10 lg:grid-cols-[0.9fr_1.35fr] lg:items-start">
+        <div className="grid gap-8 lg:grid-cols-[0.82fr_1.38fr] lg:items-start">
           <div>
             <Kicker>{t.kicker}</Kicker>
             <h2 className="mt-5 max-w-xl font-serif text-3xl font-normal leading-tight text-ink md:text-[40px]">
@@ -237,177 +259,185 @@ export function ReadinessAndRoiTools({ locale }: { locale: Locale }) {
             </a>
           </div>
 
-          <div className="grid gap-5 xl:grid-cols-2">
-            <article className="rounded-xl border border-hairline bg-surface p-5 shadow-card md:p-6">
-              <div className="flex items-start gap-3">
-                <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-copper/10 text-copper">
-                  <Gauge className="h-5 w-5" />
-                </div>
-                <div>
+          <article className="rounded-xl border border-hairline bg-surface p-5 shadow-card md:p-6">
+            <div className="grid gap-5 xl:grid-cols-[1fr_0.9fr]">
+              <div className="space-y-5">
+                <div className="flex items-start gap-3">
+                  <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-copper/10 text-copper">
+                    <Gauge className="h-5 w-5" />
+                  </div>
+                  <div>
                   <h3 className="text-base font-medium text-ink">
-                    {t.readinessTitle}
+                    {t.inputsTitle}
                   </h3>
                   <p className="mt-1 text-sm leading-relaxed text-muted">
-                    {t.readinessIntro}
+                      {t.sliderHint}
                   </p>
+                  </div>
+                </div>
+                <div className="space-y-3">
+                  {t.sliders.map((slider, index) => (
+                    <SliderRow
+                      key={slider.label}
+                      id={`asdar-potential-${index}`}
+                      label={slider.label}
+                      description={slider.description}
+                      min={0}
+                      max={20}
+                      value={readiness[index]}
+                      onChange={(value) =>
+                        setReadiness((current) =>
+                          current.map((item, itemIndex) =>
+                            itemIndex === index ? value : item,
+                          ),
+                        )
+                      }
+                    />
+                  ))}
                 </div>
               </div>
 
-              <div className="mt-5 space-y-3">
-                {t.sliders.map((slider, index) => (
-                  <SliderRow
-                    key={slider.label}
-                    id={`readiness-${index}`}
-                    label={slider.label}
-                    description={slider.description}
-                    min={0}
-                    max={20}
-                    value={readiness[index]}
-                    onChange={(value) =>
-                      setReadiness((current) =>
-                        current.map((item, itemIndex) =>
-                          itemIndex === index ? value : item,
-                        ),
-                      )
-                    }
-                  />
-                ))}
-              </div>
-
-              <div
-                aria-live="polite"
-                className="mt-5 rounded-lg border border-copper/30 bg-copper/10 p-4"
-              >
-                <div className="flex items-end justify-between gap-4">
-                  <div>
+              <div className="space-y-5">
+                <div className="rounded-lg border border-copper/30 bg-copper/10 p-5">
+                  <div className="flex items-center gap-3">
+                    <Target className="h-5 w-5 text-copper" />
                     <div className="font-mono text-[11px] uppercase tracking-[0.14em] text-copper">
-                      {t.scoreLabel}
-                    </div>
-                    <div className="mt-1 font-serif text-4xl text-copper">
-                      {readinessScore}
+                      {t.resultTitle}
                     </div>
                   </div>
-                  <div className="w-full max-w-[180px]">
-                    <div className="h-2 overflow-hidden rounded-full bg-bg">
-                      <div
-                        className="h-full rounded-full bg-copper transition-all duration-300"
-                        style={{ width: `${readinessScore}%` }}
-                      />
+                  <div className="mt-4 flex items-end justify-between gap-4">
+                    <div>
+                      <div className="font-serif text-5xl text-copper">
+                        {readinessScore}
+                      </div>
+                      <div className="mt-1 text-[12px] text-muted">/ 100</div>
                     </div>
-                    <div className="mt-2 text-right text-[12px] text-muted">
-                      / 100
+                    <div className="w-full max-w-[190px]">
+                      <div className="h-2 overflow-hidden rounded-full bg-bg">
+                        <div
+                          className="h-full rounded-full bg-copper transition-all duration-300"
+                          style={{ width: `${readinessScore}%` }}
+                        />
+                      </div>
                     </div>
                   </div>
-                </div>
-                <p className="mt-4 text-sm font-medium text-ink">
-                  {readinessBand.label}
-                </p>
-                <p className="mt-1 text-[12px] text-copper">
-                  {readinessBand.phase}
-                </p>
-                <p className="mt-3 text-sm leading-relaxed text-ink2">
-                  {readinessBand.body}
-                </p>
-              </div>
-            </article>
-
-            <article className="rounded-xl border border-hairline bg-surface p-5 shadow-card md:p-6">
-              <div className="flex items-start gap-3">
-                <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-copper/10 text-copper">
-                  <Calculator className="h-5 w-5" />
-                </div>
-                <div>
-                  <h3 className="text-base font-medium text-ink">{t.roiTitle}</h3>
-                  <p className="mt-1 text-sm leading-relaxed text-muted">
-                    {t.roiIntro}
+                  <h3 className="mt-5 text-base font-medium text-ink">
+                    {readinessBand.label}
+                  </h3>
+                  <p className="mt-1 text-[12px] text-copper">
+                    {readinessBand.phase}
+                  </p>
+                  <p className="mt-3 text-sm leading-relaxed text-ink2">
+                    {readinessBand.body}
                   </p>
                 </div>
-              </div>
 
-              <div className="mt-5 space-y-3">
-                <SliderRow
-                  id="roi-people"
-                  label={t.people}
-                  description="1-40"
-                  min={1}
-                  max={40}
-                  value={people}
-                  onChange={setPeople}
-                />
-                <SliderRow
-                  id="roi-hours"
-                  label={t.hours}
-                  description="1-20"
-                  min={1}
-                  max={20}
-                  value={manualHours}
-                  suffix="h"
-                  onChange={setManualHours}
-                />
-                <SliderRow
-                  id="roi-rate"
-                  label={t.rate}
-                  description="20-150 EUR"
-                  min={20}
-                  max={150}
-                  step={5}
-                  value={hourlyRate}
-                  suffix=" EUR"
-                  onChange={setHourlyRate}
-                />
-                <SliderRow
-                  id="roi-automation"
-                  label={t.automation}
-                  description="5-60%"
-                  min={5}
-                  max={60}
-                  step={5}
-                  value={automationRate}
-                  suffix="%"
-                  onChange={setAutomationRate}
-                />
-              </div>
-
-              <div className="mt-5 grid gap-3">
-                {[
-                  {
-                    label: t.monthlyHours,
-                    value: numberFormatter.format(monthlySavedHours),
-                  },
-                  {
-                    label: t.monthlyValue,
-                    value: currencyFormatter.format(monthlyValue),
-                  },
-                  {
-                    label: t.annualValue,
-                    value: currencyFormatter.format(annualValue),
-                  },
-                ].map((item, index) => (
-                  <div
-                    key={item.label}
-                    className="rounded-lg border border-hairline bg-bg p-4"
-                  >
-                    <div className="flex items-center justify-between gap-4">
-                      <span className="text-sm text-muted">{item.label}</span>
-                      <span className="font-serif text-2xl text-copper">
-                        {item.value}
-                      </span>
+                <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-1">
+                  <div className="rounded-lg border border-hairline bg-bg p-4">
+                    <div className="flex items-center gap-2 text-[12px] text-muted">
+                      <BarChart3 className="h-4 w-4 text-copper" />
+                      {t.bottleneck}
                     </div>
-                    <div className="mt-3 h-1.5 overflow-hidden rounded-full bg-hairline">
-                      <div
-                        className="h-full rounded-full bg-copper"
-                        style={{ width: `${Math.max(28, 100 - index * 18)}%` }}
-                      />
-                    </div>
+                    <p className="mt-2 text-sm font-medium text-ink">
+                      {t.sliders[bottleneckIndex].label}
+                    </p>
                   </div>
-                ))}
+                  <div className="rounded-lg border border-hairline bg-bg p-4">
+                    <div className="flex items-center gap-2 text-[12px] text-muted">
+                      <Sparkles className="h-4 w-4 text-copper" />
+                      {t.nextStep}
+                    </div>
+                    <p className="mt-2 text-sm font-medium text-ink">
+                      {readinessBand.nextStep}
+                    </p>
+                  </div>
+                </div>
+
+                <div className="rounded-lg border border-hairline bg-bg p-4">
+                  <div className="mb-4 flex items-center gap-3">
+                    <Calculator className="h-5 w-5 text-copper" />
+                    <h3 className="text-base font-medium text-ink">
+                      {t.valueTitle}
+                    </h3>
+                  </div>
+                  <div className="space-y-3">
+                    <SliderRow
+                      id="roi-people"
+                      label={t.people}
+                      description="1-40"
+                      min={1}
+                      max={40}
+                      value={people}
+                      onChange={setPeople}
+                    />
+                    <SliderRow
+                      id="roi-hours"
+                      label={t.hours}
+                      description="1-20"
+                      min={1}
+                      max={20}
+                      value={manualHours}
+                      suffix="h"
+                      onChange={setManualHours}
+                    />
+                    <SliderRow
+                      id="roi-rate"
+                      label={t.rate}
+                      description="20-150 EUR"
+                      min={20}
+                      max={150}
+                      step={5}
+                      value={hourlyRate}
+                      suffix=" EUR"
+                      onChange={setHourlyRate}
+                    />
+                    <SliderRow
+                      id="roi-automation"
+                      label={t.automation}
+                      description="5-60%"
+                      min={5}
+                      max={60}
+                      step={5}
+                      value={automationRate}
+                      suffix="%"
+                      onChange={setAutomationRate}
+                    />
+                  </div>
+                </div>
               </div>
-              <p className="mt-4 flex gap-2 text-[12px] leading-relaxed text-muted">
-                <Sparkles className="mt-0.5 h-3.5 w-3.5 shrink-0 text-copper" />
-                <span>{t.disclaimer}</span>
-              </p>
-            </article>
-          </div>
+            </div>
+
+            <div className="mt-5 grid gap-3 md:grid-cols-3">
+              {[
+                {
+                  label: t.monthlyHours,
+                  value: numberFormatter.format(monthlySavedHours),
+                },
+                {
+                  label: t.monthlyValue,
+                  value: currencyFormatter.format(monthlyValue),
+                },
+                {
+                  label: t.annualValue,
+                  value: currencyFormatter.format(annualValue),
+                },
+              ].map((item) => (
+                <div
+                  key={item.label}
+                  className="rounded-lg border border-hairline bg-bg p-4"
+                >
+                  <div className="text-[12px] text-muted">{item.label}</div>
+                  <div className="mt-2 font-serif text-2xl text-copper">
+                    {item.value}
+                  </div>
+                </div>
+              ))}
+            </div>
+            <p className="mt-4 flex gap-2 text-[12px] leading-relaxed text-muted">
+              <Sparkles className="mt-0.5 h-3.5 w-3.5 shrink-0 text-copper" />
+              <span>{t.disclaimer}</span>
+            </p>
+          </article>
         </div>
       </Container>
     </Section>

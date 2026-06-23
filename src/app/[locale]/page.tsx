@@ -14,12 +14,12 @@ import {
   Market,
   MethodSection,
   MiniCaseStudies,
-  Proof,
+  NextStepsTimeline,
   ProductsPreview,
   TrustSignals,
+  WhyAssad,
 } from "@/components/sections-server";
 import { AiExamples } from "@/components/examples";
-import { AsdarScore } from "@/components/asdar-score";
 import { Faq } from "@/components/faq";
 import { ReadinessAndRoiTools } from "@/components/landing-tools";
 
@@ -102,13 +102,13 @@ export default async function Home({
         <Market t={t.market} />
         <EvidenceNumbers locale={safe} />
         <ReadinessAndRoiTools locale={safe} />
+        <NextStepsTimeline locale={safe} />
         <MethodSection t={t.method} />
         <BeforeAfterWorkflow locale={safe} />
-        <AsdarScore t={t.score} />
         <AiExamples t={t.examples} />
+        <WhyAssad locale={safe} />
         <Angebote t={t.angebote} />
         <Branchen t={t.branchen} />
-        <Proof t={t.proof} />
         <TrustSignals locale={safe} />
         <MiniCaseStudies locale={safe} />
         <About t={t.about} locale={safe} />

@@ -10,9 +10,6 @@ export const SITE_URL = "https://assad-dar.de";
 // Cal.com booking link, e.g. "assaddar/erstgespraech". Empty = booking button hidden.
 export const CAL_LINK = "";
 
-const MAILTO =
-  "mailto:assad.dar@gmail.com?subject=ASDAR%20Analyse%20%E2%80%93%20Anfrage";
-
 const de = {
   meta: {
     title: "Assad Dar — KI & Automatisierung für effizientere Unternehmen",
@@ -38,15 +35,16 @@ const de = {
     skip: "Zum Inhalt springen",
   },
   hero: {
-    kicker: "KI & Automatisierung für effizientere Unternehmen",
+    kicker: "KI- und Prozessberatung für KMU, Praxen, Händler und Dienstleister",
     line1: "Weniger manuelle Arbeit. Bessere Prozesse.",
     line2: "KI dort, wo sie echten Nutzen bringt.",
-    sub: "Mit der ASDAR Method analysiert Assad Dar Ihre Abläufe, findet Automatisierungspotenziale und entwickelt eine klare Roadmap für digitale Effizienz — für Unternehmen mit gewachsenen Prozessen und dem Wunsch nach mehr Effizienz.",
+    sub: "Assad Dar analysiert gewachsene Abläufe, findet konkrete Automatisierungspotenziale und übersetzt sie in eine klare Roadmap mit Kundenportal, Status und nächsten Schritten.",
     ctaPrimary: "ASDAR Analyse anfragen",
     ctaPrimaryHref: "/de/termin",
-    ctaSecondary: "Schnelltest & ROI berechnen",
+    ctaSecondary: "ASDAR Potenzial-Check starten",
     ctaSecondaryHref: "#readiness-check",
-    ctaSecondaryHint: "2 Minuten — Reifegrad, Hebel und Beispielwert.",
+    ctaSecondaryHint: "2 Minuten — Score, Engpass, Zeitwert und nächster Schritt.",
+    chips: ["ASDAR Analyse", "Kundenportal", "Automatisierungs-Roadmap"],
   },
   market: {
     kicker: "Warum jetzt",
@@ -540,10 +538,10 @@ const de = {
   finalCta: {
     kicker: "Nächster Schritt",
     heading: "Bereit, manuelle Arbeit zu reduzieren?",
-    sub: "Fragen Sie eine ASDAR Analyse an oder buchen Sie ein 30-Minuten-Erstgespräch — keine Slides, kein Druck, auf Deutsch oder Englisch.",
+    sub: "Senden Sie kurz Ihr Thema über das Formular. Danach klären wir in 30 Minuten, welcher Prozess zuerst einfacher werden sollte.",
     cta: "ASDAR Analyse anfragen",
-    ctaHref: MAILTO,
-    or: "oder schreiben Sie direkt an",
+    ctaHref: "/de/termin",
+    or: "oder per E-Mail an",
     email: "assad.dar@gmail.com",
     reassure:
       "Antwort meist innerhalb eines Werktags — direkt von mir, nicht von einem Vertriebsteam.",
@@ -615,15 +613,16 @@ const en: Dict = {
     skip: "Skip to content",
   },
   hero: {
-    kicker: "AI & automation for more efficient companies",
+    kicker: "AI and process consulting for SMBs, practices, dealers, and service teams",
     line1: "Less manual work. Better processes.",
     line2: "AI where it actually creates value.",
-    sub: "With the ASDAR Method, Assad Dar analyzes your workflows, finds automation potential, and builds a clear roadmap for digital efficiency — for companies with grown-over processes that want to work more efficiently.",
+    sub: "Assad Dar analyzes grown-over workflows, finds concrete automation potential, and turns it into a clear roadmap with client portal, status, and next steps.",
     ctaPrimary: "Request an ASDAR analysis",
     ctaPrimaryHref: "/en/termin",
-    ctaSecondary: "Run quick check & ROI",
+    ctaSecondary: "Start ASDAR potential check",
     ctaSecondaryHref: "#readiness-check",
-    ctaSecondaryHint: "2 minutes — readiness, leverage, and example value.",
+    ctaSecondaryHint: "2 minutes — score, bottleneck, time value, and next step.",
+    chips: ["ASDAR analysis", "Client portal", "Automation roadmap"],
   },
   market: {
     kicker: "Why now",
@@ -1110,10 +1109,10 @@ const en: Dict = {
   finalCta: {
     kicker: "Next step",
     heading: "Ready to reduce manual work?",
-    sub: "Request an ASDAR analysis or book a 30-minute intro call — no slides, no pressure, in German or English.",
+    sub: "Send the topic through the short form. Then we clarify in 30 minutes which process should become simpler first.",
     cta: "Request an ASDAR analysis",
-    ctaHref: MAILTO,
-    or: "or write directly to",
+    ctaHref: "/en/termin",
+    or: "or email",
     email: "assad.dar@gmail.com",
     reassure:
       "Usually a reply within one business day — directly from me, not a sales team.",

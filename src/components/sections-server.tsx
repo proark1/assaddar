@@ -7,6 +7,7 @@ import {
   Car,
   CheckCircle2,
   Clock3,
+  ClipboardCheck,
   Factory,
   FileCheck2,
   FileSpreadsheet,
@@ -14,6 +15,7 @@ import {
   HardHat,
   HeartPulse,
   Landmark,
+  ListChecks,
   Mail,
   ShoppingCart,
   ShieldCheck,
@@ -63,20 +65,20 @@ function DecorativeLines() {
 
 export function Hero({ t }: { t: Dict["hero"] }) {
   return (
-    <Section className="relative overflow-hidden pb-0 pt-14 md:pt-20">
+    <Section className="relative overflow-hidden pb-0 pt-10 md:pt-14">
       <DecorativeLines />
       <Container className="relative">
-        <div className="grid gap-8 lg:min-h-[560px] lg:grid-cols-[minmax(0,0.98fr)_minmax(340px,0.72fr)] lg:items-end">
-          <div className="pb-10 md:pb-16 lg:pb-24">
+        <div className="grid gap-8 lg:min-h-[500px] lg:grid-cols-[minmax(0,0.98fr)_minmax(340px,0.72fr)] lg:items-end">
+          <div className="pb-10 md:pb-14 lg:pb-16">
             <Kicker>{t.kicker}</Kicker>
-            <h1 className="mt-6 max-w-3xl font-serif text-[34px] font-normal leading-[1.12] tracking-[-0.01em] text-ink sm:text-5xl md:text-[56px]">
+            <h1 className="mt-5 max-w-3xl font-serif text-[34px] font-normal leading-[1.12] tracking-[-0.01em] text-ink sm:text-5xl md:text-[52px]">
               {t.line1} <span className="text-copper">{t.line2}</span>
             </h1>
-            <p className="mt-7 max-w-xl text-base leading-relaxed text-ink2">
+            <p className="mt-5 max-w-xl text-base leading-relaxed text-ink2">
               {t.sub}
             </p>
             <Reveal delay={0.1}>
-              <div className="mt-9 flex flex-col items-start gap-6 sm:flex-row sm:items-center">
+              <div className="mt-7 flex flex-col items-start gap-5 sm:flex-row sm:items-center">
                 <Button href={t.ctaPrimaryHref}>{t.ctaPrimary}</Button>
                 <div>
                   <a
@@ -89,11 +91,21 @@ export function Hero({ t }: { t: Dict["hero"] }) {
                   <p className="mt-2 text-xs text-muted">{t.ctaSecondaryHint}</p>
                 </div>
               </div>
+              <div className="mt-6 flex flex-wrap gap-2">
+                {t.chips.map((chip) => (
+                  <span
+                    key={chip}
+                    className="rounded-md border border-copper/30 bg-copper/10 px-3 py-2 text-[12px] text-copper"
+                  >
+                    {chip}
+                  </span>
+                ))}
+              </div>
             </Reveal>
           </div>
 
           <Reveal delay={0.15}>
-            <div className="relative mx-auto flex min-h-[360px] w-full max-w-[460px] items-end justify-center overflow-hidden sm:min-h-[440px] lg:min-h-[560px] lg:max-w-none">
+            <div className="relative mx-auto flex min-h-[300px] w-full max-w-[420px] items-end justify-center overflow-hidden sm:min-h-[390px] lg:min-h-[500px] lg:max-w-none">
               <svg
                 aria-hidden="true"
                 viewBox="0 0 420 520"
@@ -115,10 +127,10 @@ export function Hero({ t }: { t: Dict["hero"] }) {
               <Image
                 src="/people/assad-dar-portrait.png"
                 alt="Assad Dar"
-                width={1024}
-                height={1536}
+                width={800}
+                height={1200}
                 priority
-                className="relative z-10 h-[360px] w-auto object-contain object-bottom sm:h-[440px] lg:h-[560px]"
+                className="relative z-10 h-[300px] w-auto object-contain object-bottom sm:h-[390px] lg:h-[500px]"
               />
             </div>
           </Reveal>
@@ -308,6 +320,99 @@ export function MethodSection({ t }: { t: Dict["method"] }) {
   );
 }
 
+export function NextStepsTimeline({ locale }: { locale: Locale }) {
+  const isDe = locale === "de";
+  const steps = isDe
+    ? [
+        {
+          icon: Clock3,
+          title: "1. Erstgespräch",
+          body: "30 Minuten: Ziel, Ausgangslage, Engpass und passendes ASDAR Paket klären.",
+        },
+        {
+          icon: ListChecks,
+          title: "2. Prozessaufnahme",
+          body: "Abläufe, Tools, Daten, Dokumente und Verantwortlichkeiten strukturiert erfassen.",
+        },
+        {
+          icon: ClipboardCheck,
+          title: "3. ASDAR Analyse",
+          body: "Quick Wins, Risiken, Aufwand, Nutzen und Roadmap priorisieren.",
+        },
+        {
+          icon: Workflow,
+          title: "4. Pilot oder Umsetzung",
+          body: "Einen konkreten Workflow testen, messen und im Kundenportal sichtbar halten.",
+        },
+      ]
+    : [
+        {
+          icon: Clock3,
+          title: "1. Intro call",
+          body: "30 minutes: clarify goal, current state, bottleneck, and the right ASDAR package.",
+        },
+        {
+          icon: ListChecks,
+          title: "2. Process intake",
+          body: "Capture workflows, tools, data, documents, and responsibilities in a structured way.",
+        },
+        {
+          icon: ClipboardCheck,
+          title: "3. ASDAR analysis",
+          body: "Prioritize quick wins, risks, effort, value, and roadmap.",
+        },
+        {
+          icon: Workflow,
+          title: "4. Pilot or execution",
+          body: "Test one concrete workflow, measure it, and keep progress visible in the portal.",
+        },
+      ];
+
+  return (
+    <Section className="border-t border-hairline">
+      <Container>
+        <Reveal>
+          <Kicker>{isDe ? "Was passiert danach?" : "What happens next?"}</Kicker>
+          <h2 className="mt-5 max-w-3xl font-serif text-3xl font-normal leading-tight text-ink md:text-[40px]">
+            {isDe
+              ? "Von der Anfrage zu einem umsetzbaren Automatisierungsschritt."
+              : "From request to one actionable automation step."}
+          </h2>
+          <p className="mt-4 max-w-2xl text-base leading-relaxed text-ink2">
+            {isDe
+              ? "Der Ablauf bleibt bewusst einfach. Sie sehen jederzeit, was entschieden ist, was offen ist und welcher Schritt als nächstes kommt."
+              : "The flow stays deliberately simple. You always see what is decided, what is open, and which step comes next."}
+          </p>
+        </Reveal>
+
+        <div className="mt-12 grid gap-5 md:grid-cols-2 lg:grid-cols-4">
+          {steps.map((step, index) => {
+            const Icon = step.icon;
+            return (
+              <Reveal key={step.title} delay={index * 0.05}>
+                <article className="relative h-full rounded-xl border border-hairline bg-surface p-6 shadow-card">
+                  <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-copper/10 text-copper">
+                    <Icon className="h-5 w-5" />
+                  </div>
+                  <h3 className="mt-4 text-base font-medium text-ink">
+                    {step.title}
+                  </h3>
+                  <p className="mt-2 text-sm leading-relaxed text-ink2">
+                    {step.body}
+                  </p>
+                  {index < steps.length - 1 && (
+                    <ArrowRight className="absolute -right-3 top-10 hidden h-5 w-5 text-copper/60 lg:block" />
+                  )}
+                </article>
+              </Reveal>
+            );
+          })}
+        </div>
+      </Container>
+    </Section>
+  );
+}
+
 export function BeforeAfterWorkflow({ locale }: { locale: Locale }) {
   const isDe = locale === "de";
   const before = isDe
@@ -356,7 +461,7 @@ export function BeforeAfterWorkflow({ locale }: { locale: Locale }) {
         {
           icon: Sparkles,
           title: "KI-gestützte Vorarbeit",
-          body: "Vorlagen, Ideen, Statusentwuerfe und Roadmaps entstehen schneller.",
+          body: "Vorlagen, Ideen, Statusentwürfe und Roadmaps entstehen schneller.",
         },
         {
           icon: BarChart3,
@@ -632,6 +737,96 @@ export function Proof({ t }: { t: Dict["proof"] }) {
             </p>
           </div>
         </Reveal>
+      </Container>
+    </Section>
+  );
+}
+
+export function WhyAssad({ locale }: { locale: Locale }) {
+  const isDe = locale === "de";
+  const items = isDe
+    ? [
+        {
+          icon: Building2,
+          title: "Beratung plus Umsetzung",
+          body: "Nicht nur Strategie: Prozesse, Portal, Vorlagen, Automatisierung und Übergabe werden praktisch gedacht.",
+        },
+        {
+          icon: Sparkles,
+          title: "Eigene KI-Produkte gebaut",
+          body: "Assad berät nicht aus Tool-Folien heraus, sondern aus eigener Produkt- und Automatisierungserfahrung.",
+        },
+        {
+          icon: ShieldCheck,
+          title: "Prozess zuerst, Tool danach",
+          body: "Wenn ein einfacher Workflow besser ist als KI, wird genau das empfohlen. Ziel ist Nutzen, nicht Hype.",
+        },
+        {
+          icon: FileCheck2,
+          title: "Transparenz im Kundenportal",
+          body: "Kunden sehen Status, Aufgaben, Dateien, Rechnungen und Ergebnisse. Interne Beratung bleibt getrennt.",
+        },
+      ]
+    : [
+        {
+          icon: Building2,
+          title: "Consulting plus execution",
+          body: "Not only strategy: processes, portal, templates, automation, and handover are designed pragmatically.",
+        },
+        {
+          icon: Sparkles,
+          title: "Own AI products built",
+          body: "Assad does not advise from tool slides, but from his own product and automation experience.",
+        },
+        {
+          icon: ShieldCheck,
+          title: "Process first, tool second",
+          body: "If a simple workflow is better than AI, that is the recommendation. The goal is value, not hype.",
+        },
+        {
+          icon: FileCheck2,
+          title: "Transparency in the client portal",
+          body: "Clients see status, tasks, files, invoices, and outcomes. Internal consulting stays separate.",
+        },
+      ];
+
+  return (
+    <Section className="border-t border-hairline bg-surface2">
+      <Container>
+        <Reveal>
+          <Kicker>{isDe ? "Warum Assad?" : "Why Assad?"}</Kicker>
+          <h2 className="mt-5 max-w-3xl font-serif text-3xl font-normal text-ink md:text-[40px]">
+            {isDe
+              ? "KI-Beratung, die Prozesse versteht und Ergebnisse sichtbar macht."
+              : "AI consulting that understands processes and makes outcomes visible."}
+          </h2>
+          <p className="mt-4 max-w-2xl text-base leading-relaxed text-ink2">
+            {isDe
+              ? "Der Unterschied liegt in der Verbindung aus Prozessblick, Produktdenken und sauberer Projektkommunikation."
+              : "The difference is the combination of process thinking, product thinking, and clean project communication."}
+          </p>
+        </Reveal>
+
+        <div className="mt-10 grid gap-5 sm:grid-cols-2 lg:grid-cols-4">
+          {items.map((item, index) => {
+            const Icon = item.icon;
+            return (
+              <Reveal key={item.title} delay={index * 0.05}>
+                <article className="h-full rounded-xl border border-hairline bg-surface p-6 shadow-card">
+                  <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-copper/10 text-copper">
+                    <Icon className="h-5 w-5" />
+                  </div>
+                  <h3 className="mt-4 text-base font-medium text-ink">
+                    {item.title}
+                  </h3>
+                  <p className="mt-2 text-sm leading-relaxed text-ink2">
+                    {item.body}
+                  </p>
+                </article>
+              </Reveal>
+            );
+          })}
+        </div>
       </Container>
     </Section>
   );
