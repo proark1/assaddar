@@ -1,7 +1,6 @@
 import { getDict, isLocale, locales, SITE_URL, type Locale } from "@/content";
 import { Nav } from "@/components/nav";
 import { Footer } from "@/components/footer";
-import { AssaddarPlatformWidget } from "@/components/assaddar-platform-widget";
 import {
   About,
   Angebote,
@@ -118,7 +117,6 @@ export default async function Home({
         <FinalCta t={t.finalCta} />
       </main>
       <Footer t={t.footer} locale={safe} />
-      <AssaddarPlatformWidget />
     </>
   );
 }
