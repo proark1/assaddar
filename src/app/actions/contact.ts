@@ -19,6 +19,7 @@ export async function submitContact(
   const email = String(formData.get("email") || "").trim();
   const company = String(formData.get("company") || "").trim();
   const message = String(formData.get("message") || "").trim();
+  const leadContext = String(formData.get("leadContext") || "").trim();
   const consent = formData.get("consent");
 
   if (!name || !message || !EMAIL_RE.test(email) || !consent) {
@@ -30,18 +31,20 @@ export async function submitContact(
 
   try {
     const resend = new Resend(key);
+    const lines = [
+      `Name: ${name}`,
+      `E-Mail: ${email}`,
+      `Unternehmen: ${company || "—"}`,
+    ];
+    if (leadContext) lines.push("", leadContext);
+    lines.push("", message);
+
     const result = await resend.emails.send({
       from: "ASSADDAR Website <onboarding@resend.dev>",
       to: ["assad.dar@gmail.com"],
       replyTo: email,
       subject: `Neue Anfrage über assad-dar.de — ${name}`,
-      text: [
-        `Name: ${name}`,
-        `E-Mail: ${email}`,
-        `Unternehmen: ${company || "—"}`,
-        "",
-        message,
-      ].join("\n"),
+      text: lines.join("\n"),
     });
     if (result.error) return { status: "error" };
     return { status: "ok" };

@@ -793,6 +793,83 @@ export async function updateProjectOverviewAction(formData: FormData) {
   redirect(`${adminProjectPath(locale, projectId)}?saved=overview`);
 }
 
+export async function saveProjectKpiAction(formData: FormData) {
+  const locale = safeLocale(formData.get("locale"));
+  const user = await requireAdmin(locale);
+  const projectId = text(formData, "projectId");
+  const baseline = text(formData, "baseline");
+  const target = text(formData, "target");
+  const roiHypothesis = text(formData, "roiHypothesis");
+  const owner = text(formData, "owner") || "Assad";
+  const reviewDate = text(formData, "reviewDate");
+  const publishToCustomer = checkbox(formData, "publishToCustomer");
+
+  await mutateStore((store) => {
+    const bundle = getProjectBundle(store, projectId);
+    if (!bundle) return;
+    const now = new Date().toISOString();
+    const snapshot = {
+      baseline,
+      target,
+      roiHypothesis,
+      owner,
+      reviewDate,
+    };
+
+    store.updates.push({
+      id: id("update"),
+      projectId,
+      title: "Audit: KPI und ROI gespeichert",
+      body: [
+        `KPI_SNAPSHOT:${JSON.stringify(snapshot)}`,
+        "",
+        `Baseline: ${baseline || "Noch offen"}`,
+        `Ziel: ${target || "Noch offen"}`,
+        `ROI-Hypothese: ${roiHypothesis || "Noch offen"}`,
+        `Owner: ${owner}`,
+        reviewDate && `Review: ${reviewDate}`,
+      ]
+        .filter(Boolean)
+        .join("\n"),
+      visibility: "internal",
+      asdarStage: bundle.project.asdarStage,
+      createdBy: user.id,
+      createdAt: now,
+    });
+
+    if (publishToCustomer) {
+      store.updates.push({
+        id: id("update"),
+        projectId,
+        title: "Projektziele und Erfolgsmessung aktualisiert",
+        body: [
+          baseline && `Ausgangslage: ${baseline}`,
+          target && `Zielbild: ${target}`,
+          roiHypothesis && `Nutzenhypothese: ${roiHypothesis}`,
+          reviewDate && `Nächster Review: ${reviewDate}`,
+        ]
+          .filter(Boolean)
+          .join("\n\n"),
+        visibility: "customer",
+        asdarStage: bundle.project.asdarStage,
+        createdBy: user.id,
+        createdAt: now,
+      });
+    }
+
+    addAuditUpdate({
+      store,
+      projectId,
+      userId: user.id,
+      title: "KPI Snapshot aktualisiert",
+      body: "Baseline, Ziel, ROI-Hypothese und Review wurden gespeichert.",
+    });
+  });
+
+  revalidateProjectViews(locale, projectId);
+  redirect(`${adminProjectPath(locale, projectId)}?view=setup&saved=kpi`);
+}
+
 export async function updateIntelligenceAction(formData: FormData) {
   const locale = safeLocale(formData.get("locale"));
   const user = await requireAdmin(locale);

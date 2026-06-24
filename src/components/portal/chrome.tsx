@@ -94,6 +94,7 @@ export function PortalShell({
   title,
   eyebrow,
   backHref,
+  activeNav,
   actions,
   children,
 }: {
@@ -102,9 +103,33 @@ export function PortalShell({
   title: string;
   eyebrow: string;
   backHref?: string;
+  activeNav?:
+    | "website"
+    | "dashboard"
+    | "admin"
+    | "today"
+    | "pipeline"
+    | "drafts"
+    | "customers"
+    | "templates"
+    | "blog"
+    | "settings";
   actions?: React.ReactNode;
   children: React.ReactNode;
 }) {
+  const navClass = (key: NonNullable<typeof activeNav>) =>
+    `inline-flex items-center gap-1.5 rounded-md px-2 py-1 transition-colors ${
+      activeNav === key
+        ? "bg-copper/10 text-copper"
+        : "text-ink2 hover:text-ink"
+    }`;
+  const mobileNavClass = (key: NonNullable<typeof activeNav>) =>
+    `shrink-0 rounded-lg border px-3 py-2 ${
+      activeNav === key
+        ? "border-copper bg-copper/10 text-copper"
+        : "border-hairline text-ink2"
+    }`;
+
   return (
     <div className="min-h-screen bg-bg">
       <header className="border-b border-hairline bg-surface/85 backdrop-blur">
@@ -117,62 +142,68 @@ export function PortalShell({
             Assad Dar Portal
           </Link>
           <nav className="hidden items-center gap-5 text-sm text-ink2 md:flex">
-            <Link href={`/${locale}`} className="hover:text-ink">
+            <Link href={`/${locale}`} className={navClass("website")}>
               Website
             </Link>
-            <Link href={`/${locale}/portal`} className="hover:text-ink">
+            <Link href={`/${locale}/portal`} className={navClass("dashboard")}>
               Dashboard
             </Link>
             {user.role === "admin" && (
               <>
-                <Link href={`/${locale}/portal/admin`} className="hover:text-ink">
-                  Admin
+                <Link
+                  href={`/${locale}/portal/admin`}
+                  className={navClass("admin")}
+                >
+                  Cockpit
                 </Link>
                 <Link
                   href={`/${locale}/portal/admin/today`}
-                  className="inline-flex items-center gap-1.5 hover:text-ink"
+                  className={navClass("today")}
                 >
                   <Clock3 className="h-3.5 w-3.5" />
                   Heute
                 </Link>
                 <Link
                   href={`/${locale}/portal/admin/pipeline`}
-                  className="inline-flex items-center gap-1.5 hover:text-ink"
+                  className={navClass("pipeline")}
                 >
                   <FolderKanban className="h-3.5 w-3.5" />
                   Pipeline
                 </Link>
                 <Link
                   href={`/${locale}/portal/admin/drafts`}
-                  className="inline-flex items-center gap-1.5 hover:text-ink"
+                  className={navClass("drafts")}
                 >
                   <PencilLine className="h-3.5 w-3.5" />
                   Drafts
                 </Link>
                 <Link
                   href={`/${locale}/portal/admin/customers`}
-                  className="inline-flex items-center gap-1.5 hover:text-ink"
+                  className={navClass("customers")}
                 >
                   <Users className="h-3.5 w-3.5" />
                   Kunden
                 </Link>
                 <Link
                   href={`/${locale}/portal/admin/templates`}
-                  className="inline-flex items-center gap-1.5 hover:text-ink"
+                  className={navClass("templates")}
                 >
                   <BookOpen className="h-3.5 w-3.5" />
                   Templates
                 </Link>
                 <Link
                   href={`/${locale}/portal/admin/blog`}
-                  className="inline-flex items-center gap-1.5 hover:text-ink"
+                  className={navClass("blog")}
                 >
                   <Images className="h-3.5 w-3.5" />
                   Blog
                 </Link>
               </>
             )}
-            <Link href={`/${locale}/portal/settings`} className="hover:text-ink">
+            <Link
+              href={`/${locale}/portal/settings`}
+              className={navClass("settings")}
+            >
               Settings
             </Link>
           </nav>
@@ -209,39 +240,45 @@ export function PortalShell({
         >
           <Link
             href={`/${locale}`}
-            className="shrink-0 rounded-lg border border-hairline px-3 py-2"
+            className={mobileNavClass("website")}
           >
             Website
           </Link>
           <Link
             href={`/${locale}/portal`}
-            className="shrink-0 rounded-lg border border-hairline px-3 py-2"
+            className={mobileNavClass("dashboard")}
           >
             Dashboard
           </Link>
           {user.role === "admin" && (
             <>
               <Link
+                href={`/${locale}/portal/admin`}
+                className={mobileNavClass("admin")}
+              >
+                Cockpit
+              </Link>
+              <Link
                 href={`/${locale}/portal/admin/today`}
-                className="shrink-0 rounded-lg border border-hairline px-3 py-2"
+                className={mobileNavClass("today")}
               >
                 Heute
               </Link>
               <Link
                 href={`/${locale}/portal/admin/pipeline`}
-                className="shrink-0 rounded-lg border border-hairline px-3 py-2"
+                className={mobileNavClass("pipeline")}
               >
                 Pipeline
               </Link>
               <Link
                 href={`/${locale}/portal/admin/drafts`}
-                className="shrink-0 rounded-lg border border-hairline px-3 py-2"
+                className={mobileNavClass("drafts")}
               >
                 Drafts
               </Link>
               <Link
                 href={`/${locale}/portal/admin/customers`}
-                className="shrink-0 rounded-lg border border-hairline px-3 py-2"
+                className={mobileNavClass("customers")}
               >
                 Kunden
               </Link>
@@ -249,7 +286,7 @@ export function PortalShell({
           )}
           <Link
             href={`/${locale}/portal/settings`}
-            className="shrink-0 rounded-lg border border-hairline px-3 py-2"
+            className={mobileNavClass("settings")}
           >
             Settings
           </Link>

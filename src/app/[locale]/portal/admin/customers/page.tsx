@@ -11,6 +11,7 @@ import { isLocale, type Locale } from "@/content";
 import { requireAdmin } from "@/lib/portal/auth";
 import { listCustomersWithProjectBundles } from "@/lib/portal/store";
 import { formatDate, formatStatus } from "@/lib/portal/format";
+import { buildProjectHealthScore } from "@/lib/portal/operations";
 import {
   Badge,
   PortalCard,
@@ -44,6 +45,7 @@ export default async function AdminCustomersPage({
       locale={safe}
       eyebrow="Admin"
       title="Kunden"
+      activeNav="customers"
       backHref={`/${safe}/portal/admin`}
       actions={
         <Link
@@ -119,24 +121,60 @@ export default async function AdminCustomersPage({
               </div>
 
               <div className="mt-5 space-y-2">
-                {projectBundles.map((bundle) => (
-                  <Link
-                    key={bundle.project.id}
-                    href={`/${safe}/portal/admin/projects/${bundle.project.id}`}
-                    className="flex items-center justify-between gap-3 rounded-lg border border-hairline bg-bg p-3 transition-colors hover:border-copper"
-                  >
-                    <div>
-                      <div className="text-sm font-medium text-ink">
-                        {bundle.project.name}
+                {projectBundles.map((bundle) => {
+                  const health = buildProjectHealthScore(bundle);
+                  const openCustomerTasks = bundle.tasks.filter(
+                    (task) =>
+                      task.owner === "customer" &&
+                      task.visibleToCustomer &&
+                      task.status !== "done",
+                  ).length;
+                  const latestCustomerUpdate = bundle.updates.find(
+                    (update) => update.visibility === "customer",
+                  );
+
+                  return (
+                    <Link
+                      key={bundle.project.id}
+                      href={`/${safe}/portal/admin/projects/${bundle.project.id}`}
+                      className="block rounded-lg border border-hairline bg-bg p-3 transition-colors hover:border-copper"
+                    >
+                      <div className="flex items-start justify-between gap-3">
+                        <div>
+                          <div className="text-sm font-medium text-ink">
+                            {bundle.project.name}
+                          </div>
+                          <div className="mt-1 text-[12px] text-muted">
+                            {bundle.organization.name} ·{" "}
+                            {formatStatus(bundle.project.status)}
+                          </div>
+                        </div>
+                        <ArrowRight className="h-4 w-4 shrink-0 text-copper" />
                       </div>
-                      <div className="mt-1 text-[12px] text-muted">
-                        {bundle.organization.name} ·{" "}
-                        {formatStatus(bundle.project.status)}
+                      <div className="mt-3 flex flex-wrap gap-2">
+                        <Badge
+                          tone={
+                            health.tone === "red"
+                              ? "red"
+                              : health.tone === "green"
+                                ? "green"
+                                : "amber"
+                          }
+                        >
+                          Health {health.score}
+                        </Badge>
+                        <Badge tone={openCustomerTasks ? "amber" : "green"}>
+                          {openCustomerTasks} Kundentasks
+                        </Badge>
+                        <Badge tone={latestCustomerUpdate ? "green" : "amber"}>
+                          {latestCustomerUpdate
+                            ? `Update ${formatDate(latestCustomerUpdate.createdAt)}`
+                            : "Kein Update"}
+                        </Badge>
                       </div>
-                    </div>
-                    <ArrowRight className="h-4 w-4 shrink-0 text-copper" />
-                  </Link>
-                ))}
+                    </Link>
+                  );
+                })}
                 {projectBundles.length === 0 && (
                   <p className="rounded-lg border border-dashed border-strong bg-surface2 p-4 text-sm text-muted">
                     Noch kein Projekt zugeordnet. Die Zuordnung erfolgt im

@@ -66,6 +66,7 @@ export default async function AdminTemplatesPage({
       locale={safe}
       eyebrow="Admin"
       title="Template Library"
+      activeNav="templates"
       backHref={`/${safe}/portal/admin`}
       actions={
         <Link

@@ -12,10 +12,12 @@ export function ContactForm({
   t,
   email,
   locale,
+  leadContext = "",
 }: {
   t: Dict["termin"];
   email: string;
   locale: Locale;
+  leadContext?: string;
 }) {
   const [state, action, pending] = useActionState(submitContact, INITIAL);
 
@@ -33,6 +35,15 @@ export function ContactForm({
 
   return (
     <form action={action} className="space-y-4">
+      {leadContext && (
+        <div className="rounded-lg border border-copper/30 bg-copper/10 p-4 text-sm leading-relaxed text-ink2">
+          <div className="font-medium text-ink">ASDAR Check Ergebnis</div>
+          <p className="mt-2 whitespace-pre-line text-[12px] text-muted">
+            {leadContext}
+          </p>
+          <input type="hidden" name="leadContext" value={leadContext} />
+        </div>
+      )}
       <div className="grid gap-4 sm:grid-cols-2">
         <div>
           <label htmlFor="cf-name" className="mb-1.5 block text-sm text-ink2">

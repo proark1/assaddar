@@ -26,14 +26,39 @@ export async function generateMetadata({
 
 export default async function TerminPage({
   params,
+  searchParams,
 }: {
   params: Promise<{ locale: string }>;
+  searchParams: Promise<{
+    source?: string;
+    score?: string;
+    band?: string;
+    bottleneck?: string;
+    monthlyHours?: string;
+    monthlyValue?: string;
+    annualValue?: string;
+  }>;
 }) {
   const { locale } = await params;
+  const query = await searchParams;
   const safe: Locale = isLocale(locale) ? locale : "de";
   const t = getDict(safe);
   const tt = t.termin;
   const email = t.finalCta.email;
+  const leadContext =
+    query.source === "asdar-check"
+      ? [
+          "ASDAR Potenzial-Check",
+          query.score && `Score: ${query.score}/100`,
+          query.band && `Einordnung: ${query.band}`,
+          query.bottleneck && `Engpass: ${query.bottleneck}`,
+          query.monthlyHours && `Geschätzte freie Stunden/Monat: ${query.monthlyHours}`,
+          query.monthlyValue && `Geschätzter Wert/Monat: ${query.monthlyValue} EUR`,
+          query.annualValue && `Geschätzter Wert/Jahr: ${query.annualValue} EUR`,
+        ]
+          .filter(Boolean)
+          .join("\n")
+      : "";
 
   return (
     <>
@@ -52,7 +77,12 @@ export default async function TerminPage({
             <h2 className="mb-6 font-serif text-xl font-normal text-ink">
               {tt.formTitle}
             </h2>
-            <ContactForm t={tt} email={email} locale={safe} />
+            <ContactForm
+              t={tt}
+              email={email}
+              locale={safe}
+              leadContext={leadContext}
+            />
           </div>
 
           <div className="mt-10 grid gap-5 sm:grid-cols-2">

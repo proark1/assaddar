@@ -59,6 +59,7 @@ export default async function AdminPipelinePage({
       locale={safe}
       eyebrow="Admin"
       title="Projekt Pipeline"
+      activeNav="pipeline"
       backHref={`/${safe}/portal/admin`}
       actions={
         <>

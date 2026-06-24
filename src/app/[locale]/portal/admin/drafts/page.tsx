@@ -71,6 +71,7 @@ export default async function AdminDraftsPage({
       locale={safe}
       eyebrow="Admin"
       title="Draft Review"
+      activeNav="drafts"
       backHref={`/${safe}/portal/admin`}
       actions={
         <>

@@ -116,6 +116,7 @@ export default async function PortalPage({
       user={user}
       locale={safe}
       eyebrow={user.role === "admin" ? "Consultant Workspace" : "Kundenportal"}
+      activeNav="dashboard"
       title={
         user.role === "admin"
           ? "Alle Beratungsprojekte im Überblick"
@@ -124,11 +125,11 @@ export default async function PortalPage({
       actions={
         user.role === "admin" ? (
           <Link
-            href={`/${safe}/portal/admin`}
+            href={`/${safe}/portal/admin/today`}
             className="inline-flex items-center gap-2 rounded-lg bg-copper px-4 py-2.5 text-sm font-medium text-oncopper transition-colors hover:bg-copper-hi"
           >
             <FolderKanban className="h-4 w-4" />
-            Admin öffnen
+            Heute öffnen
           </Link>
         ) : null
       }

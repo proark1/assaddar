@@ -35,6 +35,7 @@ import {
   buildAdminCommandCenter,
   buildAdminNotificationCenter,
   buildAdminProjectActions,
+  buildProjectHealthScore,
   buildProjectTimeline,
 } from "@/lib/portal/operations";
 import { effectiveConsultingTemplates } from "@/lib/portal/templates";
@@ -178,6 +179,7 @@ export default async function AdminPage({
       locale={safe}
       eyebrow="Admin"
       title="Consulting Cockpit"
+      activeNav="admin"
       backHref={`/${safe}/portal`}
       actions={
         <>
@@ -680,6 +682,7 @@ export default async function AdminPage({
 
           {bundles.map((bundle) => {
             const nextBestAction = buildAdminProjectActions(bundle)[0];
+            const healthScore = buildProjectHealthScore(bundle);
             return (
             <Link
               key={bundle.project.id}
@@ -692,14 +695,14 @@ export default async function AdminPage({
                   <Badge>{formatStatus(bundle.project.status)}</Badge>
                   <Badge
                     tone={
-                      bundle.project.health === "red"
+                      healthScore.tone === "red"
                         ? "red"
-                        : bundle.project.health === "amber"
+                        : healthScore.tone === "amber"
                           ? "amber"
                           : "green"
                     }
                   >
-                    Health {bundle.project.health}
+                    Health {healthScore.score}
                   </Badge>
                 </div>
                 <span className="inline-flex items-center gap-1.5 text-sm font-medium text-copper">
@@ -744,6 +747,11 @@ export default async function AdminPage({
                   <p className="mt-1 leading-relaxed text-muted">
                     {nextBestAction.title} · {nextBestAction.body}
                   </p>
+                  {nextBestAction.reason && (
+                    <p className="mt-2 text-[12px] leading-relaxed text-muted">
+                      Warum: {nextBestAction.reason}
+                    </p>
+                  )}
                 </div>
               )}
               <div className="mt-5 grid gap-3 text-sm sm:grid-cols-4">

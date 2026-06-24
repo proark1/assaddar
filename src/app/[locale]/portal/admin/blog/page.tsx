@@ -55,6 +55,7 @@ export default async function BlogHeroAdminPage({
       locale={safe}
       eyebrow="Admin"
       title="Blog Hero-Bilder"
+      activeNav="blog"
       backHref={`/${safe}/portal/admin`}
     >
       {query.generated && (

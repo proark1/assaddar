@@ -237,6 +237,11 @@ export function ReadinessAndRoiTools({ locale }: { locale: Locale }) {
   );
   const monthlyValue = Math.round(monthlySavedHours * hourlyRate);
   const annualValue = monthlyValue * 12;
+  const ctaHref = `/${locale}/termin?source=asdar-check&score=${readinessScore}&band=${encodeURIComponent(
+    readinessBand.label,
+  )}&bottleneck=${encodeURIComponent(
+    t.sliders[bottleneckIndex].label,
+  )}&monthlyHours=${monthlySavedHours}&monthlyValue=${monthlyValue}&annualValue=${annualValue}`;
 
   return (
     <Section id="readiness-check" className="border-t border-hairline bg-surface2">
@@ -251,7 +256,7 @@ export function ReadinessAndRoiTools({ locale }: { locale: Locale }) {
               {t.intro}
             </p>
             <a
-              href={`/${locale}/termin`}
+              href={ctaHref}
               className="mt-7 inline-flex items-center gap-2 rounded-lg bg-copper px-5 py-3 text-sm font-medium text-oncopper shadow-[0_2px_8px_rgba(166,110,47,0.25)] transition-all hover:-translate-y-0.5 hover:bg-copper-hi"
             >
               {t.cta}

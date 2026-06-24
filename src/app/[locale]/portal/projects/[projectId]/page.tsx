@@ -44,6 +44,7 @@ import {
   buildCustomerChecklist,
   buildFileVersionGroups,
   buildCustomerNextActions,
+  buildProjectKpiSnapshot,
 } from "@/lib/portal/operations";
 import {
   Badge,
@@ -62,7 +63,7 @@ export const metadata: Metadata = {
   robots: { index: false, follow: false },
 };
 
-type CustomerView = "overview" | "input" | "actions" | "files" | "messages";
+type CustomerView = "overview" | "actions" | "files";
 
 const intakeAnswerAliases: Record<string, string[]> = {
   companyContext: ["Unternehmenskontext"],
@@ -74,13 +75,10 @@ const intakeAnswerAliases: Record<string, string[]> = {
 };
 
 function customerView(value?: string): CustomerView | null {
-  return value === "overview" ||
-    value === "input" ||
-    value === "actions" ||
-    value === "files" ||
-    value === "messages"
-    ? value
-    : null;
+  if (value === "files") return "files";
+  if (value === "input" || value === "actions") return "actions";
+  if (value === "overview" || value === "messages") return "overview";
+  return null;
 }
 
 function normalizeIntakeLabel(value: string) {
@@ -286,6 +284,7 @@ export default async function CustomerProjectPage({
   );
   const nextActions = buildCustomerNextActions(bundle);
   const customerChecklist = buildCustomerChecklist(bundle);
+  const kpiSnapshot = buildProjectKpiSnapshot(bundle);
   const primaryAction = nextActions[0];
   const assadWorkItems = [
     ...tasks
@@ -325,15 +324,22 @@ export default async function CustomerProjectPage({
     question.id.startsWith("template_"),
   );
   const defaultView: CustomerView = !intakeSubmitted
-    ? "input"
+    ? "actions"
     : pendingCustomerTasks.length ||
         pendingMilestoneApprovals.length ||
         pendingFileApprovals.length
       ? "actions"
       : "overview";
   const activeView = customerView(query.view) ?? defaultView;
-  const stepHref = (view: CustomerView) =>
-    `/${safe}/portal/projects/${projectId}?view=${view}`;
+  const stepHref = (view: CustomerView | "input" | "messages") => {
+    const mapped =
+      view === "input" || view === "actions"
+        ? "actions"
+        : view === "files"
+          ? "files"
+          : "overview";
+    return `/${safe}/portal/projects/${projectId}?view=${mapped}`;
+  };
   const steps: Array<{
     id: CustomerView;
     eyebrow: string;
@@ -344,41 +350,27 @@ export default async function CustomerProjectPage({
     {
       id: "overview",
       eyebrow: "1",
-      title: "Überblick",
-      body: "Status, Fortschritt und letzte Aktivität.",
-      count: timeline.length,
-    },
-    {
-      id: "input",
-      eyebrow: "2",
-      title: "Fragebogen",
-      body: intakeSubmitted
-        ? "Ergänzen bei Änderungen."
-        : "Zuerst ausfüllen.",
+      title: "Status",
+      body: "Fortschritt, Updates und Nachrichten.",
+      count: updates.length + comments.length,
     },
     {
       id: "actions",
-      eyebrow: "3",
-      title: "To-dos",
-      body: "Aufgaben und Freigaben.",
+      eyebrow: "2",
+      title: "Was ich tun muss",
+      body: "Fragebogen, Aufgaben und Freigaben.",
       count:
+        (intakeSubmitted ? 0 : 1) +
         pendingCustomerTasks.length +
         pendingMilestoneApprovals.length +
         pendingFileApprovals.length,
     },
     {
       id: "files",
-      eyebrow: "4",
-      title: "Dateien",
+      eyebrow: "3",
+      title: "Dateien & Rechnungen",
       body: "Deliverables und Rechnungen.",
       count: files.length + invoices.length,
-    },
-    {
-      id: "messages",
-      eyebrow: "5",
-      title: "Nachricht",
-      body: "Eine Rückfrage senden.",
-      count: comments.length,
     },
   ];
 
@@ -388,6 +380,7 @@ export default async function CustomerProjectPage({
       locale={safe}
       eyebrow={`${bundle.organization.name} · Kundenansicht`}
       title={bundle.project.name}
+      activeNav="dashboard"
       backHref={`/${safe}/portal`}
     >
       {(query.saved || query.error) && (
@@ -523,8 +516,9 @@ export default async function CustomerProjectPage({
             eyebrow="Einfacher Ablauf"
             title="So läuft dieses Projekt"
           >
-            Vier Bereiche reichen aus: Informationen, Analyse, Aufgaben und
-            Ergebnisse.
+            Der Fahrplan zeigt die Projektlogik. Die Navigation darunter
+            bündelt den Alltag in Status, offene Punkte sowie Dateien und
+            Rechnungen.
           </PortalSectionTitle>
           <div className="mt-5 grid gap-3 md:grid-cols-4">
             {customerChecklist.map((item, index) => (
@@ -662,7 +656,7 @@ export default async function CustomerProjectPage({
         </PortalCard>
 
         <nav
-          className="grid gap-3 md:grid-cols-5"
+          className="grid gap-3 md:grid-cols-3"
           aria-label="Projekt-Schritte"
         >
           {steps.map((step) => {
@@ -698,7 +692,7 @@ export default async function CustomerProjectPage({
           })}
         </nav>
 
-        {activeView === "input" && (
+        {activeView === "actions" && (
           <PortalCard>
             <PortalSectionTitle
               eyebrow="Ihr Input"
@@ -882,6 +876,52 @@ export default async function CustomerProjectPage({
 
         {activeView === "overview" && (
           <div className="space-y-6">
+            <PortalCard>
+              <PortalSectionTitle
+                eyebrow="Zielbild"
+                title="Woran der Projekterfolg gemessen wird"
+              >
+                Diese Sicht fasst Ausgangslage, Ziel und Nutzenhypothese
+                kundenfreundlich zusammen.
+              </PortalSectionTitle>
+              <div className="mt-5 grid gap-3 md:grid-cols-3">
+                <div className="rounded-lg border border-hairline bg-bg p-4">
+                  <div className="text-sm font-medium text-ink">
+                    Ausgangslage
+                  </div>
+                  <p className="mt-2 line-clamp-4 text-sm leading-relaxed text-muted">
+                    {kpiSnapshot.baseline}
+                  </p>
+                </div>
+                <div className="rounded-lg border border-hairline bg-bg p-4">
+                  <div className="text-sm font-medium text-ink">
+                    Ziel
+                  </div>
+                  <p className="mt-2 line-clamp-4 text-sm leading-relaxed text-muted">
+                    {kpiSnapshot.target}
+                  </p>
+                </div>
+                <div className="rounded-lg border border-hairline bg-bg p-4">
+                  <div className="text-sm font-medium text-ink">
+                    Nutzenhypothese
+                  </div>
+                  <p className="mt-2 line-clamp-4 text-sm leading-relaxed text-muted">
+                    {kpiSnapshot.roiHypothesis}
+                  </p>
+                </div>
+              </div>
+              <div className="mt-3 flex flex-wrap items-center gap-2 text-[12px] text-muted">
+                <Badge tone={kpiSnapshot.updatedAt ? "green" : "amber"}>
+                  {kpiSnapshot.updatedAt
+                    ? `Aktualisiert ${formatDate(kpiSnapshot.updatedAt)}`
+                    : "Aus Projektinformationen abgeleitet"}
+                </Badge>
+                {kpiSnapshot.reviewDate && (
+                  <span>Nächster Review: {formatDate(kpiSnapshot.reviewDate)}</span>
+                )}
+              </div>
+            </PortalCard>
+
             <PortalCard>
               <PortalSectionTitle
                 eyebrow="Timeline"
@@ -1192,7 +1232,7 @@ export default async function CustomerProjectPage({
           </div>
         )}
 
-        {activeView === "messages" && (
+        {activeView === "overview" && (
           <PortalCard>
             <PortalSectionTitle eyebrow="Nachrichten" title="Kommentare" />
             <form action={addProjectCommentAction} className="mt-5 space-y-3">

@@ -89,6 +89,7 @@ export default async function AdminTodayPage({
       locale={safe}
       eyebrow="Admin"
       title="Heute"
+      activeNav="today"
       backHref={`/${safe}/portal/admin`}
       actions={
         <>
@@ -234,6 +235,11 @@ export default async function AdminTodayPage({
                       <p className="mt-1 text-sm leading-relaxed text-ink2">
                         {item.body}
                       </p>
+                      {item.reason && (
+                        <p className="mt-2 text-[12px] leading-relaxed text-muted">
+                          Warum: {item.reason}
+                        </p>
+                      )}
                     </div>
                     <span className="inline-flex shrink-0 items-center gap-1.5 text-sm font-medium text-copper">
                       {item.cta}

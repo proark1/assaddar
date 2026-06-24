@@ -44,6 +44,7 @@ import {
   addMeetingNoteAction,
   runAiScanAction,
   runProjectAutomationsAction,
+  saveProjectKpiAction,
   saveKnowledgeSnapshotAction,
   scheduleProjectAppointmentAction,
   sendProjectReminderAction,
@@ -81,6 +82,7 @@ import {
 import {
   buildAiProviderComparison,
   buildAdminProjectActions,
+  buildAutomationHistory,
   buildConsultingCopilotBrief,
   buildConsultantCopyTemplates,
   buildConsultantWorkflow,
@@ -88,6 +90,8 @@ import {
   buildFileVersionGroups,
   buildMeetingModePlan,
   buildProjectDiagnosis,
+  buildProjectHealthScore,
+  buildProjectKpiSnapshot,
   buildProjectTimeline,
 } from "@/lib/portal/operations";
 import {
@@ -168,6 +172,8 @@ export default async function AdminProjectPage({
   const query = await searchParams;
   const guidance = buildConsultantGuidance(bundle);
   const diagnosis = buildProjectDiagnosis(bundle);
+  const healthScore = buildProjectHealthScore(bundle);
+  const kpiSnapshot = buildProjectKpiSnapshot(bundle);
   const adminActions = buildAdminProjectActions(bundle);
   const copilotBrief = buildConsultingCopilotBrief(bundle);
   const meetingMode = buildMeetingModePlan(bundle);
@@ -176,6 +182,7 @@ export default async function AdminProjectPage({
   const customerUpdateDraft = buildCustomerUpdateDraft(bundle);
   const aiComparison = buildAiProviderComparison(bundle);
   const projectTimeline = buildProjectTimeline(bundle);
+  const automationHistory = buildAutomationHistory(bundle);
   const fileGroups = buildFileVersionGroups(bundle);
   const similar = findSimilarProjectBundles(bundles, bundle);
   const matchedTemplate = matchConsultingTemplate(bundle.organization.industry);
@@ -279,6 +286,7 @@ export default async function AdminProjectPage({
       locale={safe}
       eyebrow={`${bundle.organization.name} · Admin`}
       title={bundle.project.name}
+      activeNav="admin"
       backHref={`/${safe}/portal/admin`}
       actions={
         <>
@@ -344,16 +352,29 @@ export default async function AdminProjectPage({
           </div>
           <div className="grid gap-3 sm:grid-cols-4">
             <div className="rounded-lg border border-hairline bg-surface p-3">
+              <div className="flex items-center justify-between gap-2">
+                <div className="text-xl font-medium text-ink">
+                  {healthScore.score}
+                </div>
+                <Badge
+                  tone={
+                    healthScore.tone === "red"
+                      ? "red"
+                      : healthScore.tone === "green"
+                        ? "green"
+                        : "amber"
+                  }
+                >
+                  {healthScore.label}
+                </Badge>
+              </div>
+              <div className="mt-1 text-[12px] text-muted">Project Health</div>
+            </div>
+            <div className="rounded-lg border border-hairline bg-surface p-3">
               <div className="text-xl font-medium text-ink">
                 {diagnosis.readinessScore}
               </div>
               <div className="mt-1 text-[12px] text-muted">Readiness</div>
-            </div>
-            <div className="rounded-lg border border-hairline bg-surface p-3">
-              <div className="text-xl font-medium text-ink">
-                {diagnosis.missingInputs.length}
-              </div>
-              <div className="mt-1 text-[12px] text-muted">Lücken</div>
             </div>
             <div className="rounded-lg border border-hairline bg-surface p-3">
               <div className="text-xl font-medium text-ink">
@@ -364,6 +385,35 @@ export default async function AdminProjectPage({
             <div className="rounded-lg border border-hairline bg-surface p-3">
               <div className="text-xl font-medium text-ink">{openInvoices}</div>
               <div className="mt-1 text-[12px] text-muted">Rechnungen</div>
+            </div>
+          </div>
+        </div>
+        <div className="mt-5 rounded-lg border border-hairline bg-surface p-4">
+          <div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
+            <div>
+              <div className="text-sm font-medium text-ink">
+                Warum diese Priorität?
+              </div>
+              <p className="mt-1 text-sm leading-relaxed text-ink2">
+                {primaryAdminAction.reason ||
+                  "Die Aktion ergibt sich aus Health, Intake, Aufgaben, Updates und Rechnungen."}
+              </p>
+            </div>
+            <div className="flex flex-wrap gap-2 lg:justify-end">
+              {healthScore.factors.slice(0, 4).map((factor) => (
+                <Badge
+                  key={factor.label}
+                  tone={
+                    factor.tone === "red"
+                      ? "red"
+                      : factor.tone === "green"
+                        ? "green"
+                        : "amber"
+                  }
+                >
+                  {factor.label}
+                </Badge>
+              ))}
             </div>
           </div>
         </div>
@@ -540,6 +590,100 @@ export default async function AdminProjectPage({
                 <CheckCircle2 className="h-4 w-4" />
                 Basis speichern
               </button>
+            </form>
+            <form
+              action={saveProjectKpiAction}
+              className="mt-6 rounded-lg border border-copper/25 bg-copper/10 p-4"
+            >
+              <HiddenProjectFields locale={safe} projectId={projectId} />
+              <div className="flex flex-col gap-3 md:flex-row md:items-start md:justify-between">
+                <div>
+                  <div className="text-sm font-medium text-ink">
+                    KPI, Ziel und ROI-Hypothese
+                  </div>
+                  <p className="mt-1 text-[12px] leading-relaxed text-ink2">
+                    Macht den Nutzen messbar und kann als kundenfreundliches
+                    Update veröffentlicht werden.
+                  </p>
+                </div>
+                {kpiSnapshot.updatedAt && (
+                  <Badge tone="green">
+                    Aktualisiert {formatDate(kpiSnapshot.updatedAt)}
+                  </Badge>
+                )}
+              </div>
+              <div className="mt-4 grid gap-4 md:grid-cols-2">
+                <div>
+                  <label className="mb-1.5 block text-sm text-ink2">
+                    Baseline / aktueller Zustand
+                  </label>
+                  <textarea
+                    name="baseline"
+                    defaultValue={kpiSnapshot.baseline}
+                    className={textareaClass}
+                  />
+                </div>
+                <div>
+                  <label className="mb-1.5 block text-sm text-ink2">
+                    Zielbild / messbare Verbesserung
+                  </label>
+                  <textarea
+                    name="target"
+                    defaultValue={kpiSnapshot.target}
+                    className={textareaClass}
+                  />
+                </div>
+              </div>
+              <div className="mt-4 grid gap-4 md:grid-cols-[1fr_180px_180px]">
+                <div>
+                  <label className="mb-1.5 block text-sm text-ink2">
+                    ROI- oder Nutzenhypothese
+                  </label>
+                  <input
+                    name="roiHypothesis"
+                    defaultValue={kpiSnapshot.roiHypothesis}
+                    className={fieldClass}
+                  />
+                </div>
+                <div>
+                  <label className="mb-1.5 block text-sm text-ink2">
+                    Owner
+                  </label>
+                  <input
+                    name="owner"
+                    defaultValue={kpiSnapshot.owner}
+                    className={fieldClass}
+                  />
+                </div>
+                <div>
+                  <label className="mb-1.5 block text-sm text-ink2">
+                    Review
+                  </label>
+                  <input
+                    name="reviewDate"
+                    type="date"
+                    defaultValue={kpiSnapshot.reviewDate}
+                    className={fieldClass}
+                  />
+                </div>
+              </div>
+              <div className="mt-4 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+                <label className="flex items-center gap-2 text-sm text-ink2">
+                  <input
+                    name="publishToCustomer"
+                    type="checkbox"
+                    className="h-4 w-4 accent-[var(--color-copper)]"
+                  />
+                  als Kundenupdate veröffentlichen
+                </label>
+                <button
+                  type="submit"
+                  className="inline-flex items-center justify-center gap-2 rounded-lg bg-copper px-4 py-2.5 text-sm font-medium text-oncopper transition-colors hover:bg-copper-hi"
+                >
+                  <CheckCircle2 className="h-4 w-4" />
+                  KPI speichern
+                </button>
+              </div>
             </form>
             <form
               action={archiveProjectAction}
@@ -1678,6 +1822,42 @@ export default async function AdminProjectPage({
                 Diagnosis Pack generieren
               </button>
             </form>
+          </PortalCard>
+
+          <PortalCard className={viewClass("guidance")}>
+            <PortalSectionTitle
+              eyebrow="Automation History"
+              title="Was Assad Assist bereits erledigt hat"
+            >
+              Zeigt automatisch erzeugte Aufgaben, Insights und Nachfassungen,
+              damit Automationen nachvollziehbar bleiben.
+            </PortalSectionTitle>
+            <div className="mt-5 space-y-3">
+              {automationHistory.slice(0, 8).map((item) => (
+                <article
+                  key={item.id}
+                  className="rounded-lg border border-hairline bg-bg p-3"
+                >
+                  <div className="flex flex-wrap items-center gap-2">
+                    <Badge tone="copper">{item.rule ?? "automation"}</Badge>
+                    <span className="text-[12px] text-muted">
+                      {formatDate(item.createdAt)}
+                    </span>
+                  </div>
+                  <div className="mt-2 text-sm font-medium text-ink">
+                    {item.title}
+                  </div>
+                  <p className="mt-1 whitespace-pre-line text-[12px] leading-relaxed text-muted">
+                    {item.body}
+                  </p>
+                </article>
+              ))}
+              {automationHistory.length === 0 && (
+                <p className="text-sm text-muted">
+                  Noch keine Automation für dieses Projekt ausgeführt.
+                </p>
+              )}
+            </div>
           </PortalCard>
 
           <PortalCard className={viewClass("guidance")}>

@@ -35,6 +35,7 @@ export default async function PortalSettingsPage({
       locale={safe}
       eyebrow="Account"
       title="Portal settings"
+      activeNav="settings"
       backHref={`/${safe}/portal`}
     >
       <div className="grid gap-6 lg:grid-cols-[0.9fr_1.1fr]">

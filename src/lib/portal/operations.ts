@@ -44,6 +44,7 @@ export type AdminProjectAction = {
   tone: PortalActionTone;
   title: string;
   body: string;
+  reason?: string;
   hrefView:
     | "setup"
     | "guidance"
@@ -171,6 +172,35 @@ export type ProjectDiagnosis = {
   customerSummary: string;
 };
 
+export type ProjectHealthScore = {
+  score: number;
+  tone: PortalActionTone;
+  label: string;
+  recommendedAction: string;
+  factors: Array<{
+    label: string;
+    body: string;
+    tone: PortalActionTone;
+  }>;
+};
+
+export type ProjectKpiSnapshot = {
+  baseline: string;
+  target: string;
+  roiHypothesis: string;
+  owner: string;
+  reviewDate: string;
+  updatedAt?: string;
+};
+
+export type AutomationHistoryItem = {
+  id: string;
+  title: string;
+  body: string;
+  rule?: string;
+  createdAt: string;
+};
+
 const DAY_MS = 24 * 60 * 60 * 1000;
 
 function dateMs(value?: string) {
@@ -189,6 +219,10 @@ function daysSince(value?: string) {
   const time = dateMs(value);
   if (!time) return Number.POSITIVE_INFINITY;
   return Math.floor((Date.now() - time) / DAY_MS);
+}
+
+function clamp(value: number, min: number, max: number) {
+  return Math.min(max, Math.max(min, value));
 }
 
 function customerUpdates(bundle: ProjectBundle) {
@@ -514,6 +548,7 @@ export function buildAdminProjectActions(
       tone: "red",
       title: "Kundenkonto fehlt",
       body: "Ohne zugeordneten Kunden sieht niemand Status, Aufgaben oder Dateien.",
+      reason: "Projektzugriff ist die Basis für transparente Zusammenarbeit.",
       hrefView: "access",
       cta: "Kunden einladen",
       priority: 10,
@@ -526,6 +561,7 @@ export function buildAdminProjectActions(
       tone: "amber",
       title: "Intake fehlt",
       body: "Der Kunde sollte zuerst den Fragebogen ausfüllen oder einen Reminder erhalten.",
+      reason: "Ohne Kundeninput bleiben Analyse und Empfehlungen zu allgemein.",
       hrefView: "communication",
       cta: "Reminder senden",
       priority: 9,
@@ -538,6 +574,7 @@ export function buildAdminProjectActions(
       tone: diagnosis.readinessScore < 55 ? "red" : "amber",
       title: `${diagnosis.missingInputs.length} Analysefelder fehlen`,
       body: `Ergänzen: ${diagnosis.missingInputs.slice(0, 3).join(", ")}.`,
+      reason: "Die Readiness sinkt, wenn Kontext, Ziele, Daten oder Constraints fehlen.",
       hrefView: "guidance",
       cta: "Intelligence ergänzen",
       priority: diagnosis.readinessScore < 55 ? 8 : 6,
@@ -550,6 +587,7 @@ export function buildAdminProjectActions(
       tone: "red",
       title: "Kundenaufgabe überfällig",
       body: `${customerTaskOverdue.length} offene Aufgabe(n) brauchen Nachfassung.`,
+      reason: "Überfällige Kundentasks blockieren Analyse, Umsetzung oder Freigaben.",
       hrefView: "delivery",
       cta: "Nachfassen",
       priority: 9,
@@ -562,6 +600,7 @@ export function buildAdminProjectActions(
       tone: "amber",
       title: "Kundenupdate fällig",
       body: "Seit mehr als sieben Tagen gibt es kein normales Kundenupdate.",
+      reason: "Regelmäßige Updates halten Vertrauen und Projekttempo hoch.",
       hrefView: "communication",
       cta: "Update schreiben",
       priority: 7,
@@ -574,6 +613,7 @@ export function buildAdminProjectActions(
       tone: "copper",
       title: "Nächste Assad-Aufgabe definieren",
       body: "Ein klares internes To-do macht den nächsten Beratungsschritt sichtbar.",
+      reason: "Ohne internes To-do gibt es keinen operativen Anker für den nächsten Fortschritt.",
       hrefView: "delivery",
       cta: "Aufgabe anlegen",
       priority: 5,
@@ -586,6 +626,7 @@ export function buildAdminProjectActions(
       tone: "red",
       title: "Rechnung nachfassen",
       body: `${openInvoices.length} Rechnung(en) sind offen oder überfällig.`,
+      reason: "Offene Zahlungen sollten sichtbar vom Projektfortschritt getrennt gesteuert werden.",
       hrefView: "billing",
       cta: "Billing öffnen",
       priority: 8,
@@ -598,6 +639,7 @@ export function buildAdminProjectActions(
       tone: "green",
       title: "Projekt ist operativ sauber",
       body: "Keine kritischen Lücken erkannt. Nutze den nächsten Termin für Priorisierung und Umsetzung.",
+      reason: "Health, Intake, Updates, Aufgaben und Rechnungen zeigen keine dringende Blockade.",
       hrefView: "guidance",
       cta: "Guidance öffnen",
       priority: 1,
@@ -605,6 +647,207 @@ export function buildAdminProjectActions(
   }
 
   return actions.sort((a, b) => b.priority - a.priority);
+}
+
+export function buildProjectHealthScore(
+  bundle: ProjectBundle,
+): ProjectHealthScore {
+  const diagnosis = buildProjectDiagnosis(bundle);
+  const factors: ProjectHealthScore["factors"] = [];
+  let score = 100;
+
+  const addFactor = ({
+    penalty,
+    label,
+    body,
+    tone,
+  }: {
+    penalty: number;
+    label: string;
+    body: string;
+    tone: PortalActionTone;
+  }) => {
+    score -= penalty;
+    factors.push({ label, body, tone });
+  };
+
+  if (bundle.customerUsers.length === 0) {
+    addFactor({
+      penalty: 20,
+      label: "Kein Kundenzugriff",
+      body: "Der Kunde kann Status, Aufgaben und Dateien noch nicht sehen.",
+      tone: "red",
+    });
+  }
+
+  if (!hasCustomerIntake(bundle)) {
+    addFactor({
+      penalty: 15,
+      label: "Intake offen",
+      body: "Der geführte Fragebogen fehlt noch oder wurde noch nicht eingereicht.",
+      tone: "amber",
+    });
+  }
+
+  if (diagnosis.missingInputs.length > 0) {
+    addFactor({
+      penalty: clamp(diagnosis.missingInputs.length * 7, 7, 28),
+      label: "Analyse-Lücken",
+      body: diagnosis.missingInputs.slice(0, 4).join(", "),
+      tone: diagnosis.readinessScore < 55 ? "red" : "amber",
+    });
+  }
+
+  const updateAge = daysSince(latestCustomerUpdateDate(bundle));
+  if (updateAge > 14) {
+    addFactor({
+      penalty: 24,
+      label: "Update sehr alt",
+      body: `Seit ${Number.isFinite(updateAge) ? updateAge : "mehreren"} Tagen kein Kundenupdate.`,
+      tone: "red",
+    });
+  } else if (updateAge > 7) {
+    addFactor({
+      penalty: 12,
+      label: "Update fällig",
+      body: `Seit ${updateAge} Tagen kein normales Kundenupdate.`,
+      tone: "amber",
+    });
+  }
+
+  const overdueCustomerTasks = bundle.tasks.filter(
+    (task) =>
+      task.owner === "customer" &&
+      task.visibleToCustomer &&
+      task.status !== "done" &&
+      isPast(task.dueDate),
+  );
+  if (overdueCustomerTasks.length > 0) {
+    addFactor({
+      penalty: clamp(overdueCustomerTasks.length * 10, 10, 25),
+      label: "Kundenaufgaben überfällig",
+      body: `${overdueCustomerTasks.length} Aufgabe(n) blockieren den nächsten Schritt.`,
+      tone: "red",
+    });
+  }
+
+  const overdueInvoices = bundle.invoices.filter(
+    (invoice) =>
+      invoice.status !== "draft" &&
+      invoice.status !== "paid" &&
+      (invoice.status === "overdue" || isPast(invoice.dueDate)),
+  );
+  if (overdueInvoices.length > 0) {
+    addFactor({
+      penalty: clamp(overdueInvoices.length * 8, 8, 20),
+      label: "Rechnung offen",
+      body: `${overdueInvoices.length} Rechnung(en) müssen nachgefasst werden.`,
+      tone: "red",
+    });
+  }
+
+  if (bundle.project.health === "red") {
+    addFactor({
+      penalty: 15,
+      label: "Manuell kritisch markiert",
+      body: "Das Projekt ist im Admin als rot markiert.",
+      tone: "red",
+    });
+  } else if (bundle.project.health === "amber") {
+    addFactor({
+      penalty: 8,
+      label: "Manuell beobachtet",
+      body: "Das Projekt ist im Admin als amber markiert.",
+      tone: "amber",
+    });
+  }
+
+  const nextAction = buildAdminProjectActions(bundle)[0];
+  const normalized = clamp(score, 0, 100);
+  const tone: PortalActionTone =
+    normalized < 50 ? "red" : normalized < 75 ? "amber" : "green";
+
+  return {
+    score: normalized,
+    tone,
+    label:
+      tone === "green"
+        ? "Stabil"
+        : tone === "amber"
+          ? "Aufmerksamkeit nötig"
+          : "Kritisch",
+    recommendedAction:
+      nextAction?.title ?? "Projekt prüfen und nächsten Schritt festlegen.",
+    factors:
+      factors.length > 0
+        ? factors
+        : [
+            {
+              label: "Keine Blockade",
+              body: "Zugriff, Intake, Updates, Aufgaben und Rechnungen wirken sauber.",
+              tone: "green",
+            },
+          ],
+  };
+}
+
+export function buildAutomationHistory(
+  bundle: ProjectBundle,
+): AutomationHistoryItem[] {
+  return bundle.updates
+    .filter(
+      (update) =>
+        update.title.startsWith("Audit:") &&
+        update.body.includes("AUTOMATION_RULE:"),
+    )
+    .map((update) => ({
+      id: update.id,
+      title: update.title.replace(/^Audit:\s*/, ""),
+      body: update.body.replace(/^AUTOMATION_RULE:[^\n]+\n?/, "").trim(),
+      rule: update.body.match(/AUTOMATION_RULE:([^\s\n]+)/)?.[1],
+      createdAt: update.createdAt,
+    }))
+    .sort((a, b) => dateMs(b.createdAt) - dateMs(a.createdAt));
+}
+
+export function buildProjectKpiSnapshot(
+  bundle: ProjectBundle,
+): ProjectKpiSnapshot {
+  const latest = bundle.updates.find((update) =>
+    update.body.includes("KPI_SNAPSHOT:"),
+  );
+  if (latest) {
+    const raw = latest.body.match(/KPI_SNAPSHOT:(\{.*\})/)?.[1];
+    if (raw) {
+      try {
+        const parsed = JSON.parse(raw) as Partial<ProjectKpiSnapshot>;
+        return {
+          baseline: parsed.baseline?.trim() || "Noch nicht festgelegt",
+          target: parsed.target?.trim() || "Noch nicht festgelegt",
+          roiHypothesis: parsed.roiHypothesis?.trim() || "Noch nicht berechnet",
+          owner: parsed.owner?.trim() || "Assad",
+          reviewDate: parsed.reviewDate?.trim() || "",
+          updatedAt: latest.createdAt,
+        };
+      } catch {
+        // Ignore malformed historical snapshots and fall through to defaults.
+      }
+    }
+  }
+
+  return {
+    baseline:
+      bundle.intelligence.issues ||
+      bundle.project.summary ||
+      "Noch nicht festgelegt",
+    target: bundle.intelligence.goals || "Noch nicht festgelegt",
+    roiHypothesis:
+      bundle.intelligence.opportunities ||
+      "Noch keine ROI-Hypothese gespeichert.",
+    owner: "Assad",
+    reviewDate: "",
+    updatedAt: undefined,
+  };
 }
 
 export function buildConsultantWorkflow(
