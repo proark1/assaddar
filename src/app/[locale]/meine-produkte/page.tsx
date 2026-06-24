@@ -3,12 +3,16 @@ import Image from "next/image";
 import Link from "next/link";
 import {
   ArrowRight,
+  Bot,
   BrainCircuit,
   ExternalLink,
+  Gamepad2,
+  GraduationCap,
   Layers3,
   Mic2,
   Rocket,
   Sparkles,
+  Video,
   Workflow,
 } from "lucide-react";
 import { aboutContent } from "@/about";
@@ -72,6 +76,90 @@ const PRODUCT_STORIES: Record<Locale, Record<string, ProductStory>> = {
       ],
       icon: Layers3,
     },
+    "onepizza.io": {
+      logoSrc: "/products/onepizza-logo.svg",
+      logoAlt: "onepizza.io Logo",
+      eyebrow: "Video Meeting Platform",
+      headline: "Eine eigene Meeting-Plattform statt fremder Meeting-Blackbox.",
+      summary:
+        "onepizza.io ist eine vollständige Videokonferenz-Plattform mit WebRTC, Breakout-Rooms, Broadcast-Modus, Chat, Recording, Live Captions, virtuellen Hintergründen, Polls, Q&A und einer Developer API.",
+      audience:
+        "Für Teams, Communities und Produkte, die Meetings, Events, Workshops oder integrierbare Video-Funktionen kontrolliert selbst betreiben wollen.",
+      core: [
+        "Video, Audio, Screensharing, Chat, Recording, Breakouts, Wartelobby, Reactions, Polls und Q&A.",
+        "Developer API, Webhooks, MCP-Server, Admin-Analytics, Templates, wiederkehrende Meetings und Billing.",
+        "Skalierbare Architektur mit Express, Socket.IO, WebRTC, optionalem LiveKit-SFU, PostgreSQL, Redis und Storage-Anbindung.",
+      ],
+      proof: [
+        "Zeigt, wie komplexe Realtime-Produkte aus UX, Infrastruktur, Datenschutz und Betrieb zusammengebaut werden.",
+        "Verbindet Meeting-Erlebnis, Admin-Steuerung, Zahlungslogik, Developer Experience und Automatisierung.",
+        "Relevanter Beratungsbeweis für interne Plattformen, Kundenportale, Event-Systeme und AI-Meeting-Workflows.",
+      ],
+      icon: Video,
+    },
+    "justheretolisten.io": {
+      logoSrc: "/products/justheretolisten-logo.svg",
+      logoAlt: "justheretolisten.io Logo",
+      eyebrow: "AI Meeting Bot API",
+      headline: "Ein Meeting-Bot, der aus Gesprächen verwertbare Arbeit macht.",
+      summary:
+        "justheretolisten.io sendet Bots in Zoom, Google Meet, Microsoft Teams und onepizza.io Meetings, zeichnet auf, transkribiert und analysiert Gespräche mit Claude oder Gemini.",
+      audience:
+        "Für Unternehmen, die Meetings automatisch dokumentieren, Entscheidungen sichern, Aufgaben ableiten und Wissen aus Gesprächen nutzbar machen wollen.",
+      core: [
+        "Bots für Meetings, Transkription, Zusammenfassung, Speaker Analytics, Entscheidungen, Aufgaben und Follow-ups.",
+        "Multi-tenant API mit Credits, Business Accounts, SDKs, Webhooks, SSO, Kalenderlogik und Integrationen.",
+        "Consent- und Datenschutzfunktionen, Trust-Seite, Löschanfragen, Approval Queues und Auditability.",
+      ],
+      proof: [
+        "Zeigt, wie AI-Agenten in reale Arbeitsabläufe eingebettet werden, ohne Compliance und Kontrolle zu verlieren.",
+        "Verbindet API-Design, Bot-Infrastruktur, Meeting-Plattformen, LLM-Auswertung und Business-Prozesse.",
+        "Relevanter Beratungsbeweis für Wissensmanagement, Sales Ops, Projektsteuerung und Führungskommunikation.",
+      ],
+      icon: Bot,
+    },
+    EduPraxis: {
+      logoSrc: "/products/edupraxis-logo.svg",
+      logoAlt: "EduPraxis Logo",
+      eyebrow: "Schulmanagement-System",
+      headline: "Digitale Schulverwaltung für deutsche Realität.",
+      summary:
+        "EduPraxis ist eine GDPR-first Plattform für deutsche Schulen und Bildungsträger: Verwaltung, Kommunikation, Noten, Stundenplan, Fortbildungen, Elternprozesse und Schulorganisation.",
+      audience:
+        "Für Schulen, Schulträger und Bildungseinrichtungen, die Verwaltung digitalisieren wollen, ohne Datenschutz, Rollenlogik und deutsche Anforderungen zu unterschätzen.",
+      core: [
+        "Module für Kommunikation, Noten, Stundenplan, Fortbildungen, Organisation und Elternprozesse.",
+        "Schema-per-tenant PostgreSQL, Ory Kratos, Rollen-/Modulrechte, Admin-Tool, API und Worker.",
+        "Ausgelegt auf deutsche Datenresidenz, Minderjährigenschutz, Auditlogs und Compliance-Artefakte.",
+      ],
+      proof: [
+        "Zeigt, wie man Software für regulierte, sensible und organisatorisch komplexe Umfelder baut.",
+        "Verbindet Produktarchitektur, Identity, Mandantenfähigkeit, Rechte, Compliance und operative Nutzerführung.",
+        "Relevanter Beratungsbeweis für öffentliche Einrichtungen, Bildung, Verwaltung und andere regulierte Organisationen.",
+      ],
+      icon: GraduationCap,
+    },
+    "Empires of the Near East": {
+      logoSrc: "/products/aoeclaude-logo.svg",
+      logoAlt: "Empires of the Near East Logo",
+      eyebrow: "Browser RTS / Strategy Game",
+      headline: "Ein Strategiespiel als Echtzeit-Systembeweis.",
+      summary:
+        "aoeclaude ist ein browserbasiertes Age-of-Empires-artiges Strategiespiel mit Three.js, WebGPU/WebGL2, Economy, Construction, Combat, Bots, Factions und Multiplayer-Shards.",
+      audience:
+        "Für alle, die sehen wollen, dass Produktdenken auch Realtime, Simulation, Multiplayer, Rendering und komplexe Zustandsmodelle abdecken kann.",
+      core: [
+        "Shared Game Core für Browser und autoritativen WebSocket-Server.",
+        "Economy, Bau, Kampf, Fog of War, Accounts/PIN, persistente Shards, Bots, Factions und Heroes.",
+        "Minigames, Chat, Alliances, Leaderboards, Wallets, Shops und Admin-Content-Tools.",
+      ],
+      proof: [
+        "Zeigt technische Breite jenseits klassischer Business-Software: Simulation, Realtime, Rendering und Multiplayer.",
+        "Verbindet Client-Performance, Server-Autorität, Produktlogik, Content-Systeme und Spielbalance.",
+        "Relevanter Beratungsbeweis für komplexe Plattformen, Echtzeit-Dashboards und interaktive Workflows.",
+      ],
+      icon: Gamepad2,
+    },
   },
   en: {
     "unmutenow.ai": {
@@ -116,6 +204,90 @@ const PRODUCT_STORIES: Record<Locale, Record<string, ProductStory>> = {
       ],
       icon: Layers3,
     },
+    "onepizza.io": {
+      logoSrc: "/products/onepizza-logo.svg",
+      logoAlt: "onepizza.io logo",
+      eyebrow: "Video Meeting Platform",
+      headline: "A meeting platform of your own, not a black box.",
+      summary:
+        "onepizza.io is a full video meeting platform with WebRTC, breakout rooms, broadcast mode, chat, recording, live captions, virtual backgrounds, polls, Q&A, and a developer API.",
+      audience:
+        "For teams, communities, and products that want to run meetings, events, workshops, or embedded video features under their own control.",
+      core: [
+        "Video, audio, screen sharing, chat, recording, breakouts, waiting room, reactions, polls, and Q&A.",
+        "Developer API, webhooks, MCP server, admin analytics, templates, recurring meetings, and billing.",
+        "Scalable architecture with Express, Socket.IO, WebRTC, optional LiveKit SFU, PostgreSQL, Redis, and storage integrations.",
+      ],
+      proof: [
+        "Shows how complex realtime products combine UX, infrastructure, privacy, and operations.",
+        "Connects meeting experience, admin control, payment logic, developer experience, and automation.",
+        "Relevant consulting proof for internal platforms, client portals, event systems, and AI meeting workflows.",
+      ],
+      icon: Video,
+    },
+    "justheretolisten.io": {
+      logoSrc: "/products/justheretolisten-logo.svg",
+      logoAlt: "justheretolisten.io logo",
+      eyebrow: "AI Meeting Bot API",
+      headline: "A meeting bot that turns conversations into useful work.",
+      summary:
+        "justheretolisten.io sends bots into Zoom, Google Meet, Microsoft Teams, and onepizza.io meetings to record, transcribe, and analyze conversations with Claude or Gemini.",
+      audience:
+        "For companies that want to document meetings automatically, capture decisions, derive tasks, and make meeting knowledge reusable.",
+      core: [
+        "Meeting bots, transcription, summaries, speaker analytics, decisions, tasks, and follow-ups.",
+        "Multi-tenant API with credits, business accounts, SDKs, webhooks, SSO, calendar logic, and integrations.",
+        "Consent and privacy features, trust page, deletion requests, approval queues, and auditability.",
+      ],
+      proof: [
+        "Shows how AI agents can be embedded into real workflows without losing compliance and control.",
+        "Connects API design, bot infrastructure, meeting platforms, LLM analysis, and business processes.",
+        "Relevant consulting proof for knowledge management, sales ops, project steering, and leadership communication.",
+      ],
+      icon: Bot,
+    },
+    EduPraxis: {
+      logoSrc: "/products/edupraxis-logo.svg",
+      logoAlt: "EduPraxis logo",
+      eyebrow: "School Management System",
+      headline: "Digital school administration for German reality.",
+      summary:
+        "EduPraxis is a GDPR-first platform for German schools and education providers: administration, communication, grades, timetables, professional development, parent workflows, and school operations.",
+      audience:
+        "For schools, school operators, and education organizations that want to digitalize administration without underestimating privacy, roles, and German requirements.",
+      core: [
+        "Modules for communication, grades, timetables, professional development, operations, and parent workflows.",
+        "Schema-per-tenant PostgreSQL, Ory Kratos, role/module permissions, admin tool, API, and workers.",
+        "Designed for German data residency, minor-data protection, audit logs, and compliance artifacts.",
+      ],
+      proof: [
+        "Shows how to build software for regulated, sensitive, and organizationally complex environments.",
+        "Connects product architecture, identity, tenancy, permissions, compliance, and operational UX.",
+        "Relevant consulting proof for public institutions, education, administration, and other regulated organizations.",
+      ],
+      icon: GraduationCap,
+    },
+    "Empires of the Near East": {
+      logoSrc: "/products/aoeclaude-logo.svg",
+      logoAlt: "Empires of the Near East logo",
+      eyebrow: "Browser RTS / Strategy Game",
+      headline: "A strategy game as proof of realtime systems thinking.",
+      summary:
+        "aoeclaude is a browser-based Age-of-Empires-style strategy game with Three.js, WebGPU/WebGL2, economy, construction, combat, bots, factions, and multiplayer shards.",
+      audience:
+        "For anyone who wants to see product thinking applied to realtime, simulation, multiplayer, rendering, and complex state models.",
+      core: [
+        "Shared game core for browser and authoritative WebSocket server.",
+        "Economy, building, combat, fog of war, accounts/PIN, persistent shards, bots, factions, and heroes.",
+        "Minigames, chat, alliances, leaderboards, wallets, shops, and admin content tools.",
+      ],
+      proof: [
+        "Shows technical range beyond classic business software: simulation, realtime, rendering, and multiplayer.",
+        "Connects client performance, server authority, product logic, content systems, and game balance.",
+        "Relevant consulting proof for complex platforms, realtime dashboards, and interactive workflows.",
+      ],
+      icon: Gamepad2,
+    },
   },
 };
 
@@ -140,8 +312,8 @@ export async function generateMetadata({
     title,
     description:
       safe === "de"
-        ? "Eigene KI- und Softwareprodukte von Assad Dar: unmutenow.ai und 1tab.ai."
-        : "Assad Dar's own AI and software products: unmutenow.ai and 1tab.ai.",
+        ? "Eigene KI- und Softwareprodukte von Assad Dar: Training, Startup-OS, Meeting-Plattform, Meeting-Bots, Schulmanagement und Browser-Strategiespiel."
+        : "Assad Dar's own AI and software products: training, startup OS, meeting platform, meeting bots, school management, and browser strategy game.",
     alternates: { canonical: `/${safe}/meine-produkte` },
     openGraph: {
       type: "website",
@@ -174,7 +346,7 @@ export default async function MeineProduktePage({
       item: {
         "@type": "SoftwareApplication",
         name: product.name,
-        url: product.href,
+        ...(product.href ? { url: product.href } : {}),
         applicationCategory: product.tagline,
         description: product.text,
         creator: {
@@ -223,7 +395,7 @@ export default async function MeineProduktePage({
                 : "These products are more than references: they show that I understand AI systems, data models, user flows, automation, and operations not only conceptually, but from building them myself."}
             </p>
             </div>
-            <div className="grid grid-cols-2 gap-4">
+            <div className="grid grid-cols-2 gap-4 sm:grid-cols-3 lg:grid-cols-2 xl:grid-cols-3">
               {a.products.map((product) => {
                 const story = stories[product.name];
 
@@ -241,7 +413,7 @@ export default async function MeineProduktePage({
                         className="h-12 w-12 object-contain"
                       />
                     </div>
-                    <div className="mt-3 text-center text-sm font-medium text-ink">
+                    <div className="mt-3 break-words text-center text-sm font-medium leading-snug text-ink">
                       {product.name}
                     </div>
                     <div className="mt-1 text-center font-mono text-[10px] uppercase tracking-[0.1em] text-muted">
@@ -285,17 +457,23 @@ export default async function MeineProduktePage({
                         <p className="mt-4 text-sm leading-relaxed text-ink2">
                           {story.audience}
                         </p>
-                        <div className="mt-6 flex flex-wrap gap-3">
-                          <Link
-                            href={product.href}
-                            target="_blank"
-                            rel="noreferrer"
-                            className="inline-flex items-center gap-1.5 text-sm font-medium text-copper transition-colors hover:text-copper-hi"
-                          >
-                            Website
-                            <ExternalLink className="h-3.5 w-3.5" />
-                          </Link>
-                        </div>
+                        {product.href ? (
+                          <div className="mt-6 flex flex-wrap gap-3">
+                            <Link
+                              href={product.href}
+                              target="_blank"
+                              rel="noreferrer"
+                              className="inline-flex items-center gap-1.5 text-sm font-medium text-copper transition-colors hover:text-copper-hi"
+                            >
+                              Website
+                              <ExternalLink className="h-3.5 w-3.5" />
+                            </Link>
+                          </div>
+                        ) : (
+                          <div className="mt-6 inline-flex rounded-md border border-hairline bg-surface px-3 py-1.5 text-[12px] font-medium text-muted">
+                            {isDe ? "Portfolio-Projekt" : "Portfolio project"}
+                          </div>
+                        )}
                       </div>
 
                       <div className="p-8">
@@ -365,7 +543,7 @@ export default async function MeineProduktePage({
                   {
                     icon: Rocket,
                     title: "Vom Konzept zum Produkt",
-                    text: "Beide Produkte zeigen, dass ich nicht bei Strategie stehenbleibe, sondern Produktlogik, UX, Datenmodell und Betrieb zusammenbringe.",
+                    text: "Diese Produkte zeigen, dass ich nicht bei Strategie stehenbleibe, sondern Produktlogik, UX, Datenmodell und Betrieb zusammenbringe.",
                   },
                   {
                     icon: Workflow,
@@ -382,7 +560,7 @@ export default async function MeineProduktePage({
                   {
                     icon: Rocket,
                     title: "From concept to product",
-                    text: "Both products show that I do not stop at strategy, but connect product logic, UX, data models, and operations.",
+                    text: "These products show that I do not stop at strategy, but connect product logic, UX, data models, and operations.",
                   },
                   {
                     icon: Workflow,

@@ -980,6 +980,14 @@ export function About({ t, locale }: { t: Dict["about"]; locale: Locale }) {
 export function ProductsPreview({ locale }: { locale: Locale }) {
   const a = aboutContent[locale];
   const isDe = locale === "de";
+  const productInitials: Record<string, string> = {
+    "unmutenow.ai": "UN",
+    "1tab.ai": "1T",
+    "onepizza.io": "OP",
+    "justheretolisten.io": "JL",
+    EduPraxis: "EP",
+    "Empires of the Near East": "EN",
+  };
 
   return (
     <Section id="meine-produkte" className="border-t border-hairline">
@@ -1004,7 +1012,7 @@ export function ProductsPreview({ locale }: { locale: Locale }) {
               <article className="flex h-full flex-col rounded-xl border border-hairline bg-surface p-6 shadow-card">
                 <div className="flex items-start gap-4">
                   <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-lg border border-copper/30 bg-copper/10 font-serif text-lg text-copper">
-                    {product.name === "1tab.ai" ? "1T" : "UN"}
+                    {productInitials[product.name] ?? product.name.slice(0, 2).toUpperCase()}
                   </div>
                   <div>
                     <div className="font-mono text-[10.5px] uppercase tracking-[0.12em] text-copper">
@@ -1027,13 +1035,19 @@ export function ProductsPreview({ locale }: { locale: Locale }) {
                   ))}
                 </ul>
                 <div className="mt-5 flex flex-wrap gap-3 text-sm">
-                  <a
-                    href={product.href}
-                    className="inline-flex items-center gap-1.5 text-copper"
-                  >
-                    Website
-                    <ArrowRight className="h-3.5 w-3.5" />
-                  </a>
+                  {product.href ? (
+                    <a
+                      href={product.href}
+                      className="inline-flex items-center gap-1.5 text-copper"
+                    >
+                      Website
+                      <ArrowRight className="h-3.5 w-3.5" />
+                    </a>
+                  ) : (
+                    <span className="inline-flex rounded-md border border-hairline bg-surface2 px-3 py-1.5 text-[12px] font-medium text-muted">
+                      {isDe ? "Portfolio-Projekt" : "Portfolio project"}
+                    </span>
+                  )}
                 </div>
               </article>
             </Reveal>

@@ -4,7 +4,7 @@ export type AboutStat = { value: string; label: string };
 export type AboutWorld = { tag: string; title: string; org: string; text: string };
 export type AboutProduct = {
   name: string;
-  href: string;
+  href?: string;
   tagline: string;
   text: string;
   bullets: string[];
@@ -95,6 +95,53 @@ const de: AboutContent = {
         "25+ Module fuer Strategie, Aufgaben, OKR, CRM, Pitch Deck, Finance, Research und Teamarbeit.",
         "Credit-basierte Gemini-AI ueber Supabase Edge Functions und kollaborative Workflows.",
         "Offline-first PWA mit Supabase Auth, Postgres, Realtime, Storage und Edge Functions.",
+      ],
+    },
+    {
+      name: "onepizza.io",
+      href: "https://onepizza.io",
+      tagline: "Video Meeting Platform",
+      text:
+        "Eigene Meeting-Plattform mit WebRTC, Breakout-Rooms, Broadcast-Modus, Chat, Recording, Live Captions, virtuellen Hintergruenden, Polls, Q&A und Developer API.",
+      bullets: [
+        "Video-, Audio- und Screensharing-Meetings mit optionalem LiveKit-SFU, TURN-Fallback und skalierbarer Socket.IO-Realtime-Architektur.",
+        "Breakouts, Wartelobby, Aufzeichnung, Chat, Notizen, Dateien, Anwesenheitsreports, Templates und wiederkehrende Meetings.",
+        "Billing, Admin-Analytics, Webhooks, OpenAPI, MCP-Server und Integrationen fuer AI-Agenten und Entwickler.",
+      ],
+    },
+    {
+      name: "justheretolisten.io",
+      href: "https://justheretolisten.io",
+      tagline: "AI Meeting Bot API",
+      text:
+        "Meetingbot-Service, der Zoom, Google Meet, Microsoft Teams und onepizza.io Meetings besucht, aufzeichnet, transkribiert und mit Claude oder Gemini analysiert.",
+      bullets: [
+        "Multi-tenant API mit Credits, Business Accounts, SDKs, Webhooks, SSO, Kalender-Logik und Integrationen.",
+        "Transkripte, Zusammenfassungen, Entscheidungen, Aufgaben, Follow-ups, Speaker Analytics und Meeting-Q&A.",
+        "GDPR-/Consent-Funktionen, Trust-Seite, Loeschanfragen, Approval Queues, Auditability und Datenschutzkontrollen.",
+      ],
+    },
+    {
+      name: "EduPraxis",
+      href: "https://edupraxis.de",
+      tagline: "Schulmanagement-System",
+      text:
+        "GDPR-first Plattform fuer digitale Schulverwaltung in Deutschland: Kommunikation, Noten, Stundenplan, Fortbildungen, Elternprozesse und Schulorganisation.",
+      bullets: [
+        "Schema-per-tenant PostgreSQL, Ory Kratos, Rollen-/Modulrechte und getrennte Admin-Architektur.",
+        "Marketing, Web-App, API, Admin-Tool, Identity Provider und Worker in einem strukturierten Monorepo.",
+        "Ausgelegt auf deutsche Datenresidenz, Minderjaehrigenschutz, Auditlogs und Compliance-Artefakte.",
+      ],
+    },
+    {
+      name: "Empires of the Near East",
+      tagline: "Browser RTS / Strategy Game",
+      text:
+        "aoeclaude ist ein browserbasiertes Age-of-Empires-artiges Strategiespiel mit Three.js, WebGPU/WebGL2, Economy, Construction, Combat, Bots und Multiplayer-Shards.",
+      bullets: [
+        "Geteilter Game Core fuer Browser und autoritativen WebSocket-Server.",
+        "Fog of War, Accounts/PIN, persistente Shards, Factions, Heroes, Minigames, Chat, Alliances und Leaderboards.",
+        "Zeigt Produkt- und Systemdenken jenseits klassischer Business-Software: Echtzeit, Simulation, Rendering und Multiplayer.",
       ],
     },
   ],
@@ -202,6 +249,53 @@ const en: AboutContent = {
         "25+ modules for strategy, tasks, OKRs, CRM, pitch deck, finance, research, and teamwork.",
         "Credit-based Gemini AI through Supabase Edge Functions and collaborative workflows.",
         "Offline-first PWA with Supabase Auth, Postgres, Realtime, Storage, and Edge Functions.",
+      ],
+    },
+    {
+      name: "onepizza.io",
+      href: "https://onepizza.io",
+      tagline: "Video Meeting Platform",
+      text:
+        "A full video meeting platform with WebRTC, breakout rooms, broadcast mode, chat, recording, live captions, virtual backgrounds, polls, Q&A, and a developer API.",
+      bullets: [
+        "Video, audio, and screen-sharing meetings with optional LiveKit SFU, TURN fallback, and scalable Socket.IO realtime architecture.",
+        "Breakouts, waiting rooms, recording, chat, notes, files, attendance reports, templates, and recurring meetings.",
+        "Billing, admin analytics, webhooks, OpenAPI, MCP server, and integrations for AI agents and developers.",
+      ],
+    },
+    {
+      name: "justheretolisten.io",
+      href: "https://justheretolisten.io",
+      tagline: "AI Meeting Bot API",
+      text:
+        "A meeting bot service that joins Zoom, Google Meet, Microsoft Teams, and onepizza.io meetings to record, transcribe, and analyze them with Claude or Gemini.",
+      bullets: [
+        "Multi-tenant API with credits, business accounts, SDKs, webhooks, SSO, calendar logic, and integrations.",
+        "Transcripts, summaries, decisions, tasks, follow-ups, speaker analytics, and meeting Q&A.",
+        "GDPR and consent features, trust page, deletion requests, approval queues, auditability, and privacy controls.",
+      ],
+    },
+    {
+      name: "EduPraxis",
+      href: "https://edupraxis.de",
+      tagline: "School Management System",
+      text:
+        "A GDPR-first school management platform for German schools: communication, grades, timetables, professional development, parent workflows, and school operations.",
+      bullets: [
+        "Schema-per-tenant PostgreSQL, Ory Kratos, role and module permissions, and separated admin architecture.",
+        "Marketing, web app, API, admin tool, identity provider, and workers in one structured monorepo.",
+        "Designed for German data residency, minor-data protection, audit logs, and compliance artifacts.",
+      ],
+    },
+    {
+      name: "Empires of the Near East",
+      tagline: "Browser RTS / Strategy Game",
+      text:
+        "aoeclaude is a browser-based Age-of-Empires-style strategy game with Three.js, WebGPU/WebGL2, economy, construction, combat, bots, and multiplayer shards.",
+      bullets: [
+        "Shared game core for browser and authoritative WebSocket server.",
+        "Fog of war, accounts/PIN, persistent shards, factions, heroes, minigames, chat, alliances, and leaderboards.",
+        "Shows product and systems thinking beyond classic business software: realtime, simulation, rendering, and multiplayer.",
       ],
     },
   ],

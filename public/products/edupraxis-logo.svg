@@ -1,0 +1,8 @@
+<svg width="256" height="256" viewBox="0 0 256 256" fill="none" xmlns="http://www.w3.org/2000/svg">
+  <rect width="256" height="256" rx="48" fill="#FAF8F4"/>
+  <path d="M128 34L213 70V122C213 173 179.6 215.6 128 232C76.4 215.6 43 173 43 122V70L128 34Z" fill="#1F252B"/>
+  <path d="M83 106L128 80L173 106L128 132L83 106Z" fill="#A66E2F"/>
+  <path d="M95 122V164C112.5 177.5 143.5 177.5 161 164V122" stroke="#FAF8F4" stroke-width="10" stroke-linecap="round" stroke-linejoin="round"/>
+  <path d="M173 106V146" stroke="#FAF8F4" stroke-width="10" stroke-linecap="round"/>
+  <text x="128" y="211" text-anchor="middle" font-family="Arial, Helvetica, sans-serif" font-size="34" font-weight="700" fill="#A66E2F">EP</text>
+</svg>
