@@ -25,7 +25,15 @@ export function isStructuredUpdate(title: string) {
     title.startsWith("Intake:") ||
     title.startsWith("Freigabe:") ||
     title.startsWith("Erinnerung:") ||
-    title.startsWith("Termin:")
+    title.startsWith("Termin:") ||
+    title.startsWith("Lead:") ||
+    title.startsWith("Entscheidung:") ||
+    title.startsWith("Change Request:") ||
+    title.startsWith("File Request:") ||
+    title.startsWith("Workflow:") ||
+    title.startsWith("Ticket:") ||
+    title.startsWith("Access:") ||
+    title.startsWith("Analytics:")
   );
 }
 

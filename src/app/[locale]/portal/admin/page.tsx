@@ -35,6 +35,7 @@ import {
   buildAdminCommandCenter,
   buildAdminNotificationCenter,
   buildAdminProjectActions,
+  buildLeadPipeline,
   buildProjectHealthScore,
   buildProjectTimeline,
 } from "@/lib/portal/operations";
@@ -89,6 +90,7 @@ export default async function AdminPage({
   const automationOpportunities = buildAutomationOpportunities(allBundles);
   const commandCenter = buildAdminCommandCenter(allBundles);
   const notifications = buildAdminNotificationCenter(allBundles);
+  const leadPipeline = buildLeadPipeline(allBundles);
   const commands = [
     {
       label: "Automationen ausführen",
@@ -438,6 +440,50 @@ export default async function AdminPage({
               {automationOpportunities.length === 0 && (
                 <p className="text-sm text-muted">
                   Keine neuen Automationen erkannt.
+                </p>
+              )}
+            </div>
+          </PortalCard>
+
+          <PortalCard>
+            <PortalSectionTitle eyebrow="Lead CRM" title="Neue Anfragen">
+              Kontakte aus der Website werden automatisch als interne
+              Lead-Projekte angelegt, damit Qualifizierung, Erstgespräch und
+              Follow-up im gleichen System bleiben.
+            </PortalSectionTitle>
+            <div className="mt-5 grid gap-3 lg:grid-cols-2">
+              {leadPipeline.slice(0, 6).map((lead) => (
+                <Link
+                  key={lead.id}
+                  href={`/${safe}/portal/admin/projects/${lead.projectId}?view=setup`}
+                  className="rounded-lg border border-hairline bg-bg p-4 transition-colors hover:border-copper"
+                >
+                  <div className="flex items-start justify-between gap-3">
+                    <div>
+                      <div className="text-sm font-medium text-ink">
+                        {lead.organizationName}
+                      </div>
+                      <div className="mt-1 text-[12px] text-muted">
+                        {lead.contactName ?? "Kontakt offen"}
+                        {lead.email ? ` · ${lead.email}` : ""}
+                      </div>
+                    </div>
+                    <Badge tone={lead.score >= 70 ? "green" : "amber"}>
+                      {lead.score}
+                    </Badge>
+                  </div>
+                  <p className="mt-3 line-clamp-3 text-sm leading-relaxed text-ink2">
+                    {lead.summary}
+                  </p>
+                  <div className="mt-3 flex items-center justify-between gap-3 text-[12px] text-muted">
+                    <span>{lead.source}</span>
+                    <span>{formatDate(lead.createdAt)}</span>
+                  </div>
+                </Link>
+              ))}
+              {leadPipeline.length === 0 && (
+                <p className="text-sm text-muted">
+                  Noch keine Website-Leads im Portal.
                 </p>
               )}
             </div>

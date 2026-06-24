@@ -36,6 +36,9 @@ import {
   archiveProjectAction,
   assignCustomerAction,
   completeSetupWizardAction,
+  createChangeRequestAction,
+  createDecisionAction,
+  createFileRequestAction,
   generateDiagnosisPackAction,
   generateFinalReportAction,
   generateProposalAction,
@@ -45,9 +48,11 @@ import {
   runAiScanAction,
   runProjectAutomationsAction,
   saveProjectKpiAction,
+  saveProjectWorkflowAction,
   saveKnowledgeSnapshotAction,
   scheduleProjectAppointmentAction,
   sendProjectReminderAction,
+  updateChangeRequestAction,
   updateIntelligenceAction,
   updateInvoiceStatusAction,
   updateMilestoneStatusAction,
@@ -83,16 +88,22 @@ import {
   buildAiProviderComparison,
   buildAdminProjectActions,
   buildAutomationHistory,
+  buildChangeRequests,
+  buildClientAnalytics,
   buildConsultingCopilotBrief,
   buildConsultantCopyTemplates,
   buildConsultantWorkflow,
   buildCustomerUpdateDraft,
+  buildDecisionCenter,
   buildFileVersionGroups,
+  buildFileRequests,
   buildMeetingModePlan,
   buildProjectDiagnosis,
+  buildProjectCopilotPanel,
   buildProjectHealthScore,
   buildProjectKpiSnapshot,
   buildProjectTimeline,
+  buildWorkflowSnapshots,
 } from "@/lib/portal/operations";
 import {
   Badge,
@@ -184,6 +195,12 @@ export default async function AdminProjectPage({
   const projectTimeline = buildProjectTimeline(bundle);
   const automationHistory = buildAutomationHistory(bundle);
   const fileGroups = buildFileVersionGroups(bundle);
+  const decisions = buildDecisionCenter(bundle);
+  const changeRequests = buildChangeRequests(bundle);
+  const fileRequests = buildFileRequests(bundle);
+  const workflowSnapshots = buildWorkflowSnapshots(bundle);
+  const clientAnalytics = buildClientAnalytics(bundle);
+  const projectCopilot = buildProjectCopilotPanel(bundle);
   const similar = findSimilarProjectBundles(bundles, bundle);
   const matchedTemplate = matchConsultingTemplate(bundle.organization.industry);
   const template =
@@ -242,7 +259,7 @@ export default async function AdminProjectPage({
       eyebrow: "2",
       title: "Beratung",
       body: "Copilot, Playbook und AI-Scans.",
-      count: bundle.aiInsights.length + similar.length,
+      count: bundle.aiInsights.length + similar.length + workflowSnapshots.length,
     },
     {
       id: "meeting",
@@ -255,21 +272,25 @@ export default async function AdminProjectPage({
       eyebrow: "4",
       title: "Kunde",
       body: "Updates, Kommentare und Kundensignale.",
-      count: comments.length + reminders.length,
+      count: comments.length + reminders.length + decisions.length,
     },
     {
       id: "delivery",
       eyebrow: "5",
       title: "Umsetzung",
       body: "Dateien, Aufgaben und Roadmap.",
-      count: bundle.files.length + openCustomerTasks + bundle.milestones.length,
+      count:
+        bundle.files.length +
+        openCustomerTasks +
+        bundle.milestones.length +
+        fileRequests.length,
     },
     {
       id: "billing",
       eyebrow: "6",
       title: "Abrechnung",
       body: "Proposal, Rechnungen und Reminder.",
-      count: openInvoices,
+      count: openInvoices + changeRequests.length,
     },
     {
       id: "access",
@@ -415,6 +436,62 @@ export default async function AdminProjectPage({
                 </Badge>
               ))}
             </div>
+          </div>
+        </div>
+      </PortalCard>
+
+      <PortalCard className="mb-6">
+        <div className="grid gap-5 lg:grid-cols-[0.9fr_1.1fr]">
+          <div>
+            <PortalSectionTitle eyebrow="Project Copilot" title={projectCopilot.headline}>
+              {projectCopilot.summary}
+            </PortalSectionTitle>
+            <div className="mt-5 grid grid-cols-2 gap-3">
+              {projectCopilot.metrics.map((metric) => (
+                <div
+                  key={metric.label}
+                  className="rounded-lg border border-hairline bg-bg p-3"
+                >
+                  <div className="flex items-center justify-between gap-2">
+                    <div className="text-xl font-medium text-ink">
+                      {metric.value}
+                    </div>
+                    <Badge
+                      tone={
+                        metric.tone === "red"
+                          ? "red"
+                          : metric.tone === "green"
+                            ? "green"
+                            : metric.tone === "amber"
+                              ? "amber"
+                              : "copper"
+                      }
+                    >
+                      {metric.label}
+                    </Badge>
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
+          <div className="space-y-3">
+            {projectCopilot.actions.map((action) => (
+              <Link
+                key={action.id}
+                href={stepHref(action.hrefView)}
+                className="flex items-start justify-between gap-4 rounded-lg border border-hairline bg-bg p-3 transition-colors hover:border-copper"
+              >
+                <div>
+                  <div className="text-sm font-medium text-ink">
+                    {action.title}
+                  </div>
+                  <p className="mt-1 text-[12px] leading-relaxed text-muted">
+                    {action.body}
+                  </p>
+                </div>
+                <ArrowRight className="mt-1 h-4 w-4 shrink-0 text-copper" />
+              </Link>
+            ))}
           </div>
         </div>
       </PortalCard>
@@ -838,6 +915,115 @@ export default async function AdminProjectPage({
               {projectTimeline.length === 0 && (
                 <p className="text-sm text-muted">
                   Noch keine Aktivität vorhanden.
+                </p>
+              )}
+            </div>
+          </PortalCard>
+
+          <PortalCard className={viewClass("guidance")}>
+            <PortalSectionTitle
+              eyebrow="Workflow Builder"
+              title="Projektablauf als Playbook speichern"
+            >
+              Definiert Trigger, Checkliste, Reminder-Rhythmus und
+              Automationsideen für dieses Projekt.
+            </PortalSectionTitle>
+            <form action={saveProjectWorkflowAction} className="mt-5 space-y-4">
+              <HiddenProjectFields locale={safe} projectId={projectId} />
+              <div className="grid gap-4 md:grid-cols-2">
+                <div>
+                  <label className="mb-1.5 block text-sm text-ink2">
+                    Workflow
+                  </label>
+                  <input
+                    name="title"
+                    placeholder="z.B. Intake bis Quick-Win Pilot"
+                    className={fieldClass}
+                  />
+                </div>
+                <div>
+                  <label className="mb-1.5 block text-sm text-ink2">
+                    Auslöser
+                  </label>
+                  <input
+                    name="trigger"
+                    placeholder="z.B. Intake eingereicht, Meeting abgeschlossen"
+                    className={fieldClass}
+                  />
+                </div>
+              </div>
+              <div className="grid gap-4 md:grid-cols-2">
+                <div>
+                  <label className="mb-1.5 block text-sm text-ink2">
+                    Checkliste
+                  </label>
+                  <textarea
+                    name="checklist"
+                    placeholder="Je Zeile ein Schritt"
+                    className={textareaClass}
+                  />
+                </div>
+                <div>
+                  <label className="mb-1.5 block text-sm text-ink2">
+                    Automation
+                  </label>
+                  <textarea
+                    name="automation"
+                    placeholder="Je Zeile eine Automation oder Reminder-Idee"
+                    className={textareaClass}
+                  />
+                </div>
+              </div>
+              <div className="grid gap-4 md:grid-cols-2">
+                <input
+                  name="cadence"
+                  placeholder="Reminder-Rhythmus, z.B. alle 3 Tage"
+                  className={fieldClass}
+                />
+                <input
+                  name="customerPromise"
+                  placeholder="Was der Kunde dadurch zuverlässig sieht"
+                  className={fieldClass}
+                />
+              </div>
+              <button
+                type="submit"
+                className="inline-flex items-center gap-2 rounded-lg bg-copper px-4 py-2.5 text-sm font-medium text-oncopper transition-colors hover:bg-copper-hi"
+              >
+                <CheckCircle2 className="h-4 w-4" />
+                Workflow speichern
+              </button>
+            </form>
+            <div className="mt-6 grid gap-3 lg:grid-cols-2">
+              {workflowSnapshots.slice(0, 4).map((snapshot) => (
+                <article
+                  key={snapshot.id}
+                  className="rounded-lg border border-hairline bg-bg p-4"
+                >
+                  <div className="flex flex-wrap items-center gap-2">
+                    <Badge tone="copper">Workflow</Badge>
+                    <span className="text-[12px] text-muted">
+                      {formatDate(snapshot.updatedAt)}
+                    </span>
+                  </div>
+                  <h3 className="mt-2 text-sm font-medium text-ink">
+                    {snapshot.title}
+                  </h3>
+                  <p className="mt-1 text-[12px] leading-relaxed text-muted">
+                    {snapshot.trigger || "Kein Trigger hinterlegt."}
+                  </p>
+                  {snapshot.checklist.length > 0 && (
+                    <ul className="mt-3 space-y-1 text-[12px] leading-relaxed text-ink2">
+                      {snapshot.checklist.slice(0, 4).map((item) => (
+                        <li key={item}>- {item}</li>
+                      ))}
+                    </ul>
+                  )}
+                </article>
+              ))}
+              {workflowSnapshots.length === 0 && (
+                <p className="text-sm text-muted">
+                  Noch kein projektspezifischer Workflow gespeichert.
                 </p>
               )}
             </div>
@@ -1388,6 +1574,99 @@ export default async function AdminProjectPage({
               {projectUpdates.length === 0 && (
                 <p className="text-sm text-muted">
                   Noch keine Projektupdates gespeichert.
+                </p>
+              )}
+            </div>
+          </PortalCard>
+
+          <PortalCard className={viewClass("communication")}>
+            <PortalSectionTitle
+              eyebrow="Decision Center"
+              title="Entscheidungen klar freigeben lassen"
+            >
+              Lege Entscheidungen als eigene Einträge an. Kundensichtbare
+              Entscheidungen können direkt im Portal angenommen oder kommentiert
+              werden.
+            </PortalSectionTitle>
+            <form action={createDecisionAction} className="mt-5 space-y-4">
+              <HiddenProjectFields locale={safe} projectId={projectId} />
+              <div className="grid gap-4 md:grid-cols-[1fr_180px_180px]">
+                <input
+                  name="title"
+                  placeholder="Entscheidung, z.B. Pilot-Prozess freigeben"
+                  className={fieldClass}
+                />
+                <select name="status" className={fieldClass}>
+                  <option value="proposed">Vorgeschlagen</option>
+                  <option value="approved">Freigegeben</option>
+                  <option value="needs_changes">Änderungen nötig</option>
+                  <option value="rejected">Abgelehnt</option>
+                </select>
+                <select name="visibility" className={fieldClass}>
+                  <option value="customer">Kunde</option>
+                  <option value="internal">Intern</option>
+                </select>
+              </div>
+              <textarea
+                name="body"
+                placeholder="Kontext, Optionen, Empfehlung und gewünschte Entscheidung"
+                className={textareaClass}
+              />
+              <button
+                type="submit"
+                className="inline-flex items-center gap-2 rounded-lg bg-copper px-4 py-2.5 text-sm font-medium text-oncopper transition-colors hover:bg-copper-hi"
+              >
+                <CheckCircle2 className="h-4 w-4" />
+                Entscheidung speichern
+              </button>
+            </form>
+            <div className="mt-6 grid gap-3 lg:grid-cols-2">
+              {decisions.map((decision) => (
+                <article
+                  key={decision.id}
+                  className="rounded-lg border border-hairline bg-bg p-4"
+                >
+                  <div className="flex flex-wrap items-center gap-2">
+                    <Badge
+                      tone={
+                        decision.status === "approved"
+                          ? "green"
+                          : decision.status === "rejected"
+                            ? "red"
+                            : "amber"
+                      }
+                    >
+                      {decision.status}
+                    </Badge>
+                    <Badge
+                      tone={
+                        decision.visibility === "customer"
+                          ? "green"
+                          : "neutral"
+                      }
+                    >
+                      {decision.visibility === "customer" ? "Kunde" : "Intern"}
+                    </Badge>
+                    <span className="text-[12px] text-muted">
+                      {formatDate(decision.updatedAt)}
+                    </span>
+                  </div>
+                  <h3 className="mt-2 text-sm font-medium text-ink">
+                    {decision.title}
+                  </h3>
+                  <p className="mt-1 whitespace-pre-line text-sm leading-relaxed text-ink2">
+                    {decision.body}
+                  </p>
+                  {decision.response && (
+                    <div className="mt-3 rounded-lg border border-success/25 bg-success/10 p-3 text-[12px] leading-relaxed text-success">
+                      {decision.response}
+                    </div>
+                  )}
+                </article>
+              ))}
+              {decisions.length === 0 && (
+                <p className="text-sm text-muted">
+                  Noch keine formalen Entscheidungen gespeichert.
                 </p>
               )}
             </div>
@@ -2167,6 +2446,63 @@ export default async function AdminProjectPage({
           </PortalCard>
 
           <PortalCard className={viewClass("access")}>
+            <PortalSectionTitle
+              eyebrow="Client Analytics"
+              title="Kundenaktivität und nächster Nudge"
+            >
+              Verdichtet Kundensignale, offene To-dos, Freigaben, Dateien und
+              Rechnungen zu einer einfachen Handlungsempfehlung.
+            </PortalSectionTitle>
+            <div className="mt-5 rounded-lg border border-hairline bg-bg p-4">
+              <div className="flex flex-wrap items-center justify-between gap-3">
+                <div>
+                  <div className="text-sm font-medium text-ink">
+                    {clientAnalytics.engagementLabel}
+                  </div>
+                  <p className="mt-1 text-sm leading-relaxed text-ink2">
+                    {clientAnalytics.nextNudge}
+                  </p>
+                </div>
+                <Badge
+                  tone={
+                    clientAnalytics.engagementTone === "red"
+                      ? "red"
+                      : clientAnalytics.engagementTone === "green"
+                        ? "green"
+                        : "amber"
+                  }
+                >
+                  Engagement
+                </Badge>
+              </div>
+              {clientAnalytics.latestCustomerSignal && (
+                <div className="mt-3 text-[12px] text-muted">
+                  Letztes Signal: {clientAnalytics.latestCustomerSignal} ·{" "}
+                  {formatDate(clientAnalytics.latestCustomerSignalAt)}
+                </div>
+              )}
+            </div>
+            <div className="mt-4 grid grid-cols-2 gap-3">
+              {[
+                ["Kunden-To-dos", clientAnalytics.openCustomerTasks],
+                ["Überfällig", clientAnalytics.overdueCustomerTasks],
+                ["Entscheidungen", clientAnalytics.pendingDecisions],
+                ["Dateiwünsche", clientAnalytics.pendingFileRequests],
+                ["Updates", clientAnalytics.visibleUpdates],
+                ["Rechnungen", clientAnalytics.pendingInvoices],
+              ].map(([label, value]) => (
+                <div
+                  key={label}
+                  className="rounded-lg border border-hairline bg-bg p-3"
+                >
+                  <div className="text-xl font-medium text-ink">{value}</div>
+                  <div className="mt-1 text-[12px] text-muted">{label}</div>
+                </div>
+              ))}
+            </div>
+          </PortalCard>
+
+          <PortalCard className={viewClass("access")}>
             <PortalSectionTitle eyebrow="Audit" title="Interner Verlauf">
               Automatische Spur der wichtigsten Admin-Aktionen in diesem
               Projekt.
@@ -2266,6 +2602,74 @@ export default async function AdminProjectPage({
 
           <PortalCard className={viewClass("delivery")}>
             <PortalSectionTitle eyebrow="Dateien" title="Upload" />
+            <form
+              action={createFileRequestAction}
+              className="mt-5 rounded-lg border border-copper/25 bg-copper/10 p-4"
+            >
+              <HiddenProjectFields locale={safe} projectId={projectId} />
+              <div className="text-sm font-medium text-ink">
+                Datei vom Kunden anfragen
+              </div>
+              <p className="mt-1 text-[12px] leading-relaxed text-ink2">
+                Erstellt automatisch eine kundensichtbare Aufgabe mit
+                Upload-Möglichkeit.
+              </p>
+              <div className="mt-4 grid gap-3 md:grid-cols-[1fr_160px]">
+                <input
+                  name="title"
+                  placeholder="z.B. Prozessbeispiel, Export, Rechnungsvorlage"
+                  className={fieldClass}
+                />
+                <input name="dueDate" type="date" className={fieldClass} />
+              </div>
+              <textarea
+                name="body"
+                placeholder="Was genau soll hochgeladen werden und worauf soll der Kunde achten?"
+                className={`${textareaClass} mt-3`}
+              />
+              <button
+                type="submit"
+                className="mt-3 inline-flex items-center gap-2 rounded-lg bg-copper px-4 py-2.5 text-sm font-medium text-oncopper transition-colors hover:bg-copper-hi"
+              >
+                <FileUp className="h-4 w-4" />
+                Datei anfragen
+              </button>
+            </form>
+            {fileRequests.length > 0 && (
+              <div className="mt-5 grid gap-3 lg:grid-cols-2">
+                {fileRequests.map((request) => (
+                  <div
+                    key={request.id}
+                    className="rounded-lg border border-hairline bg-bg p-3"
+                  >
+                    <div className="flex flex-wrap items-center gap-2">
+                      <Badge
+                        tone={
+                          request.status === "done"
+                            ? "green"
+                            : request.status === "uploaded"
+                              ? "amber"
+                              : "copper"
+                        }
+                      >
+                        {request.status}
+                      </Badge>
+                      {request.dueDate && (
+                        <span className="text-[12px] text-muted">
+                          fällig {formatDate(request.dueDate)}
+                        </span>
+                      )}
+                    </div>
+                    <div className="mt-2 text-sm font-medium text-ink">
+                      {request.title}
+                    </div>
+                    <p className="mt-1 text-[12px] leading-relaxed text-muted">
+                      {request.body}
+                    </p>
+                  </div>
+                ))}
+              </div>
+            )}
             <form
               action={generateFinalReportAction}
               className="mt-5 rounded-lg border border-copper/25 bg-copper/10 p-3"
@@ -2580,6 +2984,132 @@ export default async function AdminProjectPage({
 
           <PortalCard className={viewClass("billing")}>
             <PortalSectionTitle eyebrow="Rechnungen" title="Payment" />
+            <div className="mt-5 rounded-lg border border-copper/25 bg-copper/10 p-4">
+              <div className="text-sm font-medium text-ink">
+                Scope & Change Requests
+              </div>
+              <p className="mt-1 text-[12px] leading-relaxed text-ink2">
+                Änderungswünsche transparent erfassen, schätzen und für den
+                Kunden sichtbar auf Status setzen.
+              </p>
+              <form action={createChangeRequestAction} className="mt-4 space-y-3">
+                <HiddenProjectFields locale={safe} projectId={projectId} />
+                <input
+                  name="title"
+                  placeholder="Änderung oder Zusatzwunsch"
+                  className={fieldClass}
+                />
+                <textarea
+                  name="body"
+                  placeholder="Beschreibung, Nutzen und Abgrenzung"
+                  className={textareaClass}
+                />
+                <div className="grid gap-3 md:grid-cols-3">
+                  <input
+                    name="estimate"
+                    placeholder="Schätzung, z.B. 4h / 750 EUR"
+                    className={fieldClass}
+                  />
+                  <input name="dueDate" type="date" className={fieldClass} />
+                  <select name="status" className={fieldClass}>
+                    <option value="new">Neu</option>
+                    <option value="scoping">In Schätzung</option>
+                    <option value="quoted">Angeboten</option>
+                    <option value="accepted">Angenommen</option>
+                    <option value="in_progress">In Umsetzung</option>
+                    <option value="done">Erledigt</option>
+                    <option value="rejected">Abgelehnt</option>
+                  </select>
+                </div>
+                <button
+                  type="submit"
+                  className="inline-flex items-center gap-2 rounded-lg bg-copper px-4 py-2.5 text-sm font-medium text-oncopper transition-colors hover:bg-copper-hi"
+                >
+                  <Plus className="h-4 w-4" />
+                  Change Request speichern
+                </button>
+              </form>
+            </div>
+            {changeRequests.length > 0 && (
+              <div className="mt-5 space-y-3">
+                {changeRequests.map((request) => (
+                  <article
+                    key={request.id}
+                    className="rounded-lg border border-hairline bg-bg p-4"
+                  >
+                    <div className="flex flex-wrap items-center gap-2">
+                      <Badge
+                        tone={
+                          request.status === "done"
+                            ? "green"
+                            : request.status === "rejected"
+                              ? "red"
+                              : "amber"
+                        }
+                      >
+                        {request.status}
+                      </Badge>
+                      <Badge>
+                        {request.requestedBy === "customer"
+                          ? "Kunde"
+                          : "Assad"}
+                      </Badge>
+                      <span className="text-[12px] text-muted">
+                        {formatDate(request.updatedAt)}
+                      </span>
+                    </div>
+                    <h3 className="mt-2 text-sm font-medium text-ink">
+                      {request.title}
+                    </h3>
+                    <p className="mt-1 whitespace-pre-line text-sm leading-relaxed text-ink2">
+                      {request.body}
+                    </p>
+                    <form
+                      action={updateChangeRequestAction}
+                      className="mt-4 grid gap-3 md:grid-cols-[1fr_160px_160px_auto]"
+                    >
+                      <HiddenProjectFields locale={safe} projectId={projectId} />
+                      <input
+                        type="hidden"
+                        name="requestId"
+                        value={request.id}
+                      />
+                      <input
+                        name="estimate"
+                        defaultValue={request.estimate ?? ""}
+                        placeholder="Schätzung"
+                        className={fieldClass}
+                      />
+                      <input
+                        name="dueDate"
+                        type="date"
+                        defaultValue={request.dueDate ?? ""}
+                        className={fieldClass}
+                      />
+                      <select
+                        name="status"
+                        defaultValue={request.status}
+                        className={fieldClass}
+                      >
+                        <option value="new">Neu</option>
+                        <option value="scoping">In Schätzung</option>
+                        <option value="quoted">Angeboten</option>
+                        <option value="accepted">Angenommen</option>
+                        <option value="in_progress">In Umsetzung</option>
+                        <option value="done">Erledigt</option>
+                        <option value="rejected">Abgelehnt</option>
+                      </select>
+                      <button
+                        type="submit"
+                        className="inline-flex items-center justify-center rounded-lg border border-hairline px-3 py-2 text-sm font-medium text-ink transition-colors hover:border-copper hover:text-copper"
+                      >
+                        Speichern
+                      </button>
+                    </form>
+                  </article>
+                ))}
+              </div>
+            )}
             <form action={generateProposalAction} className="mt-5 space-y-3">
               <div className="rounded-lg border border-copper/25 bg-copper/10 p-3">
                 <div className="text-sm font-medium text-ink">

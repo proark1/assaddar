@@ -18,7 +18,10 @@ import {
   addProjectCommentAction,
   approveFileAction,
   approveMilestoneAction,
+  createChangeRequestAction,
+  createCustomerTicketAction,
   customerTaskFileAction,
+  customerDecisionResponseAction,
   customerTaskStatusAction,
   requestProposalChangesAction,
   submitCustomerIntakeAction,
@@ -41,7 +44,10 @@ import {
   formatStatus,
 } from "@/lib/portal/format";
 import {
+  buildChangeRequests,
   buildCustomerChecklist,
+  buildDecisionCenter,
+  buildFileRequests,
   buildFileVersionGroups,
   buildCustomerNextActions,
   buildProjectKpiSnapshot,
@@ -179,6 +185,9 @@ export default async function CustomerProjectPage({
   const reminders = allCustomerUpdates.filter((update) =>
     isReminder(update.title),
   );
+  const tickets = allCustomerUpdates.filter((update) =>
+    update.title.startsWith("Ticket:"),
+  );
   const appointments = allCustomerUpdates
     .filter((update) => update.title.startsWith("Termin:"))
     .sort((a, b) => b.createdAt.localeCompare(a.createdAt));
@@ -285,6 +294,14 @@ export default async function CustomerProjectPage({
   const nextActions = buildCustomerNextActions(bundle);
   const customerChecklist = buildCustomerChecklist(bundle);
   const kpiSnapshot = buildProjectKpiSnapshot(bundle);
+  const decisions = buildDecisionCenter(bundle).filter(
+    (decision) => decision.visibility === "customer",
+  );
+  const pendingDecisions = decisions.filter(
+    (decision) => decision.status === "proposed",
+  );
+  const changeRequests = buildChangeRequests(bundle);
+  const fileRequests = buildFileRequests(bundle);
   const primaryAction = nextActions[0];
   const assadWorkItems = [
     ...tasks
@@ -327,7 +344,9 @@ export default async function CustomerProjectPage({
     ? "actions"
     : pendingCustomerTasks.length ||
         pendingMilestoneApprovals.length ||
-        pendingFileApprovals.length
+        pendingFileApprovals.length ||
+        pendingDecisions.length ||
+        fileRequests.some((request) => request.status === "open")
       ? "actions"
       : "overview";
   const activeView = customerView(query.view) ?? defaultView;
@@ -363,7 +382,9 @@ export default async function CustomerProjectPage({
         (intakeSubmitted ? 0 : 1) +
         pendingCustomerTasks.length +
         pendingMilestoneApprovals.length +
-        pendingFileApprovals.length,
+        pendingFileApprovals.length +
+        pendingDecisions.length +
+        fileRequests.filter((request) => request.status === "open").length,
     },
     {
       id: "files",
@@ -1000,6 +1021,137 @@ export default async function CustomerProjectPage({
 
         {activeView === "actions" && (
           <div className="grid gap-6 md:grid-cols-2">
+            <PortalCard className="md:col-span-2">
+              <PortalSectionTitle
+                eyebrow="Entscheidungen"
+                title="Was freigegeben werden soll"
+              >
+                Formale Entscheidungen und Rückmeldungen, damit Assad mit
+                klarem Scope weiterarbeiten kann.
+              </PortalSectionTitle>
+              <div className="mt-5 grid gap-3 lg:grid-cols-2">
+                {decisions.map((decision) => (
+                  <article
+                    key={decision.id}
+                    className="rounded-lg border border-hairline bg-bg p-4"
+                  >
+                    <div className="flex flex-wrap items-center gap-2">
+                      <Badge
+                        tone={
+                          decision.status === "approved"
+                            ? "green"
+                            : decision.status === "rejected"
+                              ? "red"
+                              : "amber"
+                        }
+                      >
+                        {decision.status}
+                      </Badge>
+                      <span className="text-[12px] text-muted">
+                        {formatDate(decision.updatedAt)}
+                      </span>
+                    </div>
+                    <h3 className="mt-2 text-sm font-medium text-ink">
+                      {decision.title}
+                    </h3>
+                    <p className="mt-1 whitespace-pre-line text-sm leading-relaxed text-ink2">
+                      {decision.body}
+                    </p>
+                    {decision.status === "proposed" ? (
+                      <form
+                        action={customerDecisionResponseAction}
+                        className="mt-4 space-y-3"
+                      >
+                        <input type="hidden" name="locale" value={safe} />
+                        <input
+                          type="hidden"
+                          name="projectId"
+                          value={projectId}
+                        />
+                        <input
+                          type="hidden"
+                          name="decisionId"
+                          value={decision.id}
+                        />
+                        <textarea
+                          name="response"
+                          placeholder="Kommentar oder Rückfrage"
+                          className={`${textareaClass} min-h-24`}
+                        />
+                        <div className="flex flex-wrap gap-2">
+                          <button
+                            type="submit"
+                            name="status"
+                            value="approved"
+                            className="inline-flex items-center gap-2 rounded-lg bg-copper px-3 py-2 text-[12px] font-medium text-oncopper transition-colors hover:bg-copper-hi"
+                          >
+                            <CheckCircle2 className="h-3.5 w-3.5" />
+                            Freigeben
+                          </button>
+                          <button
+                            type="submit"
+                            name="status"
+                            value="needs_changes"
+                            className="inline-flex items-center gap-2 rounded-lg border border-hairline px-3 py-2 text-[12px] font-medium text-ink transition-colors hover:border-copper hover:text-copper"
+                          >
+                            Rückfrage senden
+                          </button>
+                        </div>
+                      </form>
+                    ) : decision.response ? (
+                      <div className="mt-3 rounded-lg border border-success/25 bg-success/10 p-3 text-[12px] leading-relaxed text-success">
+                        {decision.response}
+                      </div>
+                    ) : null}
+                  </article>
+                ))}
+                {decisions.length === 0 && (
+                  <p className="text-sm text-muted">
+                    Aktuell gibt es keine offenen Entscheidungen.
+                  </p>
+                )}
+              </div>
+            </PortalCard>
+
+            {fileRequests.length > 0 && (
+              <PortalCard className="md:col-span-2">
+                <PortalSectionTitle
+                  eyebrow="Dateianfragen"
+                  title="Welche Dateien Assad benötigt"
+                >
+                  Laden Sie die Datei bei der passenden Aufgabe hoch. Danach
+                  wird die Anfrage automatisch als erledigt markiert.
+                </PortalSectionTitle>
+                <div className="mt-5 grid gap-3 lg:grid-cols-2">
+                  {fileRequests.map((request) => (
+                    <div
+                      key={request.id}
+                      className="rounded-lg border border-hairline bg-bg p-4"
+                    >
+                      <div className="flex flex-wrap items-center gap-2">
+                        <Badge
+                          tone={request.status === "done" ? "green" : "amber"}
+                        >
+                          {request.status}
+                        </Badge>
+                        {request.dueDate && (
+                          <span className="text-[12px] text-muted">
+                            fällig {formatDate(request.dueDate)}
+                          </span>
+                        )}
+                      </div>
+                      <div className="mt-2 text-sm font-medium text-ink">
+                        {request.title}
+                      </div>
+                      <p className="mt-1 whitespace-pre-line text-sm leading-relaxed text-ink2">
+                        {request.body}
+                      </p>
+                    </div>
+                  ))}
+                </div>
+              </PortalCard>
+            )}
+
             <PortalCard>
               <PortalSectionTitle eyebrow="Meilensteine" title="Roadmap" />
               <div className="mt-5 space-y-3">
@@ -1133,6 +1285,123 @@ export default async function CustomerProjectPage({
                   <p className="text-sm text-muted">Keine offenen Aufgaben.</p>
                 )}
               </div>
+            </PortalCard>
+
+            <PortalCard className="md:col-span-2">
+              <PortalSectionTitle
+                eyebrow="Anfragen"
+                title="Frage oder Änderungswunsch senden"
+              >
+                Nutzen Sie eine kurze Anfrage für Rückfragen. Nutzen Sie einen
+                Change Request, wenn sich Scope, Aufwand oder Priorität ändern
+                soll.
+              </PortalSectionTitle>
+              <div className="mt-5 grid gap-4 lg:grid-cols-2">
+                <form action={createCustomerTicketAction} className="space-y-3">
+                  <input type="hidden" name="locale" value={safe} />
+                  <input type="hidden" name="projectId" value={projectId} />
+                  <input
+                    name="title"
+                    placeholder="Kurze Frage"
+                    className={fieldClass}
+                  />
+                  <textarea
+                    name="body"
+                    required
+                    placeholder="Was soll Assad klären?"
+                    className={textareaClass}
+                  />
+                  <button
+                    type="submit"
+                    className="inline-flex items-center gap-2 rounded-lg bg-copper px-4 py-2.5 text-sm font-medium text-oncopper transition-colors hover:bg-copper-hi"
+                  >
+                    <MessageCircle className="h-4 w-4" />
+                    Anfrage senden
+                  </button>
+                </form>
+                <form action={createChangeRequestAction} className="space-y-3">
+                  <input type="hidden" name="locale" value={safe} />
+                  <input type="hidden" name="projectId" value={projectId} />
+                  <input
+                    name="title"
+                    placeholder="Änderungswunsch"
+                    className={fieldClass}
+                  />
+                  <textarea
+                    name="body"
+                    required
+                    placeholder="Was soll zusätzlich oder anders gemacht werden?"
+                    className={textareaClass}
+                  />
+                  <button
+                    type="submit"
+                    className="inline-flex items-center gap-2 rounded-lg border border-hairline px-4 py-2.5 text-sm font-medium text-ink transition-colors hover:border-copper hover:text-copper"
+                  >
+                    <ArrowRight className="h-4 w-4" />
+                    Change Request senden
+                  </button>
+                </form>
+              </div>
+              {tickets.length > 0 && (
+                <div className="mt-6 grid gap-3 lg:grid-cols-2">
+                  {tickets.slice(0, 4).map((ticket) => {
+                    const [author, ...messageParts] = ticket.body.split("\n\n");
+                    return (
+                      <article
+                        key={ticket.id}
+                        className="rounded-lg border border-hairline bg-bg p-3"
+                      >
+                        <div className="flex flex-wrap items-center gap-2">
+                          <Badge>Gesendet</Badge>
+                          <span className="text-[12px] text-muted">
+                            {formatDate(ticket.createdAt)}
+                          </span>
+                        </div>
+                        <div className="mt-2 text-sm font-medium text-ink">
+                          {ticket.title.replace(/^Ticket:\s*/, "")}
+                        </div>
+                        <p className="mt-1 line-clamp-3 text-[12px] leading-relaxed text-muted">
+                          {author ? `${author}: ` : ""}
+                          {messageParts.join("\n\n")}
+                        </p>
+                      </article>
+                    );
+                  })}
+                </div>
+              )}
+              {changeRequests.length > 0 && (
+                <div className="mt-6 space-y-2">
+                  {changeRequests.slice(0, 4).map((request) => (
+                    <div
+                      key={request.id}
+                      className="rounded-lg border border-hairline bg-bg p-3"
+                    >
+                      <div className="flex flex-wrap items-center gap-2">
+                        <Badge
+                          tone={
+                            request.status === "done"
+                              ? "green"
+                              : request.status === "rejected"
+                                ? "red"
+                                : "amber"
+                          }
+                        >
+                          {request.status}
+                        </Badge>
+                        <span className="text-[12px] text-muted">
+                          {formatDate(request.updatedAt)}
+                        </span>
+                      </div>
+                      <div className="mt-2 text-sm font-medium text-ink">
+                        {request.title}
+                      </div>
+                      <p className="mt-1 line-clamp-2 text-[12px] leading-relaxed text-muted">
+                        {request.body}
+                      </p>
+                    </div>
+                  ))}
+                </div>
+              )}
             </PortalCard>
 
             <PortalCard className="md:col-span-2">

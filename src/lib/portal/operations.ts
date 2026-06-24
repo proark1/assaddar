@@ -201,6 +201,109 @@ export type AutomationHistoryItem = {
   createdAt: string;
 };
 
+export type DecisionRecord = {
+  id: string;
+  title: string;
+  body: string;
+  status: "proposed" | "approved" | "rejected" | "needs_changes";
+  owner: "assad" | "customer";
+  visibility: "internal" | "customer";
+  response?: string;
+  createdAt: string;
+  updatedAt: string;
+  sourceUpdateId: string;
+};
+
+export type ChangeRequestRecord = {
+  id: string;
+  title: string;
+  body: string;
+  status:
+    | "new"
+    | "scoping"
+    | "quoted"
+    | "accepted"
+    | "in_progress"
+    | "done"
+    | "rejected";
+  requestedBy: "assad" | "customer";
+  estimate?: string;
+  dueDate?: string;
+  createdAt: string;
+  updatedAt: string;
+  sourceUpdateId: string;
+};
+
+export type FileRequestRecord = {
+  id: string;
+  title: string;
+  body: string;
+  status: "open" | "uploaded" | "done";
+  dueDate?: string;
+  taskId?: string;
+  createdAt: string;
+  updatedAt: string;
+  sourceUpdateId: string;
+};
+
+export type WorkflowSnapshot = {
+  id: string;
+  title: string;
+  trigger: string;
+  checklist: string[];
+  cadence: string;
+  automation: string[];
+  customerPromise: string;
+  createdAt: string;
+  updatedAt: string;
+  sourceUpdateId: string;
+};
+
+export type LeadPipelineItem = {
+  id: string;
+  projectId: string;
+  organizationName: string;
+  projectName: string;
+  email?: string;
+  contactName?: string;
+  source: string;
+  summary: string;
+  createdAt: string;
+  score: number;
+};
+
+export type ClientAnalytics = {
+  engagementLabel: string;
+  engagementTone: PortalActionTone;
+  latestCustomerSignal?: string;
+  latestCustomerSignalAt?: string;
+  openCustomerTasks: number;
+  overdueCustomerTasks: number;
+  pendingDecisions: number;
+  pendingFileRequests: number;
+  visibleUpdates: number;
+  pendingInvoices: number;
+  customerFiles: number;
+  nextNudge: string;
+};
+
+export type ProjectCopilotPanel = {
+  headline: string;
+  summary: string;
+  metrics: Array<{
+    label: string;
+    value: string;
+    tone: PortalActionTone;
+  }>;
+  actions: Array<{
+    id: string;
+    title: string;
+    body: string;
+    hrefView: AdminProjectAction["hrefView"];
+    tone: PortalActionTone;
+  }>;
+};
+
 const DAY_MS = 24 * 60 * 60 * 1000;
 
 function dateMs(value?: string) {
@@ -223,6 +326,41 @@ function daysSince(value?: string) {
 
 function clamp(value: number, min: number, max: number) {
   return Math.min(max, Math.max(min, value));
+}
+
+function parseJsonMarker<T>(body: string, marker: string): T | null {
+  const match = body.match(new RegExp(`${marker}:(\\{[^\\n]*\\})`));
+  if (!match?.[1]) return null;
+  try {
+    return JSON.parse(match[1]) as T;
+  } catch {
+    return null;
+  }
+}
+
+function markerRecords<T extends { id?: string; updatedAt?: string; createdAt?: string }>(
+  bundle: ProjectBundle,
+  marker: string,
+) {
+  const records = new Map<string, T & { sourceUpdateId: string }>();
+
+  for (const update of [...bundle.updates].sort(
+    (a, b) => dateMs(a.createdAt) - dateMs(b.createdAt),
+  )) {
+    const parsed = parseJsonMarker<T>(update.body, marker);
+    const recordId = parsed?.id;
+    if (!parsed || !recordId) continue;
+    records.set(recordId, {
+      ...parsed,
+      sourceUpdateId: update.id,
+      createdAt: parsed.createdAt ?? update.createdAt,
+      updatedAt: parsed.updatedAt ?? update.createdAt,
+    });
+  }
+
+  return [...records.values()].sort(
+    (a, b) => dateMs(b.updatedAt) - dateMs(a.updatedAt),
+  );
 }
 
 function customerUpdates(bundle: ProjectBundle) {
@@ -808,6 +946,269 @@ export function buildAutomationHistory(
       createdAt: update.createdAt,
     }))
     .sort((a, b) => dateMs(b.createdAt) - dateMs(a.createdAt));
+}
+
+export function buildDecisionCenter(bundle: ProjectBundle): DecisionRecord[] {
+  return markerRecords<DecisionRecord>(bundle, "DECISION_RECORD").filter(
+    (decision) =>
+      decision.visibility === "customer" ||
+      decision.visibility === "internal",
+  );
+}
+
+export function buildChangeRequests(
+  bundle: ProjectBundle,
+): ChangeRequestRecord[] {
+  return markerRecords<ChangeRequestRecord>(bundle, "CHANGE_REQUEST");
+}
+
+export function buildFileRequests(bundle: ProjectBundle): FileRequestRecord[] {
+  const records = markerRecords<FileRequestRecord>(bundle, "FILE_REQUEST");
+  return records.map((record) => {
+    const linkedTask = record.taskId
+      ? bundle.tasks.find((task) => task.id === record.taskId)
+      : undefined;
+    const uploaded = linkedTask?.status === "done";
+    return {
+      ...record,
+      status:
+        record.status === "done" || uploaded
+          ? "done"
+          : record.status === "uploaded"
+            ? "uploaded"
+            : "open",
+    };
+  });
+}
+
+export function buildWorkflowSnapshots(
+  bundle: ProjectBundle,
+): WorkflowSnapshot[] {
+  return markerRecords<WorkflowSnapshot>(bundle, "WORKFLOW_SNAPSHOT");
+}
+
+export function buildLeadPipeline(
+  bundles: ProjectBundle[],
+): LeadPipelineItem[] {
+  const leads: LeadPipelineItem[] = [];
+
+  for (const bundle of bundles) {
+    const leadUpdate = bundle.updates.find(
+      (update) =>
+        update.title.startsWith("Lead:") ||
+        update.body.includes("LEAD_RECORD:"),
+    );
+    const parsed = leadUpdate
+      ? parseJsonMarker<{
+          id?: string;
+          name?: string;
+          email?: string;
+          company?: string;
+          message?: string;
+          leadContext?: string;
+          source?: string;
+          createdAt?: string;
+        }>(leadUpdate.body, "LEAD_RECORD")
+      : null;
+    const isLead =
+      Boolean(leadUpdate) ||
+      bundle.project.name.toLowerCase().startsWith("lead:");
+    if (!isLead) continue;
+
+    const filledSignals = [
+      parsed?.email,
+      parsed?.message,
+      parsed?.leadContext,
+      bundle.intelligence.issues,
+      bundle.intelligence.goals,
+      bundle.organization.website,
+    ].filter(Boolean).length;
+
+    leads.push({
+      id: parsed?.id ?? leadUpdate?.id ?? bundle.project.id,
+      projectId: bundle.project.id,
+      organizationName: parsed?.company || bundle.organization.name,
+      projectName: bundle.project.name.replace(/^Lead:\s*/i, ""),
+      ...(parsed?.email ? { email: parsed.email } : {}),
+      ...(parsed?.name ? { contactName: parsed.name } : {}),
+      source: parsed?.source ?? "Website / Portal",
+      summary:
+        parsed?.message ||
+        bundle.project.summary ||
+        bundle.intelligence.companyContext ||
+        "Lead prüfen und Erstgespräch vorbereiten.",
+      createdAt:
+        parsed?.createdAt ?? leadUpdate?.createdAt ?? bundle.project.createdAt,
+      score: clamp(35 + filledSignals * 10, 35, 95),
+    });
+  }
+
+  return leads.sort((a, b) => dateMs(b.createdAt) - dateMs(a.createdAt));
+}
+
+export function buildClientAnalytics(bundle: ProjectBundle): ClientAnalytics {
+  const customerSignal = [...bundle.updates]
+    .filter(
+      (update) =>
+        update.visibility === "customer" &&
+        (isCustomerComment(update.title) ||
+          isCustomerIntake(update.title) ||
+          isApproval(update.title) ||
+          update.title.startsWith("Ticket:")),
+    )
+    .sort((a, b) => dateMs(b.createdAt) - dateMs(a.createdAt))[0];
+  const openCustomerTasks = bundle.tasks.filter(
+    (task) =>
+      task.owner === "customer" &&
+      task.visibleToCustomer &&
+      task.status !== "done",
+  );
+  const overdueCustomerTasks = openCustomerTasks.filter((task) =>
+    isPast(task.dueDate),
+  );
+  const pendingDecisions = buildDecisionCenter(bundle).filter(
+    (decision) =>
+      decision.visibility === "customer" && decision.status === "proposed",
+  );
+  const pendingFileRequests = buildFileRequests(bundle).filter(
+    (request) => request.status === "open",
+  );
+  const pendingInvoices = bundle.invoices.filter(
+    (invoice) => invoice.status !== "paid" && invoice.status !== "draft",
+  );
+  const visibleUpdates = customerUpdates(bundle).length;
+  const customerFiles = bundle.files.filter(
+    (file) => file.category === "customer_upload",
+  ).length;
+  const stale = daysSince(customerUpdates(bundle)[0]?.createdAt) > 7;
+  const engagementTone: PortalActionTone =
+    overdueCustomerTasks.length > 0 || pendingInvoices.some((invoice) => isPast(invoice.dueDate))
+      ? "red"
+      : pendingDecisions.length > 0 || pendingFileRequests.length > 0 || stale
+        ? "amber"
+        : "green";
+  const engagementLabel =
+    engagementTone === "green"
+      ? "Aktiv"
+      : engagementTone === "amber"
+        ? "Nachfassen"
+        : "Blockiert";
+
+  let nextNudge = "Kein dringender Kundennudge nötig.";
+  if (pendingDecisions.length > 0) {
+    nextNudge = `Entscheidung nachfassen: ${pendingDecisions[0].title}`;
+  } else if (pendingFileRequests.length > 0) {
+    nextNudge = `Datei anfragen: ${pendingFileRequests[0].title}`;
+  } else if (overdueCustomerTasks.length > 0) {
+    nextNudge = `Überfällige Aufgabe erinnern: ${overdueCustomerTasks[0].title}`;
+  } else if (stale) {
+    nextNudge = "Kundenupdate veröffentlichen, damit Fortschritt sichtbar bleibt.";
+  }
+
+  return {
+    engagementLabel,
+    engagementTone,
+    latestCustomerSignal: customerSignal?.title,
+    latestCustomerSignalAt: customerSignal?.createdAt,
+    openCustomerTasks: openCustomerTasks.length,
+    overdueCustomerTasks: overdueCustomerTasks.length,
+    pendingDecisions: pendingDecisions.length,
+    pendingFileRequests: pendingFileRequests.length,
+    visibleUpdates,
+    pendingInvoices: pendingInvoices.length,
+    customerFiles,
+    nextNudge,
+  };
+}
+
+export function buildProjectCopilotPanel(
+  bundle: ProjectBundle,
+): ProjectCopilotPanel {
+  const diagnosis = buildProjectDiagnosis(bundle);
+  const health = buildProjectHealthScore(bundle);
+  const analytics = buildClientAnalytics(bundle);
+  const decisions = buildDecisionCenter(bundle);
+  const changes = buildChangeRequests(bundle);
+  const files = buildFileRequests(bundle);
+  const actions = buildAdminProjectActions(bundle).slice(0, 3).map((action) => ({
+    id: action.id,
+    title: action.title,
+    body: action.body,
+    hrefView: action.hrefView,
+    tone: action.tone,
+  }));
+
+  if (decisions.some((decision) => decision.status === "proposed")) {
+    actions.unshift({
+      id: "decision-pending",
+      title: "Entscheidung aktiv klären",
+      body: "Mindestens eine Entscheidung wartet auf Freigabe oder Rückmeldung.",
+      hrefView: "communication",
+      tone: "amber",
+    });
+  }
+
+  if (files.some((request) => request.status === "open")) {
+    actions.unshift({
+      id: "file-request-pending",
+      title: "Datenbedarf nachfassen",
+      body: "Ein Dateiwunsch ist offen. Ohne Input wird die Beratung langsamer.",
+      hrefView: "delivery",
+      tone: "amber",
+    });
+  }
+
+  if (changes.some((request) => request.status === "new")) {
+    actions.unshift({
+      id: "scope-new",
+      title: "Scope Change bewerten",
+      body: "Ein neuer Änderungswunsch braucht Schätzung, Entscheidung oder Ablehnung.",
+      hrefView: "billing",
+      tone: "copper",
+    });
+  }
+
+  return {
+    headline:
+      health.tone === "green"
+        ? "Projekt läuft sauber. Nächsten Nutzen sichtbar machen."
+        : health.recommendedAction,
+    summary: [
+      `Readiness ${diagnosis.readinessScore}/100.`,
+      `Kundenengagement: ${analytics.engagementLabel}.`,
+      diagnosis.missingInputs.length
+        ? `Noch offen: ${diagnosis.missingInputs.slice(0, 3).join(", ")}.`
+        : "Die wichtigsten Beratungsgrundlagen sind vorhanden.",
+    ].join(" "),
+    metrics: [
+      {
+        label: "Health",
+        value: String(health.score),
+        tone: health.tone,
+      },
+      {
+        label: "Entscheidungen",
+        value: String(decisions.filter((item) => item.status === "proposed").length),
+        tone: decisions.some((item) => item.status === "proposed")
+          ? "amber"
+          : "green",
+      },
+      {
+        label: "Change Requests",
+        value: String(
+          changes.filter((item) => item.status !== "done" && item.status !== "rejected")
+            .length,
+        ),
+        tone: changes.some((item) => item.status === "new") ? "copper" : "green",
+      },
+      {
+        label: "Dateiwünsche",
+        value: String(files.filter((item) => item.status === "open").length),
+        tone: files.some((item) => item.status === "open") ? "amber" : "green",
+      },
+    ],
+    actions: actions.slice(0, 5),
+  };
 }
 
 export function buildProjectKpiSnapshot(

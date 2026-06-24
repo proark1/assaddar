@@ -31,6 +31,8 @@ import {
   createProposalPdf,
 } from "@/lib/portal/documents";
 import {
+  buildChangeRequests,
+  buildDecisionCenter,
   buildProjectDiagnosis,
   formatDiagnosisReport,
 } from "@/lib/portal/operations";
@@ -198,6 +200,32 @@ function lines(formData: FormData, key: string) {
     .split(/\r?\n/)
     .map((line) => line.trim().replace(/^[-*]\s*/, ""))
     .filter(Boolean);
+}
+
+function markerLine(marker: string, payload: unknown) {
+  return `${marker}:${JSON.stringify(payload)}`;
+}
+
+function decisionStatus(value: string) {
+  return value === "approved" ||
+    value === "rejected" ||
+    value === "needs_changes"
+    ? value
+    : "proposed";
+}
+
+function changeRequestStatus(value: string) {
+  if (
+    value === "scoping" ||
+    value === "quoted" ||
+    value === "accepted" ||
+    value === "in_progress" ||
+    value === "done" ||
+    value === "rejected"
+  ) {
+    return value;
+  }
+  return "new";
 }
 
 async function requireProjectAccessForAction(locale: Locale, projectId: string) {
@@ -868,6 +896,69 @@ export async function saveProjectKpiAction(formData: FormData) {
 
   revalidateProjectViews(locale, projectId);
   redirect(`${adminProjectPath(locale, projectId)}?view=setup&saved=kpi`);
+}
+
+export async function saveProjectWorkflowAction(formData: FormData) {
+  const locale = safeLocale(formData.get("locale"));
+  const user = await requireAdmin(locale);
+  const projectId = text(formData, "projectId");
+  const title = text(formData, "title") || "Projekt-Workflow";
+  const trigger = text(formData, "trigger");
+  const checklist = lines(formData, "checklist");
+  const cadence = text(formData, "cadence");
+  const automation = lines(formData, "automation");
+  const customerPromise = text(formData, "customerPromise");
+
+  await mutateStore((store) => {
+    const bundle = getProjectBundle(store, projectId);
+    if (!bundle) return;
+    const now = new Date().toISOString();
+    const snapshot = {
+      id: id("workflow"),
+      title,
+      trigger,
+      checklist,
+      cadence,
+      automation,
+      customerPromise,
+      createdAt: now,
+      updatedAt: now,
+    };
+
+    store.updates.push({
+      id: id("update"),
+      projectId,
+      title: `Workflow: ${title}`,
+      body: [
+        markerLine("WORKFLOW_SNAPSHOT", snapshot),
+        "",
+        `Auslöser: ${trigger || "Noch offen"}`,
+        checklist.length ? `Checkliste:\n- ${checklist.join("\n- ")}` : "",
+        cadence && `Rhythmus: ${cadence}`,
+        automation.length
+          ? `Automation:\n- ${automation.join("\n- ")}`
+          : "",
+        customerPromise && `Kundenversprechen: ${customerPromise}`,
+      ]
+        .filter(Boolean)
+        .join("\n"),
+      visibility: "internal",
+      asdarStage: bundle.project.asdarStage,
+      createdBy: user.id,
+      createdAt: now,
+    });
+
+    addAuditUpdate({
+      store,
+      projectId,
+      userId: user.id,
+      title: "Workflow gespeichert",
+      body: `${title} wurde als Beratungsworkflow hinterlegt.`,
+    });
+  });
+
+  revalidateProjectViews(locale, projectId);
+  redirect(`${adminProjectPath(locale, projectId)}?view=guidance&saved=workflow`);
 }
 
 export async function updateIntelligenceAction(formData: FormData) {
@@ -1704,6 +1795,396 @@ export async function addProjectCommentAction(formData: FormData) {
   );
 }
 
+export async function createDecisionAction(formData: FormData) {
+  const locale = safeLocale(formData.get("locale"));
+  const user = await requireAdmin(locale);
+  const projectId = text(formData, "projectId");
+  const title = text(formData, "title") || "Offene Entscheidung";
+  const body = text(formData, "body");
+  const updateVisibility = visibility(text(formData, "visibility"));
+  const nextStatus = decisionStatus(text(formData, "status"));
+
+  await mutateStore((store) => {
+    const bundle = getProjectBundle(store, projectId);
+    if (!bundle) return;
+    const now = new Date().toISOString();
+    const decision = {
+      id: id("decision"),
+      title,
+      body,
+      status: nextStatus,
+      owner: "assad" as const,
+      visibility: updateVisibility,
+      createdAt: now,
+      updatedAt: now,
+    };
+
+    store.updates.push({
+      id: id("update"),
+      projectId,
+      title: `Entscheidung: ${title}`,
+      body: [
+        markerLine("DECISION_RECORD", decision),
+        "",
+        body || "Keine Detailbeschreibung hinterlegt.",
+        "",
+        `Status: ${nextStatus}`,
+      ].join("\n"),
+      visibility: updateVisibility,
+      asdarStage: bundle.project.asdarStage,
+      createdBy: user.id,
+      createdAt: now,
+    });
+
+    addAuditUpdate({
+      store,
+      projectId,
+      userId: user.id,
+      title: "Entscheidung angelegt",
+      body: `${title} wurde mit Status ${nextStatus} gespeichert.`,
+    });
+  });
+
+  if (updateVisibility === "customer") {
+    await notifyProjectCustomers({
+      locale,
+      projectId,
+      subject: `Assad Dar Portal: Entscheidung benötigt`,
+      body: `${title}\n\n${body || "Bitte prüfen Sie die Entscheidung im Portal."}`,
+    });
+  }
+
+  revalidateProjectViews(locale, projectId);
+  redirect(`${adminProjectPath(locale, projectId)}?view=communication&saved=decision`);
+}
+
+export async function customerDecisionResponseAction(formData: FormData) {
+  const locale = safeLocale(formData.get("locale"));
+  const projectId = text(formData, "projectId");
+  const decisionId = text(formData, "decisionId");
+  const user = await requireProjectAccessForAction(locale, projectId);
+  if (user.role === "admin") redirect(adminProjectPath(locale, projectId));
+
+  const sourceStore = await readStore();
+  const sourceBundle = getProjectBundle(sourceStore, projectId);
+  const sourceDecision = sourceBundle
+    ? buildDecisionCenter(sourceBundle).find((entry) => entry.id === decisionId)
+    : undefined;
+  if (!sourceDecision || sourceDecision.visibility !== "customer") {
+    redirect(`${customerProjectPath(locale, projectId)}?error=decision`);
+  }
+
+  const response = text(formData, "response");
+  const nextStatus = decisionStatus(text(formData, "status"));
+
+  await mutateStore((store) => {
+    const bundle = getProjectBundle(store, projectId);
+    if (!bundle) return;
+    const now = new Date().toISOString();
+    const decision = {
+      ...sourceDecision,
+      status: nextStatus,
+      response,
+      updatedAt: now,
+    };
+
+    store.updates.push({
+      id: id("update"),
+      projectId,
+      title: `Entscheidung: ${sourceDecision.title}`,
+      body: [
+        markerLine("DECISION_RECORD", decision),
+        "",
+        `${user.name}: ${response || nextStatus}`,
+      ].join("\n"),
+      visibility: "customer",
+      asdarStage: bundle.project.asdarStage,
+      createdBy: user.id,
+      createdAt: now,
+    });
+
+    addAuditUpdate({
+      store,
+      projectId,
+      userId: user.id,
+      title: "Kundenentscheidung aktualisiert",
+      body: `${sourceDecision.title} wurde durch ${user.name} auf ${nextStatus} gesetzt.`,
+    });
+  });
+
+  revalidateProjectViews(locale, projectId);
+  redirect(`${customerProjectPath(locale, projectId)}?view=overview&saved=decision`);
+}
+
+export async function createChangeRequestAction(formData: FormData) {
+  const locale = safeLocale(formData.get("locale"));
+  const projectId = text(formData, "projectId");
+  const user = await requireProjectAccessForAction(locale, projectId);
+  const title = text(formData, "title") || "Änderungswunsch";
+  const body = text(formData, "body");
+  const estimate = text(formData, "estimate");
+  const dueDate = text(formData, "dueDate");
+  const requester = user.role === "admin" ? "assad" : "customer";
+  const nextStatus =
+    user.role === "admin" ? changeRequestStatus(text(formData, "status")) : "new";
+
+  await mutateStore((store) => {
+    const bundle = getProjectBundle(store, projectId);
+    if (!bundle) return;
+    const now = new Date().toISOString();
+    const request = {
+      id: id("change"),
+      title,
+      body,
+      status: nextStatus,
+      requestedBy: requester,
+      estimate,
+      dueDate,
+      createdAt: now,
+      updatedAt: now,
+    };
+
+    store.updates.push({
+      id: id("update"),
+      projectId,
+      title: `Change Request: ${title}`,
+      body: [
+        markerLine("CHANGE_REQUEST", request),
+        "",
+        body || "Keine Beschreibung hinterlegt.",
+        estimate && `Schätzung: ${estimate}`,
+        dueDate && `Zieldatum: ${dueDate}`,
+        `Status: ${nextStatus}`,
+      ]
+        .filter(Boolean)
+        .join("\n"),
+      visibility: "customer",
+      asdarStage: bundle.project.asdarStage,
+      createdBy: user.id,
+      createdAt: now,
+    });
+
+    if (user.role === "customer") {
+      store.tasks.push({
+        id: id("task"),
+        projectId,
+        title: `Scope Change prüfen: ${title}`,
+        owner: "assad",
+        status: "todo",
+        visibleToCustomer: false,
+        createdAt: now,
+      });
+    }
+
+    addAuditUpdate({
+      store,
+      projectId,
+      userId: user.id,
+      title: "Change Request erstellt",
+      body: `${title} wurde von ${user.name} angelegt.`,
+    });
+  });
+
+  revalidateProjectViews(locale, projectId);
+  redirect(
+    user.role === "admin"
+      ? `${adminProjectPath(locale, projectId)}?view=billing&saved=change`
+      : `${customerProjectPath(locale, projectId)}?view=actions&saved=change`,
+  );
+}
+
+export async function updateChangeRequestAction(formData: FormData) {
+  const locale = safeLocale(formData.get("locale"));
+  const user = await requireAdmin(locale);
+  const projectId = text(formData, "projectId");
+  const requestId = text(formData, "requestId");
+  const sourceStore = await readStore();
+  const sourceBundle = getProjectBundle(sourceStore, projectId);
+  const sourceRequest = sourceBundle
+    ? buildChangeRequests(sourceBundle).find((entry) => entry.id === requestId)
+    : undefined;
+  if (!sourceRequest) redirect(`${adminProjectPath(locale, projectId)}?view=billing`);
+
+  const nextStatus = changeRequestStatus(text(formData, "status"));
+  const estimate = text(formData, "estimate") || sourceRequest.estimate || "";
+  const dueDate = text(formData, "dueDate") || sourceRequest.dueDate || "";
+
+  await mutateStore((store) => {
+    const bundle = getProjectBundle(store, projectId);
+    if (!bundle) return;
+    const now = new Date().toISOString();
+    const request = {
+      ...sourceRequest,
+      status: nextStatus,
+      estimate,
+      dueDate,
+      updatedAt: now,
+    };
+
+    store.updates.push({
+      id: id("update"),
+      projectId,
+      title: `Change Request: ${sourceRequest.title}`,
+      body: [
+        markerLine("CHANGE_REQUEST", request),
+        "",
+        sourceRequest.body || "Keine Beschreibung hinterlegt.",
+        estimate && `Schätzung: ${estimate}`,
+        dueDate && `Zieldatum: ${dueDate}`,
+        `Status: ${nextStatus}`,
+      ]
+        .filter(Boolean)
+        .join("\n"),
+      visibility: "customer",
+      asdarStage: bundle.project.asdarStage,
+      createdBy: user.id,
+      createdAt: now,
+    });
+
+    addAuditUpdate({
+      store,
+      projectId,
+      userId: user.id,
+      title: "Change Request aktualisiert",
+      body: `${sourceRequest.title} wurde auf ${nextStatus} gesetzt.`,
+    });
+  });
+
+  await notifyProjectCustomers({
+    locale,
+    projectId,
+    subject: "Assad Dar Portal: Änderungswunsch aktualisiert",
+    body: `${sourceRequest.title}\n\nStatus: ${nextStatus}${
+      estimate ? `\nSchätzung: ${estimate}` : ""
+    }`,
+  });
+
+  revalidateProjectViews(locale, projectId);
+  redirect(`${adminProjectPath(locale, projectId)}?view=billing&saved=change`);
+}
+
+export async function createFileRequestAction(formData: FormData) {
+  const locale = safeLocale(formData.get("locale"));
+  const user = await requireAdmin(locale);
+  const projectId = text(formData, "projectId");
+  const title = text(formData, "title") || "Datei benötigt";
+  const body = text(formData, "body");
+  const dueDate = text(formData, "dueDate");
+
+  await mutateStore((store) => {
+    const bundle = getProjectBundle(store, projectId);
+    if (!bundle) return;
+    const now = new Date().toISOString();
+    const taskId = id("task");
+    const request = {
+      id: id("file_request"),
+      title,
+      body,
+      status: "open" as const,
+      dueDate,
+      taskId,
+      createdAt: now,
+      updatedAt: now,
+    };
+
+    store.tasks.push({
+      id: taskId,
+      projectId,
+      title,
+      owner: "customer",
+      status: "todo",
+      dueDate: dueDate || undefined,
+      visibleToCustomer: true,
+      createdAt: now,
+    });
+
+    store.updates.push({
+      id: id("update"),
+      projectId,
+      title: `File Request: ${title}`,
+      body: [
+        markerLine("FILE_REQUEST", request),
+        "",
+        body || "Bitte Datei im Portal hochladen.",
+        dueDate && `Fällig: ${dueDate}`,
+      ]
+        .filter(Boolean)
+        .join("\n"),
+      visibility: "customer",
+      asdarStage: bundle.project.asdarStage,
+      createdBy: user.id,
+      createdAt: now,
+    });
+
+    addAuditUpdate({
+      store,
+      projectId,
+      userId: user.id,
+      title: "Datei angefragt",
+      body: `${title} wurde als Kundenaufgabe angelegt.`,
+    });
+  });
+
+  await notifyProjectCustomers({
+    locale,
+    projectId,
+    subject: "Assad Dar Portal: Datei benötigt",
+    body: `${title}\n\n${body || "Bitte laden Sie die Datei im Portal hoch."}`,
+  });
+
+  revalidateProjectViews(locale, projectId);
+  redirect(`${adminProjectPath(locale, projectId)}?view=delivery&saved=file-request`);
+}
+
+export async function createCustomerTicketAction(formData: FormData) {
+  const locale = safeLocale(formData.get("locale"));
+  const projectId = text(formData, "projectId");
+  const user = await requireProjectAccessForAction(locale, projectId);
+  if (user.role === "admin") redirect(adminProjectPath(locale, projectId));
+
+  const title = text(formData, "title") || "Kundenanfrage";
+  const body = text(formData, "body");
+  if (!body) redirect(`${customerProjectPath(locale, projectId)}?error=comment`);
+
+  await mutateStore((store) => {
+    const bundle = getProjectBundle(store, projectId);
+    if (!bundle) return;
+    const now = new Date().toISOString();
+
+    store.updates.push({
+      id: id("update"),
+      projectId,
+      title: `Ticket: ${title}`,
+      body: `${user.name}\n\n${body}`,
+      visibility: "customer",
+      asdarStage: bundle.project.asdarStage,
+      createdBy: user.id,
+      createdAt: now,
+    });
+
+    store.tasks.push({
+      id: id("task"),
+      projectId,
+      title: `Kundenanfrage beantworten: ${title}`,
+      owner: "assad",
+      status: "todo",
+      visibleToCustomer: false,
+      createdAt: now,
+    });
+
+    addAuditUpdate({
+      store,
+      projectId,
+      userId: user.id,
+      title: "Kundenticket erstellt",
+      body: `${user.name} hat eine neue Anfrage erstellt: ${title}.`,
+    });
+  });
+
+  revalidateProjectViews(locale, projectId);
+  redirect(`${customerProjectPath(locale, projectId)}?view=actions&saved=ticket`);
+}
+
 export async function addTaskAction(formData: FormData) {
   const locale = safeLocale(formData.get("locale"));
   const user = await requireAdmin(locale);
@@ -2017,7 +2498,7 @@ export async function customerTaskFileAction(formData: FormData) {
       uploadedAt: now,
     });
 
-    if (task.status === "todo") task.status = "doing";
+    task.status = "done";
 
     store.updates.push({
       id: id("update"),
