@@ -4,8 +4,10 @@ import { randomBytes, randomUUID } from "crypto";
 import { hashPassword } from "./password";
 import { isPostgresBackendEnabled } from "./config";
 import {
+  createPostgresRegisteredCustomer,
   createPostgresProjectForAdmin,
   type CreateProjectInput,
+  type CreateRegisteredCustomerInput,
   findPostgresUserByEmail,
   findPostgresUserById,
   readPostgresCustomersWithProjectBundles,
@@ -29,10 +31,12 @@ export type CustomerProjectBundles = {
 };
 
 export type CreateProjectForAdminInput = CreateProjectInput;
+export type CreateRegisteredCustomerForAuthInput = CreateRegisteredCustomerInput;
 
 const DATA_DIR = path.join(process.cwd(), ".portal-data");
 const STORE_PATH = path.join(DATA_DIR, "store.json");
 export const UPLOAD_DIR = path.join(DATA_DIR, "uploads");
+let mutationQueue: Promise<void> = Promise.resolve();
 
 function now() {
   return new Date().toISOString();
@@ -290,7 +294,7 @@ export async function writeStore(store: PortalStore) {
   }
 
   await ensureStore();
-  const tmp = `${STORE_PATH}.tmp`;
+  const tmp = `${STORE_PATH}.${process.pid}.${randomUUID()}.tmp`;
   await fs.writeFile(tmp, JSON.stringify(store, null, 2), "utf8");
   await fs.rename(tmp, STORE_PATH);
 }
@@ -298,9 +302,18 @@ export async function writeStore(store: PortalStore) {
 export async function mutateStore<T>(
   mutator: (store: PortalStore) => T | Promise<T>,
 ): Promise<T> {
-  const store = await readStore();
-  const result = await mutator(store);
-  await writeStore(store);
+  const run = async () => {
+    const store = await readStore();
+    const result = await mutator(store);
+    await writeStore(store);
+    return result;
+  };
+
+  const result = mutationQueue.then(run, run);
+  mutationQueue = result.then(
+    () => undefined,
+    () => undefined,
+  );
   return result;
 }
 
@@ -451,6 +464,35 @@ export async function listCustomersWithProjectBundles(): Promise<
       return { customer, projectBundles };
     })
     .sort((a, b) => a.customer.name.localeCompare(b.customer.name));
+}
+
+export async function createRegisteredCustomerForAuth(
+  input: CreateRegisteredCustomerForAuthInput,
+) {
+  if (isPostgresBackendEnabled()) {
+    return createPostgresRegisteredCustomer(input);
+  }
+
+  return mutateStore((store) => {
+    const existing = findUserByEmail(store, input.email);
+    if (existing) return null;
+
+    store.users.push({
+      id: input.id,
+      name: input.name,
+      email: input.email,
+      passwordHash: input.passwordHash,
+      role: "customer",
+      emailVerifiedAt: input.emailVerifiedAt,
+      createdAt: input.createdAt,
+    });
+
+    if (input.authToken) {
+      store.authTokens.push(input.authToken);
+    }
+
+    return { userId: input.id };
+  });
 }
 
 export async function createProjectForAdmin(

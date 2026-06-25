@@ -1,4 +1,6 @@
 import { mutateStore } from "./store";
+import { isPostgresBackendEnabled } from "./config";
+import { checkPostgresRateLimit } from "./store-postgres";
 
 type HeaderReader = {
   get(name: string): string | null;
@@ -70,6 +72,10 @@ export async function checkRateLimit(
   windowMs: number,
 ): Promise<{ allowed: boolean; retryAfterSeconds: number; remaining: number }> {
   try {
+    if (isPostgresBackendEnabled()) {
+      return await checkPostgresRateLimit(key, limit, windowMs);
+    }
+
     return await mutateStore((store) => {
       const now = Date.now();
       const existing = store.rateLimitBuckets.find((bucket) => bucket.key === key);

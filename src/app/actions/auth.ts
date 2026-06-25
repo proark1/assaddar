@@ -6,7 +6,13 @@ import { isLocale, type Locale } from "@/content";
 import { clearSession, getCurrentUser, setSession } from "@/lib/portal/auth";
 import { appUrl, requireEmailVerification } from "@/lib/portal/config";
 import { sendPortalEmail } from "@/lib/portal/email";
-import { findUserByEmail, id, mutateStore, readStore } from "@/lib/portal/store";
+import {
+  createRegisteredCustomerForAuth,
+  findUserByEmail,
+  id,
+  mutateStore,
+  readStore,
+} from "@/lib/portal/store";
 import { hashPassword, verifyPassword } from "@/lib/portal/password";
 import { checkRateLimit, clientIpFromHeaders } from "@/lib/portal/rate-limit";
 import { createAuthToken, findConsumableAuthToken } from "@/lib/portal/tokens";
@@ -73,35 +79,28 @@ export async function registerAction(formData: FormData) {
     redirect(`/${locale}/register?error=rate`);
   }
 
-  const result = await mutateStore((store) => {
-    const existing = findUserByEmail(store, email);
-    if (existing) return null;
+  const createdAt = new Date().toISOString();
+  const nextId = id("user");
+  const shouldVerify = requireEmailVerification();
+  const token = shouldVerify
+    ? createAuthToken(nextId, "email_verification", 60 * 24)
+    : null;
 
-    const createdAt = new Date().toISOString();
-    const nextId = id("user");
-    const shouldVerify = requireEmailVerification();
-    store.users.push({
-      id: nextId,
-      name,
-      email,
-      passwordHash: hashPassword(password),
-      role: "customer",
-      emailVerifiedAt: shouldVerify ? undefined : createdAt,
-      createdAt,
-    });
-
-    if (!shouldVerify) return { userId: nextId, rawToken: "" };
-
-    const token = createAuthToken(nextId, "email_verification", 60 * 24);
-    store.authTokens.push(token.record);
-    return { userId: nextId, rawToken: token.rawToken };
+  const result = await createRegisteredCustomerForAuth({
+    id: nextId,
+    name,
+    email,
+    passwordHash: hashPassword(password),
+    emailVerifiedAt: shouldVerify ? undefined : createdAt,
+    createdAt,
+    authToken: token?.record,
   });
 
   if (!result) redirect(`/${locale}/register?error=exists`);
 
-  if (result.rawToken) {
+  if (token?.rawToken) {
     const verifyUrl = `${appUrl()}/${locale}/verify-email?token=${encodeURIComponent(
-      result.rawToken,
+      token.rawToken,
     )}`;
     await sendPortalEmail({
       to: email,

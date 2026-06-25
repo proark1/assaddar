@@ -32,6 +32,16 @@ export type CreateProjectInput = {
   template?: ConsultingTemplate;
 };
 
+export type CreateRegisteredCustomerInput = {
+  id: string;
+  name: string;
+  email: string;
+  passwordHash: string;
+  emailVerifiedAt?: string;
+  createdAt: string;
+  authToken?: AuthToken;
+};
+
 function id(prefix: string) {
   return `${prefix}_${randomUUID().replaceAll("-", "").slice(0, 16)}`;
 }
@@ -380,6 +390,91 @@ export async function findPostgresUserById(userId: string) {
   `;
   const row = (rows as Row[])[0];
   return row ? toUser(row) : null;
+}
+
+export async function createPostgresRegisteredCustomer({
+  id: userId,
+  name,
+  email,
+  passwordHash,
+  emailVerifiedAt,
+  createdAt,
+  authToken,
+}: CreateRegisteredCustomerInput) {
+  const sql = getSql();
+
+  return sql.begin(async (tx) => {
+    const existing = await tx`
+      select id
+      from portal_users
+      where lower(email) = lower(${email})
+      limit 1
+    `;
+
+    if ((existing as Row[]).length > 0) return null;
+
+    await tx`
+      insert into portal_users (
+        id, name, email, password_hash, role, email_verified_at, created_at
+      )
+      values (
+        ${userId}, ${name}, ${email}, ${passwordHash}, 'customer',
+        ${emailVerifiedAt ?? null}, ${createdAt}
+      )
+    `;
+
+    if (authToken) {
+      await tx`
+        insert into portal_auth_tokens (
+          id, user_id, token_hash, purpose, expires_at, consumed_at, created_at
+        )
+        values (
+          ${authToken.id}, ${authToken.userId}, ${authToken.tokenHash},
+          ${authToken.purpose}, ${authToken.expiresAt},
+          ${authToken.consumedAt ?? null}, ${authToken.createdAt}
+        )
+      `;
+    }
+
+    return { userId };
+  });
+}
+
+export async function checkPostgresRateLimit(
+  key: string,
+  limit: number,
+  windowMs: number,
+) {
+  const sql = getSql();
+  const now = Date.now();
+  const nowIso = new Date(now).toISOString();
+  const nextResetAt = new Date(now + windowMs).toISOString();
+
+  const rows = await sql`
+    insert into portal_rate_limits (key, count, reset_at, updated_at)
+    values (${key}, 1, ${nextResetAt}, ${nowIso})
+    on conflict (key) do update set
+      count = case
+        when portal_rate_limits.reset_at <= ${nowIso} then 1
+        else portal_rate_limits.count + 1
+      end,
+      reset_at = case
+        when portal_rate_limits.reset_at <= ${nowIso} then ${nextResetAt}
+        else portal_rate_limits.reset_at
+      end,
+      updated_at = ${nowIso}
+    returning count, reset_at
+  `;
+
+  const row = (rows as Row[])[0];
+  const count = number(row?.count);
+  const resetAt = new Date(iso(row?.reset_at)).getTime();
+
+  return {
+    allowed: count <= limit,
+    retryAfterSeconds: Math.max(1, Math.ceil((resetAt - now) / 1000)),
+    remaining: Math.max(0, limit - count),
+  };
 }
 
 async function readPostgresProjectBundles(
