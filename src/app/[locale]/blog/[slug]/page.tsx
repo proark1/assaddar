@@ -3,7 +3,7 @@ import Link from "next/link";
 import Image from "next/image";
 import { notFound } from "next/navigation";
 import { marked } from "marked";
-import { ArrowRight, Check } from "lucide-react";
+import { ArrowRight, CalendarDays, Check, Gauge } from "lucide-react";
 import { getDict, SITE_URL } from "@/content";
 import { getPost, posts } from "@/blog/posts";
 import { enrich } from "@/blog/enrich";
@@ -306,6 +306,43 @@ export default async function BlogArticle({
                 </div>
               )}
 
+              <div className="mb-10 grid gap-4 md:grid-cols-2">
+                <Link
+                  href="/de#score"
+                  className="group rounded-2xl border border-copper/30 bg-copper/10 p-5 transition-colors hover:border-copper"
+                >
+                  <Gauge className="h-5 w-5 text-copper" />
+                  <h2 className="mt-3 text-base font-medium text-ink">
+                    ASDAR Score berechnen
+                  </h2>
+                  <p className="mt-2 text-sm leading-relaxed text-ink2">
+                    Prüfen Sie in wenigen Minuten, ob Ihr Prozess reif für KI
+                    und Automatisierung ist.
+                  </p>
+                  <span className="mt-4 inline-flex items-center gap-1.5 text-sm font-medium text-copper">
+                    Score starten
+                    <ArrowRight className="h-3.5 w-3.5 transition-transform group-hover:translate-x-0.5" />
+                  </span>
+                </Link>
+                <Link
+                  href="/de/termin"
+                  className="group rounded-2xl border border-hairline bg-surface p-5 shadow-card transition-colors hover:border-copper"
+                >
+                  <CalendarDays className="h-5 w-5 text-copper" />
+                  <h2 className="mt-3 text-base font-medium text-ink">
+                    Prozess kurz einordnen lassen
+                  </h2>
+                  <p className="mt-2 text-sm leading-relaxed text-ink2">
+                    30 Minuten reichen oft, um den ersten realistischen
+                    KI-Hebel zu erkennen.
+                  </p>
+                  <span className="mt-4 inline-flex items-center gap-1.5 text-sm font-medium text-copper">
+                    Erstgespräch buchen
+                    <ArrowRight className="h-3.5 w-3.5 transition-transform group-hover:translate-x-0.5" />
+                  </span>
+                </Link>
+              </div>
+
               <div className={PROSE_CLASS}>
                 {segments.map((seg, idx) =>
                   idx % 2 === 1 ? (
@@ -361,6 +398,33 @@ export default async function BlogArticle({
 
             <aside className="hidden lg:block">
               <ArticleToc sections={sections} variant="rail" />
+              <div className="mt-6 rounded-2xl border border-copper/30 bg-copper/10 p-5">
+                <div className="font-mono text-[10.5px] uppercase tracking-[0.14em] text-copper">
+                  Nächster Schritt
+                </div>
+                <h2 className="mt-2 text-base font-medium text-ink">
+                  Welcher Prozess lohnt sich?
+                </h2>
+                <p className="mt-2 text-sm leading-relaxed text-ink2">
+                  Nutzen Sie den ASDAR Score oder buchen Sie direkt ein kurzes
+                  Gespräch.
+                </p>
+                <div className="mt-4 grid gap-2">
+                  <Link
+                    href="/de#score"
+                    className="inline-flex items-center justify-center gap-2 rounded-lg bg-copper px-3 py-2 text-[12px] font-medium text-oncopper transition-colors hover:bg-copper-hi"
+                  >
+                    Score starten
+                    <ArrowRight className="h-3.5 w-3.5" />
+                  </Link>
+                  <Link
+                    href="/de/termin"
+                    className="inline-flex items-center justify-center gap-2 rounded-lg border border-hairline px-3 py-2 text-[12px] font-medium text-ink transition-colors hover:border-copper hover:text-copper"
+                  >
+                    Erstgespräch
+                  </Link>
+                </div>
+              </div>
             </aside>
           </div>
         </div>

@@ -841,54 +841,42 @@ export default async function AdminPage({
         </div>
 
         <PortalCard>
-          <PortalSectionTitle eyebrow="Neu" title="Projekt in 3 Schritten anlegen">
-            Vorlage wählen, Kundendaten eintragen, starten. Das Template füllt
-            danach erste Aufgaben, Meilensteine und ein Kundenupdate vor.
+          <PortalSectionTitle eyebrow="Neu" title="Projekt in 4 Schritten anlegen">
+            Der Wizard führt vom Kunden über das Branchen-Template zum ersten
+            messbaren Pilot. Danach sind Aufgaben, Meilensteine und ein
+            Kundenupdate vorbereitet.
           </PortalSectionTitle>
           {query.error === "company" && (
             <p className="mt-4 rounded-md border border-critical/30 bg-critical/10 px-3 py-2 text-sm text-critical">
               Bitte mindestens den Unternehmensnamen eintragen.
             </p>
           )}
+          <div className="mt-5 grid grid-cols-4 gap-2 text-center text-[11px] text-muted">
+            {["Kunde", "Template", "Problem", "Start"].map((step, index) => (
+              <div key={step} className="rounded-md border border-hairline bg-bg px-2 py-2">
+                <span className="font-mono text-copper">{index + 1}</span>{" "}
+                {step}
+              </div>
+            ))}
+          </div>
           <form action={createProjectAction} className="mt-5 space-y-5">
             <input type="hidden" name="locale" value={safe} />
             <div className="rounded-lg border border-hairline bg-bg p-4">
               <div className="font-mono text-[10.5px] uppercase tracking-[0.14em] text-copper">
                 Schritt 1
               </div>
-              <label className="mt-2 block text-sm font-medium text-ink">
-                Industrie-Template
-              </label>
-              <select
-                name="templateId"
-                defaultValue={selectedTemplateId}
-                className={`${fieldClass} mt-2`}
-              >
-                <option value="">Kein Template / manuell</option>
-                {consultingTemplates.map((template) => (
-                  <option key={template.id} value={template.id}>
-                    {template.label}
-                  </option>
-                ))}
-              </select>
-            </div>
-
-            <div className="rounded-lg border border-hairline bg-bg p-4">
-              <div className="font-mono text-[10.5px] uppercase tracking-[0.14em] text-copper">
-                Schritt 2
+              <div className="mt-2 text-sm font-medium text-ink">
+                Kunde und Unternehmen
               </div>
+              <p className="mt-1 text-[12px] leading-relaxed text-muted">
+                Ein Kunde kann direkt eingeladen oder später zugeordnet werden.
+              </p>
               <div className="mt-3 space-y-3">
                 <div>
                   <label className="mb-1.5 block text-sm text-ink2">
                     Unternehmen
                   </label>
                   <input name="company" required className={fieldClass} />
-                </div>
-                <div>
-                  <label className="mb-1.5 block text-sm text-ink2">
-                    Branche
-                  </label>
-                  <input name="industry" className={fieldClass} />
                 </div>
                 <div>
                   <label className="mb-1.5 block text-sm text-ink2">
@@ -915,6 +903,36 @@ export default async function AdminPage({
 
             <div className="rounded-lg border border-hairline bg-bg p-4">
               <div className="font-mono text-[10.5px] uppercase tracking-[0.14em] text-copper">
+                Schritt 2
+              </div>
+              <label className="mt-2 block text-sm font-medium text-ink">
+                Branche und Industrie-Template
+              </label>
+              <p className="mt-1 text-[12px] leading-relaxed text-muted">
+                Das Template füllt später Intake, Tasks, Meilensteine und
+                Meeting-Fragen vor.
+              </p>
+              <input
+                name="industry"
+                placeholder="Branche, falls kein Template passt"
+                className={`${fieldClass} mt-3`}
+              />
+              <select
+                name="templateId"
+                defaultValue={selectedTemplateId}
+                className={`${fieldClass} mt-2`}
+              >
+                <option value="">Kein Template / manuell</option>
+                {consultingTemplates.map((template) => (
+                  <option key={template.id} value={template.id}>
+                    {template.label}
+                  </option>
+                ))}
+              </select>
+            </div>
+
+            <div className="rounded-lg border border-hairline bg-bg p-4">
+              <div className="font-mono text-[10.5px] uppercase tracking-[0.14em] text-copper">
                 Schritt 3
               </div>
               <div className="mt-3 space-y-3">
@@ -930,18 +948,6 @@ export default async function AdminPage({
                   </label>
                   <textarea name="summary" className={textareaClass} />
                 </div>
-              </div>
-            </div>
-
-            <details className="rounded-lg border border-hairline bg-bg p-4" open>
-              <summary className="cursor-pointer text-sm font-medium text-copper">
-                Schritt 4 · Setup-Automation
-              </summary>
-              <p className="mt-2 text-[12px] leading-relaxed text-muted">
-                Diese Felder erzeugen direkt interne Beratungshinweise,
-                Kundenupdate, Aufgabe und Meilenstein.
-              </p>
-              <div className="mt-4 space-y-3">
                 <div>
                   <label className="mb-1.5 block text-sm text-ink2">
                     Wichtigster Prozess
@@ -972,6 +978,21 @@ export default async function AdminPage({
                     className={fieldClass}
                   />
                 </div>
+              </div>
+            </div>
+
+            <div className="rounded-lg border border-copper/25 bg-copper/10 p-4">
+              <div className="font-mono text-[10.5px] uppercase tracking-[0.14em] text-copper">
+                Schritt 4
+              </div>
+              <div className="mt-2 text-sm font-medium text-ink">
+                Start vorbereiten
+              </div>
+              <p className="mt-2 text-[12px] leading-relaxed text-muted">
+                Diese Felder erzeugen direkt interne Beratungshinweise,
+                Kundenupdate, Aufgabe und Meilenstein.
+              </p>
+              <div className="mt-4 space-y-3">
                 <div>
                   <label className="mb-1.5 block text-sm text-ink2">
                     Entscheider und Stakeholder
@@ -993,7 +1014,7 @@ export default async function AdminPage({
                   />
                 </div>
               </div>
-            </details>
+            </div>
             <ProjectCreateSubmit />
           </form>
         </PortalCard>

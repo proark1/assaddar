@@ -18,6 +18,7 @@ import {
   getProjectAccess,
   getProjectBundle,
   id,
+  listProjectsForUser,
   mutateStore,
   readStore,
   upsertIntelligence,
@@ -35,6 +36,9 @@ import {
   buildDecisionCenter,
   buildProjectDiagnosis,
   formatDiagnosisReport,
+  shouldSendUserNotification,
+  type NotificationPreferenceKey,
+  USER_NOTIFICATION_PREFS_MARKER,
 } from "@/lib/portal/operations";
 import {
   buildTemplatePrompt,
@@ -252,11 +256,13 @@ async function notifyProjectCustomers({
   projectId,
   subject,
   body,
+  kind = "projectUpdates",
 }: {
   locale: Locale;
   projectId: string;
   subject: string;
   body: string;
+  kind?: NotificationPreferenceKey;
 }) {
   const store = await readStore();
   const bundle = getProjectBundle(store, projectId);
@@ -264,8 +270,15 @@ async function notifyProjectCustomers({
 
   const projectUrl = `${appUrl()}/${locale}/portal/projects/${projectId}`;
   await Promise.all(
-    bundle.customerUsers.map((customer) =>
-      sendPortalEmail({
+    bundle.customerUsers.map((customer) => {
+      const customerBundles = listProjectsForUser(store, customer.id)
+        .map((project) => getProjectBundle(store, project.id))
+        .filter((entry): entry is NonNullable<typeof entry> => Boolean(entry));
+      if (!shouldSendUserNotification(customer.id, customerBundles, kind)) {
+        return Promise.resolve();
+      }
+
+      return sendPortalEmail({
         to: customer.email,
         subject,
         text: [
@@ -278,8 +291,8 @@ async function notifyProjectCustomers({
           "Viele Grüße",
           "Assad Dar",
         ].join("\n"),
-      }),
-    ),
+      });
+    }),
   );
 }
 
@@ -540,6 +553,45 @@ export async function runProjectAutomationsAction(formData: FormData) {
   revalidatePath(`/${locale}/portal/admin/pipeline`);
   redirect(
     `${returnTo}${returnTo.includes("?") ? "&" : "?"}saved=automation&tasks=${summary.tasksCreated}&insights=${summary.insightsCreated}`,
+  );
+}
+
+export async function updateNotificationPreferencesAction(formData: FormData) {
+  const locale = safeLocale(formData.get("locale"));
+  const user = await requireUser(locale);
+
+  const saved = await mutateStore((store) => {
+    const anchorProject = listProjectsForUser(store, user.id)[0];
+    if (!anchorProject) return false;
+    const now = new Date().toISOString();
+
+    store.updates.push({
+      id: id("update"),
+      projectId: anchorProject.id,
+      title: "Audit: Notification preferences",
+      body: markerLine(USER_NOTIFICATION_PREFS_MARKER, {
+        userId: user.id,
+        projectUpdates: checkbox(formData, "projectUpdates"),
+        tasks: checkbox(formData, "tasks"),
+        files: checkbox(formData, "files"),
+        invoices: checkbox(formData, "invoices"),
+        reminders: checkbox(formData, "reminders"),
+        appointments: checkbox(formData, "appointments"),
+        weeklySummary: checkbox(formData, "weeklySummary"),
+        updatedAt: now,
+      }),
+      visibility: "internal",
+      asdarStage: anchorProject.asdarStage,
+      createdBy: user.id,
+      createdAt: now,
+    });
+
+    return true;
+  });
+
+  revalidatePath(`/${locale}/portal/settings`);
+  redirect(
+    `/${locale}/portal/settings?${saved ? "saved=notifications" : "error=notifications"}`,
   );
 }
 
@@ -1353,6 +1405,7 @@ export async function completeSetupWizardAction(formData: FormData) {
     projectId,
     subject: "Assad Dar Portal: Projekt-Setup abgeschlossen",
     body: "Das Projekt-Setup wurde aktualisiert. Der nächste Schritt ist jetzt im Portal sichtbar.",
+    kind: "projectUpdates",
   });
   revalidatePath(adminProjectPath(locale, projectId));
   revalidatePath(`/${locale}/portal/projects/${projectId}`);
@@ -1434,6 +1487,7 @@ export async function addMeetingNoteAction(formData: FormData) {
       projectId,
       subject: "Assad Dar Portal: Neue Meeting-Zusammenfassung",
       body: customerSummary,
+      kind: "projectUpdates",
     });
   }
 
@@ -1492,6 +1546,7 @@ export async function scheduleProjectAppointmentAction(formData: FormData) {
       projectId,
       subject: "Assad Dar Portal: Neuer Projekttermin",
       body: `${appointmentType} wurde im Portal gespeichert.`,
+      kind: "appointments",
     });
   }
 
@@ -2224,6 +2279,7 @@ export async function addTaskAction(formData: FormData) {
       projectId,
       subject: "Assad Dar Portal: Neue Aufgabe",
       body: `Neue Aufgabe im Projekt: ${title}`,
+      kind: "tasks",
     });
   }
 
@@ -2754,6 +2810,7 @@ export async function addFileAction(formData: FormData) {
       projectId,
       subject: "Assad Dar Portal: Neue Datei",
       body: `Eine neue Datei wurde im Projektportal bereitgestellt: ${displayName}`,
+      kind: "files",
     });
   }
 
@@ -2808,6 +2865,7 @@ export async function addInvoiceAction(formData: FormData) {
       projectId,
       subject: `Assad Dar Portal: Rechnung ${invoice.number}`,
       body: `Eine Rechnung wurde im Projektportal bereitgestellt: ${invoice.description || invoice.number}`,
+      kind: "invoices",
     });
   }
 
@@ -2926,6 +2984,7 @@ export async function sendProjectReminderAction(formData: FormData) {
     projectId,
     subject: reminder.subject,
     body: reminder.body,
+    kind: "reminders",
   });
   revalidateProjectViews(locale, projectId);
   redirect(`${adminProjectPath(locale, projectId)}?saved=reminder`);

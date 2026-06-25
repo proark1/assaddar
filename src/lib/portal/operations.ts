@@ -7,7 +7,7 @@ import {
 } from "./automation";
 import { formatCurrency, formatDate, formatStage } from "./format";
 import { matchConsultingTemplate } from "./templates";
-import type { ProjectBundle } from "./types";
+import type { ProjectBundle, User } from "./types";
 
 export type PortalActionTone = "red" | "amber" | "green" | "copper";
 
@@ -304,6 +304,40 @@ export type ProjectCopilotPanel = {
   }>;
 };
 
+export type NotificationPreferenceKey =
+  | "projectUpdates"
+  | "tasks"
+  | "files"
+  | "invoices"
+  | "reminders"
+  | "appointments"
+  | "weeklySummary";
+
+export type NotificationPreferences = Record<NotificationPreferenceKey, boolean>;
+
+export type UserNotificationHistoryItem = {
+  id: string;
+  projectId: string;
+  projectName: string;
+  date: string;
+  title: string;
+  body: string;
+  kind: "update" | "task" | "file" | "invoice" | "reminder" | "appointment";
+  tone: PortalActionTone;
+};
+
+export const DEFAULT_NOTIFICATION_PREFERENCES: NotificationPreferences = {
+  projectUpdates: true,
+  tasks: true,
+  files: true,
+  invoices: true,
+  reminders: true,
+  appointments: true,
+  weeklySummary: true,
+};
+
+export const USER_NOTIFICATION_PREFS_MARKER = "USER_NOTIFICATION_PREFS";
+
 const DAY_MS = 24 * 60 * 60 * 1000;
 
 function dateMs(value?: string) {
@@ -336,6 +370,126 @@ function parseJsonMarker<T>(body: string, marker: string): T | null {
   } catch {
     return null;
   }
+}
+
+function parseUserNotificationPreferences(
+  body: string,
+): (Partial<NotificationPreferences> & { userId?: string }) | null {
+  return parseJsonMarker<Partial<NotificationPreferences> & { userId?: string }>(
+    body,
+    USER_NOTIFICATION_PREFS_MARKER,
+  );
+}
+
+export function buildUserNotificationPreferences(
+  userId: string,
+  bundles: ProjectBundle[],
+): NotificationPreferences {
+  const latest = bundles
+    .flatMap((bundle) => bundle.updates)
+    .filter((update) => update.title === "Audit: Notification preferences")
+    .map((update) => ({
+      update,
+      prefs: parseUserNotificationPreferences(update.body),
+    }))
+    .filter((entry) => entry.prefs?.userId === userId)
+    .sort(
+      (a, b) =>
+        dateMs(b.update.createdAt) - dateMs(a.update.createdAt),
+    )[0]?.prefs;
+
+  return {
+    ...DEFAULT_NOTIFICATION_PREFERENCES,
+    ...latest,
+  };
+}
+
+export function shouldSendUserNotification(
+  userId: string,
+  bundles: ProjectBundle[],
+  key: NotificationPreferenceKey,
+) {
+  return buildUserNotificationPreferences(userId, bundles)[key];
+}
+
+export function buildUserNotificationHistory(
+  user: User,
+  bundles: ProjectBundle[],
+): UserNotificationHistoryItem[] {
+  const history: UserNotificationHistoryItem[] = [];
+
+  for (const bundle of bundles) {
+    for (const update of bundle.updates) {
+      if (update.title.startsWith("Audit:")) continue;
+      if (user.role !== "admin" && update.visibility !== "customer") continue;
+      const isAppointment = update.title.startsWith("Termin:");
+      const reminder = isReminder(update.title);
+      history.push({
+        id: update.id,
+        projectId: bundle.project.id,
+        projectName: bundle.project.name,
+        date: update.createdAt,
+        title: update.title,
+        body: update.body,
+        kind: isAppointment ? "appointment" : reminder ? "reminder" : "update",
+        tone: reminder ? "amber" : "copper",
+      });
+    }
+
+    for (const task of bundle.tasks) {
+      if (user.role !== "admin" && !task.visibleToCustomer) continue;
+      history.push({
+        id: task.id,
+        projectId: bundle.project.id,
+        projectName: bundle.project.name,
+        date: task.createdAt,
+        title: `Aufgabe: ${task.title}`,
+        body:
+          task.status === "done"
+            ? "Aufgabe wurde erledigt."
+            : task.owner === "customer"
+              ? "Diese Aufgabe liegt beim Kunden."
+              : "Assad arbeitet an dieser Aufgabe.",
+        kind: "task",
+        tone: task.status === "done" ? "green" : "amber",
+      });
+    }
+
+    for (const file of bundle.files) {
+      if (user.role !== "admin" && file.visibility !== "customer") continue;
+      history.push({
+        id: file.id,
+        projectId: bundle.project.id,
+        projectName: bundle.project.name,
+        date: file.uploadedAt,
+        title: `Datei: ${file.name}`,
+        body: file.description || "Eine Datei wurde im Projektportal bereitgestellt.",
+        kind: "file",
+        tone: "copper",
+      });
+    }
+
+    for (const invoice of bundle.invoices) {
+      if (invoice.status === "draft" && user.role !== "admin") continue;
+      history.push({
+        id: invoice.id,
+        projectId: bundle.project.id,
+        projectName: bundle.project.name,
+        date: invoice.createdAt,
+        title: `Rechnung ${invoice.number}`,
+        body: `${formatCurrency(invoice.amountCents, invoice.currency)} · ${invoice.status}`,
+        kind: "invoice",
+        tone:
+          invoice.status === "paid"
+            ? "green"
+            : invoice.status === "overdue"
+              ? "red"
+              : "amber",
+      });
+    }
+  }
+
+  return history.sort((a, b) => dateMs(b.date) - dateMs(a.date));
 }
 
 function markerRecords<T extends { id?: string; updatedAt?: string; createdAt?: string }>(

@@ -533,7 +533,52 @@ export default async function AdminProjectPage({
         })}
       </nav>
 
-      <div className="space-y-6">
+      <div className="grid gap-6 xl:grid-cols-[240px_minmax(0,1fr)_320px] xl:items-start">
+        <aside className="hidden xl:sticky xl:top-6 xl:block">
+          <PortalCard>
+            <PortalSectionTitle eyebrow="Timeline" title="Projektverlauf" />
+            <div className="mt-5 space-y-3">
+              {projectTimeline.slice(0, 9).map((item) => (
+                <Link
+                  key={`rail-${item.type}-${item.id}`}
+                  href={stepHref(
+                    item.type === "Rechnung"
+                      ? "billing"
+                      : item.type === "Datei"
+                        ? "delivery"
+                        : item.type === "Aufgabe" || item.type === "Meilenstein"
+                          ? "delivery"
+                          : "communication",
+                  )}
+                  className="block rounded-lg border border-hairline bg-bg p-3 transition-colors hover:border-copper"
+                >
+                  <div className="flex flex-wrap items-center gap-2">
+                    <Badge
+                      tone={
+                        item.tone === "red"
+                          ? "red"
+                          : item.tone === "green"
+                            ? "green"
+                            : "neutral"
+                      }
+                    >
+                      {item.type}
+                    </Badge>
+                    <span className="text-[11px] text-muted">
+                      {formatDate(item.date)}
+                    </span>
+                  </div>
+                  <div className="mt-2 line-clamp-2 text-[12px] font-medium leading-snug text-ink">
+                    {item.title}
+                  </div>
+                </Link>
+              ))}
+              {projectTimeline.length === 0 && (
+                <p className="text-sm text-muted">Noch keine Aktivität.</p>
+              )}
+            </div>
+          </PortalCard>
+        </aside>
         <div className="space-y-6">
           <PortalCard className={viewClass("setup")}>
             <PortalSectionTitle
@@ -1763,7 +1808,49 @@ export default async function AdminProjectPage({
           </PortalCard>
         </div>
 
-        <aside className="space-y-6">
+        <aside className="space-y-6 xl:sticky xl:top-6">
+          <PortalCard className="border-copper/25 bg-copper/10">
+            <PortalSectionTitle
+              eyebrow="Assad Copilot"
+              title={projectCopilot.headline}
+            >
+              {projectCopilot.summary}
+            </PortalSectionTitle>
+            <div className="mt-5 grid grid-cols-2 gap-3">
+              {projectCopilot.metrics.slice(0, 4).map((metric) => (
+                <div
+                  key={metric.label}
+                  className="rounded-lg border border-hairline bg-surface p-3"
+                >
+                  <div className="text-lg font-medium text-ink">
+                    {metric.value}
+                  </div>
+                  <div className="mt-1 text-[11px] text-muted">
+                    {metric.label}
+                  </div>
+                </div>
+              ))}
+            </div>
+            <div className="mt-5 space-y-2">
+              {projectCopilot.actions.slice(0, 4).map((action) => (
+                <Link
+                  key={`sticky-${action.id}`}
+                  href={stepHref(action.hrefView)}
+                  className="flex items-start justify-between gap-3 rounded-lg border border-hairline bg-surface p-3 transition-colors hover:border-copper"
+                >
+                  <span>
+                    <span className="block text-sm font-medium text-ink">
+                      {action.title}
+                    </span>
+                    <span className="mt-1 line-clamp-2 block text-[12px] leading-relaxed text-muted">
+                      {action.body}
+                    </span>
+                  </span>
+                  <ArrowRight className="mt-0.5 h-4 w-4 shrink-0 text-copper" />
+                </Link>
+              ))}
+            </div>
+          </PortalCard>
           <PortalCard className={viewClass("guidance")}>
             <PortalSectionTitle
               eyebrow="Industry Playbook"

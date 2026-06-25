@@ -3,11 +3,14 @@ import Link from "next/link";
 import {
   AlertTriangle,
   ArrowRight,
+  Bell,
   CalendarDays,
   CheckCircle2,
   CreditCard,
   FileText,
   FolderKanban,
+  ListChecks,
+  WalletCards,
 } from "lucide-react";
 import { isLocale, type Locale } from "@/content";
 import { requireUser } from "@/lib/portal/auth";
@@ -110,6 +113,41 @@ export default async function PortalPage({
               "Assad prüft die Projektinformationen und bereitet den nächsten Schritt vor.",
           };
         });
+  const latestCustomerUpdate =
+    user.role === "admin"
+      ? undefined
+      : bundles
+          .flatMap((bundle) =>
+            bundle.updates
+              .filter((update) => update.visibility === "customer")
+              .map((update) => ({ bundle, update })),
+          )
+          .sort(
+            (a, b) =>
+              new Date(b.update.createdAt).getTime() -
+              new Date(a.update.createdAt).getTime(),
+          )[0];
+  const nextAppointment =
+    user.role === "admin"
+      ? undefined
+      : bundles
+          .flatMap((bundle) =>
+            bundle.updates
+              .filter(
+                (update) =>
+                  update.visibility === "customer" &&
+                  update.title.startsWith("Termin:"),
+              )
+              .map((update) => ({ bundle, update })),
+          )
+          .sort(
+            (a, b) =>
+              new Date(b.update.createdAt).getTime() -
+              new Date(a.update.createdAt).getTime(),
+          )[0];
+  const customerOpenTasks = visibleTasks.filter(
+    (task) => task.status !== "done",
+  );
 
   return (
     <PortalShell
@@ -134,44 +172,148 @@ export default async function PortalPage({
         ) : null
       }
     >
-      <div className="grid gap-4 md:grid-cols-3">
-        <PortalCard>
-          <div className="flex items-center gap-3">
-            <FolderKanban className="h-5 w-5 text-copper" />
-            <div>
-              <div className="text-2xl font-medium text-ink">{bundles.length}</div>
-              <div className="text-sm text-muted">Projekte</div>
-            </div>
-          </div>
-        </PortalCard>
-        <PortalCard>
-          <div className="flex items-center gap-3">
-            <FileText className="h-5 w-5 text-copper" />
-            <div>
-              <div className="text-2xl font-medium text-ink">
-                {visibleTasks.filter((task) => task.status !== "done").length}
+      {user.role === "admin" ? (
+        <div className="grid gap-4 md:grid-cols-3">
+          <PortalCard>
+            <div className="flex items-center gap-3">
+              <FolderKanban className="h-5 w-5 text-copper" />
+              <div>
+                <div className="text-2xl font-medium text-ink">
+                  {bundles.length}
+                </div>
+                <div className="text-sm text-muted">Projekte</div>
               </div>
-              <div className="text-sm text-muted">Offene Aufgaben</div>
             </div>
-          </div>
-        </PortalCard>
-        <PortalCard>
-          <div className="flex items-center gap-3">
-            <CreditCard className="h-5 w-5 text-copper" />
-            <div>
-              <div className="text-2xl font-medium text-ink">
+          </PortalCard>
+          <PortalCard>
+            <div className="flex items-center gap-3">
+              <FileText className="h-5 w-5 text-copper" />
+              <div>
+                <div className="text-2xl font-medium text-ink">
+                  {customerOpenTasks.length}
+                </div>
+                <div className="text-sm text-muted">Offene Aufgaben</div>
+              </div>
+            </div>
+          </PortalCard>
+          <PortalCard>
+            <div className="flex items-center gap-3">
+              <CreditCard className="h-5 w-5 text-copper" />
+              <div>
+                <div className="text-2xl font-medium text-ink">
+                  {formatCurrency(
+                    openInvoices.reduce(
+                      (sum, invoice) => sum + invoice.amountCents,
+                      0,
+                    ),
+                  )}
+                </div>
+                <div className="text-sm text-muted">Offene Rechnungen</div>
+              </div>
+            </div>
+          </PortalCard>
+        </div>
+      ) : (
+        <PortalCard className="border-copper/25 bg-copper/10">
+          <PortalSectionTitle
+            eyebrow="Home"
+            title="Alles Wichtige auf einen Blick"
+          >
+            Keine Suche im Portal: Status, Arbeit von Assad, Ihre offenen
+            Punkte, Termine und Rechnungen stehen direkt hier.
+          </PortalSectionTitle>
+          <div className="mt-5 grid gap-3 md:grid-cols-2 xl:grid-cols-5">
+            <Link
+              href={
+                bundles[0]
+                  ? `/${safe}/portal/projects/${bundles[0].project.id}`
+                  : `/${safe}/portal`
+              }
+              className="rounded-lg border border-hairline bg-surface p-4 transition-colors hover:border-copper"
+            >
+              <FolderKanban className="h-4 w-4 text-copper" />
+              <div className="mt-3 text-sm font-medium text-ink">Status</div>
+              <p className="mt-1 text-[12px] leading-relaxed text-muted">
+                {bundles[0]
+                  ? `${formatStage(bundles[0].project.asdarStage)} · ${formatStatus(bundles[0].project.status)}`
+                  : "Noch kein Projekt zugeordnet"}
+              </p>
+            </Link>
+            <Link
+              href={
+                latestCustomerUpdate
+                  ? `/${safe}/portal/projects/${latestCustomerUpdate.bundle.project.id}?view=overview`
+                  : `/${safe}/portal`
+              }
+              className="rounded-lg border border-hairline bg-surface p-4 transition-colors hover:border-copper"
+            >
+              <Bell className="h-4 w-4 text-copper" />
+              <div className="mt-3 text-sm font-medium text-ink">
+                Was Assad gemacht hat
+              </div>
+              <p className="mt-1 line-clamp-3 text-[12px] leading-relaxed text-muted">
+                {latestCustomerUpdate?.update.title ??
+                  "Sobald ein Update veröffentlicht wird, steht es hier."}
+              </p>
+            </Link>
+            <Link
+              href={
+                primaryCustomerAction
+                  ? `/${safe}/portal/projects/${primaryCustomerAction.bundle.project.id}?view=${primaryCustomerAction.action.hrefView}`
+                  : `/${safe}/portal`
+              }
+              className="rounded-lg border border-hairline bg-surface p-4 transition-colors hover:border-copper"
+            >
+              <ListChecks className="h-4 w-4 text-copper" />
+              <div className="mt-3 text-sm font-medium text-ink">
+                Was ich tun muss
+              </div>
+              <p className="mt-1 line-clamp-3 text-[12px] leading-relaxed text-muted">
+                {primaryCustomerAction?.action.title ??
+                  "Aktuell keine offenen Punkte für Sie."}
+              </p>
+            </Link>
+            <Link
+              href={
+                nextAppointment
+                  ? `/${safe}/portal/projects/${nextAppointment.bundle.project.id}?view=overview`
+                  : `/${safe}/termin`
+              }
+              className="rounded-lg border border-hairline bg-surface p-4 transition-colors hover:border-copper"
+            >
+              <CalendarDays className="h-4 w-4 text-copper" />
+              <div className="mt-3 text-sm font-medium text-ink">
+                Nächster Termin
+              </div>
+              <p className="mt-1 line-clamp-3 text-[12px] leading-relaxed text-muted">
+                {nextAppointment?.update.body || "Termin buchen oder abstimmen."}
+              </p>
+            </Link>
+            <Link
+              href={
+                bundles[0]
+                  ? `/${safe}/portal/projects/${bundles[0].project.id}?view=files`
+                  : `/${safe}/portal`
+              }
+              className="rounded-lg border border-hairline bg-surface p-4 transition-colors hover:border-copper"
+            >
+              <WalletCards className="h-4 w-4 text-copper" />
+              <div className="mt-3 text-sm font-medium text-ink">
+                Rechnungen
+              </div>
+              <p className="mt-1 text-[12px] leading-relaxed text-muted">
                 {formatCurrency(
                   openInvoices.reduce(
                     (sum, invoice) => sum + invoice.amountCents,
                     0,
                   ),
-                )}
-              </div>
-              <div className="text-sm text-muted">Offene Rechnungen</div>
-            </div>
+                )}{" "}
+                offen
+              </p>
+            </Link>
           </div>
         </PortalCard>
-      </div>
+      )}
 
       {user.role !== "admin" && primaryCustomerAction && (
         <PortalCard className="mt-8 border-copper/30 bg-copper/10">

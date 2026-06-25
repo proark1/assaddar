@@ -1,7 +1,7 @@
 import type { Metadata } from "next";
 import Image from "next/image";
 import Link from "next/link";
-import { ArrowRight } from "lucide-react";
+import { ArrowRight, Search, X } from "lucide-react";
 import { getDict, SITE_URL } from "@/content";
 import { posts, type BlogPost } from "@/blog/posts";
 import {
@@ -106,16 +106,37 @@ function BlogPostVisual({
   );
 }
 
-export default async function BlogIndex() {
+export default async function BlogIndex({
+  searchParams,
+}: {
+  searchParams: Promise<{ q?: string; category?: string }>;
+}) {
   const t = getDict("de");
   const heroMap = await getBlogHeroMap();
+  const query = await searchParams;
+  const searchTerm = query.q?.trim() ?? "";
+  const normalizedSearch = searchTerm.toLowerCase();
   const featured = posts[0];
-  const remainingPosts = posts.slice(1);
 
   const categories: string[] = [];
   for (const p of posts) {
     if (!categories.includes(p.category)) categories.push(p.category);
   }
+  const selectedCategory = categories.includes(query.category ?? "")
+    ? query.category
+    : "";
+  const featuredPosts = posts.slice(0, 3);
+  const filteredPosts = posts.filter((post) => {
+    const matchesCategory =
+      !selectedCategory || post.category === selectedCategory;
+    const matchesSearch =
+      !normalizedSearch ||
+      [post.title, post.teaser, post.category, ...post.keywords]
+        .join(" ")
+        .toLowerCase()
+        .includes(normalizedSearch);
+    return matchesCategory && matchesSearch;
+  });
 
   const blogLd = {
     "@context": "https://schema.org",
@@ -179,17 +200,124 @@ export default async function BlogIndex() {
             <p className="mt-5 text-base leading-relaxed text-ink2">
               {t.blog.intro}
             </p>
-            <div className="mt-7 flex flex-wrap gap-2">
+            <form
+              action="/de/blog"
+              method="get"
+              className="mt-7 grid gap-3 rounded-xl border border-hairline bg-surface p-3 shadow-card sm:grid-cols-[1fr_220px_auto]"
+            >
+              <label className="relative block">
+                <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted" />
+                <input
+                  name="q"
+                  defaultValue={searchTerm}
+                  placeholder="Artikel, Branche oder Thema suchen..."
+                  className="w-full rounded-lg border border-hairline bg-bg py-2.5 pl-9 pr-3 text-sm text-ink outline-none placeholder:text-muted focus:border-copper"
+                />
+              </label>
+              <select
+                name="category"
+                defaultValue={selectedCategory}
+                className="rounded-lg border border-hairline bg-bg px-3 py-2.5 text-sm text-ink outline-none focus:border-copper"
+              >
+                <option value="">Alle Kategorien</option>
+                {categories.map((category) => (
+                  <option key={category} value={category}>
+                    {category}
+                  </option>
+                ))}
+              </select>
+              <button
+                type="submit"
+                className="inline-flex items-center justify-center gap-2 rounded-lg bg-copper px-4 py-2.5 text-sm font-medium text-oncopper transition-colors hover:bg-copper-hi"
+              >
+                <Search className="h-4 w-4" />
+                Finden
+              </button>
+            </form>
+
+            <div className="mt-5 flex flex-wrap gap-2">
+              <Link
+                href="/de/blog"
+                className={`rounded-md border px-3 py-1.5 text-[12px] transition-colors ${
+                  !selectedCategory && !searchTerm
+                    ? "border-copper bg-copper/10 text-copper"
+                    : "border-hairline bg-surface text-ink2 hover:border-copper"
+                }`}
+              >
+                Alle
+              </Link>
               {categories.map((category) => (
-                <span
+                <Link
                   key={category}
-                  className="rounded-md border border-hairline bg-surface px-3 py-1.5 text-[12px] text-ink2"
+                  href={`/de/blog?category=${encodeURIComponent(category)}${
+                    searchTerm ? `&q=${encodeURIComponent(searchTerm)}` : ""
+                  }`}
+                  className={`rounded-md border px-3 py-1.5 text-[12px] transition-colors ${
+                    selectedCategory === category
+                      ? "border-copper bg-copper/10 text-copper"
+                      : "border-hairline bg-surface text-ink2 hover:border-copper"
+                  }`}
                 >
                   {category}
-                </span>
+                </Link>
               ))}
+              {(selectedCategory || searchTerm) && (
+                <Link
+                  href="/de/blog"
+                  className="inline-flex items-center gap-1.5 rounded-md border border-hairline bg-surface px-3 py-1.5 text-[12px] text-muted transition-colors hover:border-copper hover:text-copper"
+                >
+                  <X className="h-3.5 w-3.5" />
+                  Zurücksetzen
+                </Link>
+              )}
             </div>
           </header>
+
+          <section className="mt-10">
+            <div className="flex flex-wrap items-end justify-between gap-4">
+              <div>
+                <h2 className="font-serif text-2xl font-normal text-ink md:text-3xl">
+                  Empfohlene Startpunkte
+                </h2>
+                <p className="mt-2 text-sm text-muted">
+                  Die wichtigsten Artikel, wenn Sie KI pragmatisch im
+                  Unternehmen starten wollen.
+                </p>
+              </div>
+            </div>
+            <div className="mt-6 grid gap-5 md:grid-cols-3">
+              {featuredPosts.map((post, index) => (
+                <Link
+                  key={post.slug}
+                  href={`/de/blog/${post.slug}`}
+                  className="group flex h-full flex-col overflow-hidden rounded-xl border border-hairline bg-surface shadow-card transition-colors hover:border-copper"
+                >
+                  <div className="relative aspect-[16/9] overflow-hidden border-b border-hairline">
+                    <BlogPostVisual
+                      post={post}
+                      hero={heroMap[post.slug]}
+                      priority={index === 0}
+                    />
+                  </div>
+                  <div className="flex flex-1 flex-col p-5">
+                    <span className="font-mono text-[10.5px] uppercase tracking-[0.12em] text-copper">
+                      {post.category}
+                    </span>
+                    <h3 className="mt-3 font-serif text-lg leading-snug text-ink">
+                      {post.title}
+                    </h3>
+                    <p className="mt-2 flex-1 text-sm leading-relaxed text-ink2">
+                      {post.teaser}
+                    </p>
+                    <span className="mt-4 inline-flex items-center gap-1.5 text-[12px] text-muted">
+                      {post.readingTimeMin} Min · {t.blog.readMore}
+                      <ArrowRight className="h-3.5 w-3.5 text-copper transition-transform group-hover:translate-x-0.5" />
+                    </span>
+                  </div>
+                </Link>
+              ))}
+            </div>
+          </section>
 
           {featured && (
             <section className="mt-12">
@@ -238,10 +366,13 @@ export default async function BlogIndex() {
                   Praxisnahe Beiträge zu KI, Automatisierung, Prozessen und Branchen.
                 </p>
               </div>
+              <div className="text-sm text-muted">
+                {filteredPosts.length} Artikel
+              </div>
             </div>
 
             <div className="mt-7 grid gap-5 md:grid-cols-2 lg:grid-cols-3">
-              {remainingPosts.map((p) => (
+              {filteredPosts.map((p) => (
                 <Link
                   key={p.slug}
                   href={`/de/blog/${p.slug}`}
@@ -267,6 +398,13 @@ export default async function BlogIndex() {
                   </div>
                 </Link>
               ))}
+              {filteredPosts.length === 0 && (
+                <div className="rounded-xl border border-hairline bg-surface p-6 text-sm leading-relaxed text-muted">
+                  Keine Artikel passen zu dieser Suche. Entfernen Sie Filter
+                  oder suchen Sie nach einer Branche wie Arztpraxis, Handwerk,
+                  Steuerkanzlei oder E-Commerce.
+                </div>
+              )}
             </div>
           </section>
         </div>
