@@ -41,6 +41,26 @@ export type ConsultingTemplate = {
   };
 };
 
+export type ConsultingOfferTier = {
+  id: "snapshot" | "audit" | "sprint" | "pilot" | "advisory";
+  label: string;
+  bestFor: string;
+  basePriceCents: number;
+  minPriceCents: number;
+  maxPriceCents: number;
+  timelineWeeks: [number, number];
+  effortDays: [number, number];
+  deliverables: string[];
+};
+
+export type ConsultingCommercialModel = {
+  templateId: string;
+  defaultTierId: ConsultingOfferTier["id"];
+  complexityMultiplier: number;
+  pricingNotes: string[];
+  tiers: ConsultingOfferTier[];
+};
+
 const genericIntake = {
   companyContext:
     "Geschaeftsmodell, Teamgroesse, Kernprozesse, Kundensegmente und aktuelle Wachstumssituation erfassen.",
@@ -910,6 +930,172 @@ export const consultingTemplates: ConsultingTemplate[] = [
     },
   },
 ];
+
+const baseOfferTiers: ConsultingOfferTier[] = [
+  {
+    id: "snapshot",
+    label: "ASDAR Snapshot",
+    bestFor: "Noch unklarer Bedarf, niedrige Datenlage oder ein erster Einstieg.",
+    basePriceCents: 49000,
+    minPriceCents: 49000,
+    maxPriceCents: 150000,
+    timelineWeeks: [1, 1],
+    effortDays: [1, 2],
+    deliverables: [
+      "kompakter Readiness-Check",
+      "Top-3 Engpässe",
+      "erste Automatisierungs-Hypothese",
+      "nächste Fragen und Datenbedarf",
+    ],
+  },
+  {
+    id: "audit",
+    label: "ASDAR Audit",
+    bestFor: "Analysebereiter Kunde mit konkreten Problemen und offenem Lösungsraum.",
+    basePriceCents: 290000,
+    minPriceCents: 240000,
+    maxPriceCents: 490000,
+    timelineWeeks: [1, 2],
+    effortDays: [3, 5],
+    deliverables: [
+      "ASDAR Diagnosis Pack",
+      "Prozess- und Datenanalyse",
+      "priorisierte Quick Wins",
+      "Roadmap mit Aufwand, Nutzen und Risiken",
+    ],
+  },
+  {
+    id: "sprint",
+    label: "ASDAR Sprint",
+    bestFor: "Klarer Pilot oder Quick Win, der direkt umgesetzt werden soll.",
+    basePriceCents: 590000,
+    minPriceCents: 490000,
+    maxPriceCents: 1200000,
+    timelineWeeks: [2, 4],
+    effortDays: [6, 12],
+    deliverables: [
+      "konkreter Automatisierungs-Pilot",
+      "Workflow-Design und Umsetzungsplan",
+      "Tool-/Datenstruktur",
+      "Pilot-Test mit Kundenfeedback",
+    ],
+  },
+  {
+    id: "pilot",
+    label: "ASDAR Pilot Build",
+    bestFor: "Umsetzung mit mehreren Systemen, Datenquellen oder Teamrollen.",
+    basePriceCents: 950000,
+    minPriceCents: 750000,
+    maxPriceCents: 1800000,
+    timelineWeeks: [4, 8],
+    effortDays: [10, 22],
+    deliverables: [
+      "Pilot-Workflow im Betrieb",
+      "Integrations- und Datenkonzept",
+      "Rollen, Freigaben und Schulung",
+      "Messung gegen Vorher/Nachher-KPI",
+    ],
+  },
+  {
+    id: "advisory",
+    label: "ASDAR Advisory",
+    bestFor: "Laufende Begleitung nach Analyse oder Pilot.",
+    basePriceCents: 250000,
+    minPriceCents: 250000,
+    maxPriceCents: 650000,
+    timelineWeeks: [4, 12],
+    effortDays: [2, 6],
+    deliverables: [
+      "monatliche Priorisierung",
+      "Review von AI-/Digitalisierungsinitiativen",
+      "Sparring für Umsetzung und Change",
+      "kontinuierliche Roadmap-Pflege",
+    ],
+  },
+];
+
+const commercialModels: Record<string, Omit<ConsultingCommercialModel, "templateId">> = {
+  "b2b-services": {
+    defaultTierId: "audit",
+    complexityMultiplier: 1,
+    pricingNotes: [
+      "Angebots-, E-Mail- und Reportingprozesse sind oft schnell analysierbar.",
+      "Preis steigt bei vielen Servicevarianten, CRM-Anbindung oder Angebotslogik.",
+    ],
+    tiers: baseOfferTiers,
+  },
+  manufacturing: {
+    defaultTierId: "audit",
+    complexityMultiplier: 1.25,
+    pricingNotes: [
+      "Shopfloor-, ERP- und Qualitätsprozesse brauchen mehr Stakeholder-Abstimmung.",
+      "Pilotpreise steigen bei MES/ERP-Schnittstellen oder Schichtbetrieb.",
+    ],
+    tiers: baseOfferTiers,
+  },
+  healthcare: {
+    defaultTierId: "audit",
+    complexityMultiplier: 1.2,
+    pricingNotes: [
+      "Datenschutz, Patientendaten und Fachsoftware erhöhen Prüfaufwand.",
+      "Erster Scope sollte eng bleiben: Telefon, Dokumentation oder Terminfluss.",
+    ],
+    tiers: baseOfferTiers,
+  },
+  ecommerce: {
+    defaultTierId: "sprint",
+    complexityMultiplier: 1.05,
+    pricingNotes: [
+      "Produktdaten, Support und Kampagnen lassen sich oft schnell pilotieren.",
+      "Preis steigt bei großen Sortimenten, mehreren Shops oder PIM/ERP-Anbindung.",
+    ],
+    tiers: baseOfferTiers,
+  },
+  "legal-tax": {
+    defaultTierId: "audit",
+    complexityMultiplier: 1.25,
+    pricingNotes: [
+      "Dokumente, Fristen und Mandatsdaten brauchen klare Freigabe- und Datenschutzlogik.",
+      "Keine Rechts- oder Steuerberatung automatisieren, sondern Arbeitsvorbereitung.",
+    ],
+    tiers: baseOfferTiers,
+  },
+  "construction-real-estate": {
+    defaultTierId: "sprint",
+    complexityMultiplier: 1.1,
+    pricingNotes: [
+      "Fotos, Baustellenberichte und Angebote eignen sich gut für schnelle Piloten.",
+      "Preis steigt bei mobiler Nutzung, vielen Objektarten oder Projektteams.",
+    ],
+    tiers: baseOfferTiers,
+  },
+  logistics: {
+    defaultTierId: "audit",
+    complexityMultiplier: 1.2,
+    pricingNotes: [
+      "Disposition, Statuskommunikation und Dokumente brauchen Echtzeitnähe.",
+      "Preis steigt bei Transportmanagement-Systemen, Schnittstellen und mehreren Standorten.",
+    ],
+    tiers: baseOfferTiers,
+  },
+  "education-training": {
+    defaultTierId: "audit",
+    complexityMultiplier: 1.1,
+    pricingNotes: [
+      "Kommunikation, Verwaltung und Lern-/Teilnehmerdaten müssen sauber getrennt werden.",
+      "Preis steigt bei sensiblen Daten, mehreren Rollen oder Schulträger-Strukturen.",
+    ],
+    tiers: baseOfferTiers,
+  },
+};
+
+export function getConsultingCommercialModel(template: ConsultingTemplate) {
+  const model = commercialModels[template.id] ?? commercialModels["b2b-services"];
+  return {
+    templateId: template.id,
+    ...model,
+  } satisfies ConsultingCommercialModel;
+}
 
 export function applyTemplateOverride(
   template: ConsultingTemplate,

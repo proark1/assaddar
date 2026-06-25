@@ -6,7 +6,11 @@ import {
   isStructuredUpdate,
 } from "./automation";
 import { formatCurrency, formatDate, formatStage } from "./format";
-import { matchConsultingTemplate } from "./templates";
+import {
+  getConsultingCommercialModel,
+  matchConsultingTemplate,
+  type ConsultingOfferTier,
+} from "./templates";
 import type { ProjectBundle, User } from "./types";
 
 export type PortalActionTone = "red" | "amber" | "green" | "copper";
@@ -193,6 +197,35 @@ export type ProjectKpiSnapshot = {
   updatedAt?: string;
 };
 
+export type ProjectOfferRecommendation = {
+  id: string;
+  projectId: string;
+  status: "draft" | "reviewed" | "sent" | "accepted";
+  source: "rules" | "saved";
+  packageId: ConsultingOfferTier["id"];
+  packageLabel: string;
+  title: string;
+  scope: string;
+  outcomes: string;
+  deliverables: string[];
+  assumptions: string[];
+  risks: string[];
+  priceMinCents: number;
+  priceMaxCents: number;
+  recommendedPriceCents: number;
+  currency: "EUR";
+  timeline: string;
+  timelineWeeks: [number, number];
+  effortDays: [number, number];
+  complexityScore: number;
+  confidence: number;
+  confidenceLabel: string;
+  reasoning: string[];
+  nextQuestions: string[];
+  createdAt: string;
+  updatedAt: string;
+};
+
 export type AutomationHistoryItem = {
   id: string;
   title: string;
@@ -337,6 +370,7 @@ export const DEFAULT_NOTIFICATION_PREFERENCES: NotificationPreferences = {
 };
 
 export const USER_NOTIFICATION_PREFS_MARKER = "USER_NOTIFICATION_PREFS";
+export const OFFER_RECOMMENDATION_MARKER = "OFFER_RECOMMENDATION";
 
 const DAY_MS = 24 * 60 * 60 * 1000;
 
@@ -1937,12 +1971,13 @@ export function buildProjectPipeline(
 }
 
 export function buildDraftReviewItems(bundles: ProjectBundle[]): DraftReviewItem[] {
-  return bundles
+      return bundles
     .filter((bundle) => bundle.project.status !== "completed")
     .flatMap((bundle) => {
       const handled = handledDraftIds(bundle);
       const copilot = buildConsultingCopilotBrief(bundle);
       const diagnosis = buildProjectDiagnosis(bundle);
+      const offerRecommendation = latestOrBuildOfferRecommendation(bundle);
       const proposalNeeded =
         diagnosis.readinessScore >= 55 &&
         !bundle.files.some((file) => file.category === "proposal");
@@ -1988,10 +2023,17 @@ export function buildDraftReviewItems(bundles: ProjectBundle[]): DraftReviewItem
               title: `${bundle.organization.name}: Proposal Draft`,
               type: "proposal" as const,
               body: [
-                bundle.project.summary || bundle.intelligence.companyContext,
+                `${offerRecommendation.packageLabel} · ${formatCurrency(
+                  offerRecommendation.recommendedPriceCents,
+                )} · ${offerRecommendation.timeline}`,
                 "",
-                "Empfohlener Scope:",
-                ...diagnosis.opportunities.slice(0, 3).map((item) => `- ${item}`),
+                "Scope:",
+                offerRecommendation.scope,
+                "",
+                "Deliverables:",
+                ...offerRecommendation.deliverables
+                  .slice(0, 5)
+                  .map((item) => `- ${item}`),
               ].join("\n"),
               hrefView: "billing" as const,
               priority: 7,
@@ -2179,6 +2221,345 @@ export function buildConsultantCopyTemplates(
       ].join("\n"),
     },
   ];
+}
+
+function projectText(bundle: ProjectBundle) {
+  return [
+    bundle.organization.industry,
+    bundle.project.name,
+    bundle.project.summary,
+    bundle.project.nextStep,
+    bundle.intelligence.companyContext,
+    bundle.intelligence.issues,
+    bundle.intelligence.goals,
+    bundle.intelligence.currentTools,
+    bundle.intelligence.dataSituation,
+    bundle.intelligence.constraints,
+    bundle.intelligence.opportunities,
+    bundle.intelligence.internalNotes,
+    ...bundle.updates
+      .filter((update) => isCustomerIntake(update.title))
+      .slice(0, 3)
+      .flatMap((update) => [update.title, update.body]),
+    ...bundle.aiInsights
+      .filter((insight) => insight.title.startsWith("AI Scan:"))
+      .slice(0, 3)
+      .flatMap((insight) => [insight.title, insight.body]),
+  ].join("\n");
+}
+
+function hasAny(value: string, keywords: string[]) {
+  const normalized = value.toLowerCase();
+  return keywords.some((keyword) => normalized.includes(keyword));
+}
+
+function firstNumberNear(value: string, labels: string[]) {
+  const decimalText = value.replace(/\r/g, "\n").replace(/,/g, ".");
+  for (const label of labels) {
+    const escaped = label.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+    const block = decimalText.match(new RegExp(`${escaped}[\\s\\S]{0,160}`, "i"))?.[0];
+    const match = block?.match(/\d+(?:\.\d+)?/);
+    if (match) {
+      const parsed = Number.parseFloat(match[0]);
+      if (Number.isFinite(parsed)) return parsed;
+    }
+  }
+
+  const normalized = decimalText.split(/\n+/);
+  for (const line of normalized) {
+    const lower = line.toLowerCase();
+    if (!labels.some((label) => lower.includes(label))) continue;
+    const match = line.match(/\d+(?:\.\d+)?/);
+    if (match) {
+      const parsed = Number.parseFloat(match[0]);
+      if (Number.isFinite(parsed)) return parsed;
+    }
+  }
+  return 0;
+}
+
+function uniqueList(items: Array<string | undefined>) {
+  const seen = new Set<string>();
+  return items
+    .map((item) => item?.trim())
+    .filter((item): item is string => Boolean(item))
+    .filter((item) => {
+      const key = item.toLowerCase();
+      if (seen.has(key)) return false;
+      seen.add(key);
+      return true;
+    });
+}
+
+function roundToFiftyEuros(cents: number) {
+  return Math.max(0, Math.round(cents / 5000) * 5000);
+}
+
+function scaleRange([min, max]: [number, number], factor: number) {
+  return [
+    Math.max(1, Math.round(min * factor)),
+    Math.max(1, Math.round(max * factor)),
+  ] as [number, number];
+}
+
+function chooseOfferTier(
+  tiers: ConsultingOfferTier[],
+  defaultTierId: ConsultingOfferTier["id"],
+  readinessScore: number,
+  complexityScore: number,
+  text: string,
+) {
+  const tier = (id: ConsultingOfferTier["id"]) =>
+    tiers.find((entry) => entry.id === id) ?? tiers[0];
+
+  if (readinessScore < 55) return tier("snapshot");
+  if (complexityScore >= 78 && readinessScore >= 70) return tier("pilot");
+  if (
+    complexityScore >= 58 ||
+    hasAny(text, ["pilot", "umsetzung", "automatis", "integration", "schnittstelle"])
+  ) {
+    return tier("sprint");
+  }
+  return tier(defaultTierId);
+}
+
+export function buildProjectOfferRecommendation(
+  bundle: ProjectBundle,
+  options: Partial<Pick<ProjectOfferRecommendation, "id" | "createdAt" | "status">> = {},
+): ProjectOfferRecommendation {
+  const template = matchConsultingTemplate(bundle.organization.industry);
+  const commercial = getConsultingCommercialModel(template);
+  const diagnosis = buildProjectDiagnosis(bundle);
+  const text = projectText(bundle);
+  const hasIntake = hasCustomerIntake(bundle);
+  const teamSize = firstNumberNear(text, [
+    "team",
+    "mitarbeiter",
+    "personen",
+    "users",
+    "nutzer",
+  ]);
+  const manualHours = firstNumberNear(text, [
+    "stunden",
+    "hours",
+    "zeitverlust",
+    "aufwand",
+    "pro woche",
+  ]);
+  const processVolume = firstNumberNear(text, [
+    "volumen",
+    "anzahl",
+    "fälle",
+    "faelle",
+    "tickets",
+    "anfragen",
+    "angebote",
+    "vorgänge",
+    "vorgaenge",
+  ]);
+  const toolCount = uniqueList(
+    bundle.intelligence.currentTools
+      .split(/[,;\n]/)
+      .map((item) => item.trim()),
+  ).length;
+
+  const complexityScore = clamp(
+    Math.round(
+      28 * commercial.complexityMultiplier +
+        (teamSize >= 50 ? 18 : teamSize >= 20 ? 10 : teamSize >= 8 ? 5 : 0) +
+        (manualHours >= 30 ? 18 : manualHours >= 10 ? 10 : manualHours >= 4 ? 5 : 0) +
+        (processVolume >= 200 ? 16 : processVolume >= 50 ? 9 : processVolume >= 10 ? 4 : 0) +
+        (toolCount >= 5 ? 10 : toolCount >= 3 ? 5 : 0) +
+        (hasAny(text, ["api", "schnittstelle", "integration", "erp", "crm"]) ? 10 : 0) +
+        (hasAny(text, ["dsgvo", "datenschutz", "patient", "mandant", "sensibel"]) ? 9 : 0) +
+        (hasAny(text, ["mehrere standorte", "schicht", "legacy", "fachsoftware"]) ? 8 : 0),
+    ),
+    20,
+    100,
+  );
+
+  const tier = chooseOfferTier(
+    commercial.tiers,
+    commercial.defaultTierId,
+    diagnosis.readinessScore,
+    complexityScore,
+    text,
+  );
+  const complexityFactor = clamp(0.85 + complexityScore / 100, 1, 1.85);
+  const readinessFactor = diagnosis.readinessScore < 55 ? 0.8 : 1;
+  const priceFactor = commercial.complexityMultiplier * complexityFactor * readinessFactor;
+  const priceMinCents = roundToFiftyEuros(tier.minPriceCents * priceFactor);
+  const priceMaxCents = roundToFiftyEuros(tier.maxPriceCents * priceFactor);
+  const recommendedPriceCents = clamp(
+    roundToFiftyEuros(tier.basePriceCents * priceFactor),
+    priceMinCents,
+    priceMaxCents,
+  );
+  const timelineFactor =
+    complexityScore >= 78 ? 1.45 : complexityScore >= 58 ? 1.25 : 1;
+  const missingInputDelay = diagnosis.missingInputs.length >= 4 ? 1 : 0;
+  const timelineWeeks = scaleRange(tier.timelineWeeks, timelineFactor);
+  timelineWeeks[1] += missingInputDelay;
+  const effortDays = scaleRange(tier.effortDays, timelineFactor);
+  const confidence = clamp(
+    Math.round(
+      diagnosis.readinessScore * 0.55 +
+        (hasIntake ? 25 : 0) +
+        (teamSize || manualHours || processVolume ? 10 : 0) -
+        diagnosis.missingInputs.length * 3,
+    ),
+    20,
+    95,
+  );
+  const confidenceLabel =
+    confidence >= 80 ? "hoch" : confidence >= 60 ? "mittel" : "niedrig";
+  const primaryOpportunity =
+    diagnosis.opportunities[0] ?? template.quickWins[0] ?? template.kickoffGoal;
+  const deliverables = uniqueList([
+    ...tier.deliverables,
+    ...diagnosis.recommendedMilestones.slice(0, 2),
+    "kundenfähige Zusammenfassung im Portal",
+  ]).slice(0, 7);
+  const assumptions = uniqueList([
+    hasIntake
+      ? "Der Kundenfragebogen wurde als Grundlage berücksichtigt."
+      : "Der Kundenfragebogen fehlt noch; Preis und Scope sind vorläufig.",
+    teamSize
+      ? `Team-/Nutzergröße wurde grob mit ${Math.round(teamSize)} berücksichtigt.`
+      : "Teamgröße muss für die finale Schätzung bestätigt werden.",
+    manualHours
+      ? `Manueller Aufwand wurde grob mit ${manualHours} Stunden berücksichtigt.`
+      : "Wöchentlicher manueller Aufwand sollte noch quantifiziert werden.",
+    processVolume
+      ? `Prozessvolumen wurde grob mit ${Math.round(processVolume)} Vorgängen berücksichtigt.`
+      : "Prozessvolumen sollte noch mit echten Zahlen belegt werden.",
+    ...commercial.pricingNotes.slice(0, 2),
+  ]);
+  const risks = uniqueList([
+    ...diagnosis.risks.slice(0, 4),
+    confidence < 60
+      ? "Schätzung hat niedrige Sicherheit, weil zentrale kaufmännische Informationen fehlen."
+      : "",
+  ]);
+  const nextQuestions = uniqueList([
+    ...diagnosis.missingInputs
+      .slice(0, 4)
+      .map((item) => `Bitte ${item} konkretisieren.`),
+    !manualHours ? "Wie viele Stunden pro Woche kostet der wichtigste manuelle Prozess?" : "",
+    !processVolume ? "Wie oft läuft dieser Prozess pro Woche oder Monat?" : "",
+    !teamSize ? "Wie viele Personen arbeiten mit dem Prozess oder Ergebnis?" : "",
+    "Welche Systeme müssen im ersten Schritt wirklich angebunden werden?",
+  ]).slice(0, 6);
+  const reasoning = uniqueList([
+    `Readiness ${diagnosis.readinessScore}/100 (${diagnosis.readinessLabel}).`,
+    `Komplexität ${complexityScore}/100 aus Branche, Tools, Volumen, Datenschutz und Integrationen.`,
+    `Empfohlenes Paket: ${tier.label}, weil ${tier.bestFor}`,
+    `Primärer Nutzenhebel: ${primaryOpportunity}`,
+  ]);
+  const timeline =
+    timelineWeeks[0] === timelineWeeks[1]
+      ? `${timelineWeeks[0]} Woche`
+      : `${timelineWeeks[0]}-${timelineWeeks[1]} Wochen`;
+  const now = new Date().toISOString();
+
+  return {
+    id: options.id ?? `offer_${bundle.project.id}_${now.slice(0, 10)}`,
+    projectId: bundle.project.id,
+    status: options.status ?? "draft",
+    source: "rules",
+    packageId: tier.id,
+    packageLabel: tier.label,
+    title: `${tier.label}: ${bundle.organization.name}`,
+    scope: [
+      `${tier.label} für ${bundle.organization.name}.`,
+      `Fokus: ${primaryOpportunity}`,
+      `ASDAR Phase: ${formatStage(bundle.project.asdarStage)}.`,
+    ].join("\n"),
+    outcomes: [
+      `Konkrete Empfehlung, welche Prozesse zuerst verbessert oder automatisiert werden.`,
+      `Priorisierte Roadmap mit Aufwand, Nutzen, Datenbedarf und Risiken.`,
+      `Nächster umsetzbarer Pilot oder klarer Entscheidungspunkt für ${bundle.organization.name}.`,
+    ].join("\n"),
+    deliverables,
+    assumptions,
+    risks,
+    priceMinCents,
+    priceMaxCents,
+    recommendedPriceCents,
+    currency: "EUR",
+    timeline,
+    timelineWeeks,
+    effortDays,
+    complexityScore,
+    confidence,
+    confidenceLabel,
+    reasoning,
+    nextQuestions,
+    createdAt: options.createdAt ?? now,
+    updatedAt: now,
+  };
+}
+
+export function parseOfferRecommendation(value: string) {
+  return parseJsonMarker<ProjectOfferRecommendation>(
+    value,
+    OFFER_RECOMMENDATION_MARKER,
+  );
+}
+
+export function latestSavedOfferRecommendation(
+  bundle: ProjectBundle,
+): ProjectOfferRecommendation | null {
+  for (const insight of bundle.aiInsights) {
+    if (!insight.title.startsWith("Offer Recommendation:")) continue;
+    const parsed = parseOfferRecommendation(insight.body);
+    if (parsed) return { ...parsed, source: "saved" };
+  }
+  return null;
+}
+
+export function latestOrBuildOfferRecommendation(bundle: ProjectBundle) {
+  return latestSavedOfferRecommendation(bundle) ?? buildProjectOfferRecommendation(bundle);
+}
+
+export function formatOfferRecommendationReport(
+  recommendation: ProjectOfferRecommendation,
+) {
+  return [
+    `${OFFER_RECOMMENDATION_MARKER}:${JSON.stringify(recommendation)}`,
+    "",
+    `Offer Recommendation: ${recommendation.title}`,
+    "",
+    `Status: ${recommendation.status}`,
+    `Paket: ${recommendation.packageLabel}`,
+    `Preisempfehlung: ${formatCurrency(recommendation.recommendedPriceCents, recommendation.currency)}`,
+    `Preisrange: ${formatCurrency(recommendation.priceMinCents, recommendation.currency)} - ${formatCurrency(recommendation.priceMaxCents, recommendation.currency)}`,
+    `Zeitrahmen: ${recommendation.timeline}`,
+    `Effort: ${recommendation.effortDays[0]}-${recommendation.effortDays[1]} Beratungstage`,
+    `Confidence: ${recommendation.confidence}/100 (${recommendation.confidenceLabel})`,
+    `Komplexität: ${recommendation.complexityScore}/100`,
+    "",
+    "Scope",
+    recommendation.scope,
+    "",
+    "Erwartete Ergebnisse",
+    recommendation.outcomes,
+    "",
+    "Deliverables",
+    ...recommendation.deliverables.map((item) => `- ${item}`),
+    "",
+    "Annahmen",
+    ...recommendation.assumptions.map((item) => `- ${item}`),
+    "",
+    "Risiken",
+    ...recommendation.risks.map((item) => `- ${item}`),
+    "",
+    "Warum diese Empfehlung",
+    ...recommendation.reasoning.map((item) => `- ${item}`),
+    "",
+    "Nächste Fragen",
+    ...recommendation.nextQuestions.map((item) => `- ${item}`),
+  ].join("\n");
 }
 
 function textFilled(value: string) {

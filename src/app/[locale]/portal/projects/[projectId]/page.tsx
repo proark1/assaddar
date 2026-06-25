@@ -2,7 +2,6 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import { redirect } from "next/navigation";
 import {
-  AlertTriangle,
   ArrowRight,
   CheckCircle2,
   Clock3,
@@ -45,7 +44,6 @@ import {
 } from "@/lib/portal/format";
 import {
   buildChangeRequests,
-  buildCustomerChecklist,
   buildDecisionCenter,
   buildFileRequests,
   buildFileVersionGroups,
@@ -75,6 +73,10 @@ const intakeAnswerAliases: Record<string, string[]> = {
   companyContext: ["Unternehmenskontext"],
   issues: ["Probleme und Engpaesse", "Probleme", "Engpaesse"],
   goals: ["Ziele"],
+  teamSize: ["Team und Nutzer", "Team", "Nutzer", "Teamgroesse"],
+  processVolume: ["Prozessvolumen", "Volumen", "Anfragen", "Vorgaenge"],
+  manualHours: ["Manueller Aufwand", "Zeitaufwand", "Zeitverlust", "Stunden"],
+  budgetTiming: ["Budget und Timing", "Budget", "Timing", "Deadline"],
   currentTools: ["Aktuelle Tools", "Tools", "Systeme"],
   dataSituation: ["Daten und Dokumente", "Daten", "Dokumente"],
   constraints: ["Rahmenbedingungen", "Einschraenkungen", "Constraints"],
@@ -292,7 +294,6 @@ export default async function CustomerProjectPage({
       !approvedFileIds.has(file.id),
   );
   const nextActions = buildCustomerNextActions(bundle);
-  const customerChecklist = buildCustomerChecklist(bundle);
   const kpiSnapshot = buildProjectKpiSnapshot(bundle);
   const decisions = buildDecisionCenter(bundle).filter(
     (decision) => decision.visibility === "customer",
@@ -415,99 +416,112 @@ export default async function CustomerProjectPage({
       )}
 
       <div className="space-y-6">
-        <PortalCard>
-          <div className="flex flex-wrap gap-2">
-            <Badge tone="copper">
-              {formatStage(bundle.project.asdarStage)}
-            </Badge>
-            <Badge
-              tone={
-                bundle.project.health === "red"
-                  ? "red"
-                  : bundle.project.health === "amber"
-                    ? "amber"
-                    : "green"
-              }
-            >
-              {formatStatus(bundle.project.status)}
-            </Badge>
-          </div>
-          <p className="mt-5 text-base leading-relaxed text-ink2">
-            {bundle.project.summary || "Die Projektbeschreibung folgt."}
-          </p>
-          <div className="mt-6 grid gap-4 lg:grid-cols-3">
-            <div className="rounded-lg border border-copper/25 bg-copper/10 p-4">
-              <div className="text-sm font-medium text-ink">
-                Nächster Schritt
+        <PortalCard className="border-copper/25 bg-copper/10">
+          <div className="grid gap-6 lg:grid-cols-[1.2fr_0.8fr]">
+            <div>
+              <div className="flex flex-wrap gap-2">
+                <Badge tone="copper">
+                  {formatStage(bundle.project.asdarStage)}
+                </Badge>
+                <Badge
+                  tone={
+                    bundle.project.health === "red"
+                      ? "red"
+                      : bundle.project.health === "amber"
+                        ? "amber"
+                        : "green"
+                  }
+                >
+                  {formatStatus(bundle.project.status)}
+                </Badge>
               </div>
+              <div className="mt-5 font-mono text-[10.5px] uppercase tracking-[0.14em] text-copper">
+                Heute zuerst
+              </div>
+              <h2 className="mt-2 text-xl font-medium text-ink">
+                {primaryAction?.title ?? "Projektstatus ansehen"}
+              </h2>
               <p className="mt-2 text-sm leading-relaxed text-ink2">
-                {bundle.project.nextStep ||
-                  "Der nächste Schritt wird vorbereitet."}
+                {primaryAction?.body ??
+                  (bundle.project.summary ||
+                    "Assad arbeitet am nächsten Projektschritt. Sie müssen gerade nichts vorbereiten.")}
               </p>
+              <Link
+                href={
+                  primaryAction
+                    ? stepHref(primaryAction.hrefView)
+                    : stepHref("overview")
+                }
+                className="mt-5 inline-flex items-center justify-center gap-2 rounded-lg bg-copper px-4 py-3 text-sm font-medium text-oncopper transition-colors hover:bg-copper-hi"
+              >
+                {primaryAction?.cta ?? "Verlauf öffnen"}
+                <ArrowRight className="h-4 w-4" />
+              </Link>
             </div>
-            {appointments[0] && (
-              <div className="rounded-lg border border-hairline bg-bg p-4">
-                <div className="flex items-center gap-2 text-sm font-medium text-ink">
-                  <Clock3 className="h-4 w-4 text-copper" />
-                  Nächster Termin
-                </div>
-                <div className="mt-2 text-sm font-medium text-ink">
-                  {appointments[0].title.replace(/^Termin:\s*/, "")}
-                </div>
-                <p className="mt-1 whitespace-pre-line text-[12px] leading-relaxed text-muted">
-                  {appointments[0].body}
+
+            <div className="grid gap-3">
+              <div className="rounded-lg border border-hairline bg-surface p-4">
+                <div className="text-sm font-medium text-ink">Nächster Schritt</div>
+                <p className="mt-2 text-sm leading-relaxed text-muted">
+                  {bundle.project.nextStep ||
+                    "Der nächste Schritt wird vorbereitet."}
                 </p>
               </div>
-            )}
-            {primaryAction && (
+              {appointments[0] ? (
+                <div className="rounded-lg border border-hairline bg-surface p-4">
+                  <div className="flex items-center gap-2 text-sm font-medium text-ink">
+                    <Clock3 className="h-4 w-4 text-copper" />
+                    Nächster Termin
+                  </div>
+                  <div className="mt-2 text-sm font-medium text-ink">
+                    {appointments[0].title.replace(/^Termin:\s*/, "")}
+                  </div>
+                  <p className="mt-1 line-clamp-3 whitespace-pre-line text-[12px] leading-relaxed text-muted">
+                    {appointments[0].body}
+                  </p>
+                </div>
+              ) : (
+                <Link
+                  href={`/${safe}/termin`}
+                  className="rounded-lg border border-hairline bg-surface p-4 transition-colors hover:border-copper"
+                >
+                  <div className="flex items-center gap-2 text-sm font-medium text-ink">
+                    <Clock3 className="h-4 w-4 text-copper" />
+                    Termin abstimmen
+                  </div>
+                  <p className="mt-2 text-[12px] leading-relaxed text-muted">
+                    Noch kein nächster Termin im Projekt hinterlegt.
+                  </p>
+                </Link>
+              )}
               <Link
-                href={stepHref(primaryAction.hrefView)}
-                className={`group rounded-lg border p-4 transition-colors hover:border-copper ${
-                  primaryAction.tone === "green"
-                    ? "border-success/25 bg-success/10"
-                    : primaryAction.tone === "red"
-                      ? "border-critical/30 bg-critical/10"
-                      : "border-copper/25 bg-copper/10"
-                }`}
+                href={stepHref("files")}
+                className="rounded-lg border border-hairline bg-surface p-4 transition-colors hover:border-copper"
               >
                 <div className="text-sm font-medium text-ink">
-                  Heute zuerst: {primaryAction.title}
+                  Dateien & Rechnungen
                 </div>
-                <p className="mt-2 text-sm leading-relaxed text-ink2">
-                  {primaryAction.body}
+                <p className="mt-2 text-[12px] leading-relaxed text-muted">
+                  {files.length} Dateien · {invoices.length} Rechnungen
                 </p>
-                <span className="mt-3 inline-flex items-center gap-1.5 text-sm font-medium text-copper">
-                  {primaryAction.cta}
-                  <ArrowRight className="h-4 w-4 transition-transform group-hover:translate-x-0.5" />
-                </span>
               </Link>
-            )}
+            </div>
           </div>
-          <div className="mt-4 rounded-lg border border-hairline bg-bg p-4">
-            <div className="flex flex-col gap-4 md:flex-row md:items-start md:justify-between">
-              <div>
-                <div className="text-sm font-medium text-ink">
-                  Was Assad gerade macht
-                </div>
-                <p className="mt-1 text-[12px] leading-relaxed text-muted">
-                  Sie sehen nur die Punkte, die für den Projektfortschritt
-                  relevant sind. Interne Notizen bleiben ausgeblendet.
-                </p>
-              </div>
-              <Link
-                href={stepHref("overview")}
-                className="inline-flex items-center gap-1.5 text-sm font-medium text-copper"
-              >
-                Verlauf ansehen
-                <ArrowRight className="h-3.5 w-3.5" />
-              </Link>
-            </div>
+
+          <details className="mt-5 rounded-lg border border-hairline bg-surface p-4">
+            <summary className="cursor-pointer text-sm font-medium text-copper">
+              Woran Assad gerade arbeitet
+            </summary>
+            <p className="mt-2 text-[12px] leading-relaxed text-muted">
+              Nur freigegebene Punkte werden angezeigt. Interne Notizen bleiben
+              privat.
+            </p>
             <div className="mt-4 grid gap-3 md:grid-cols-3">
               {assadWorkItems.length ? (
                 assadWorkItems.map((item) => (
                   <div
                     key={item.id}
-                    className="rounded-lg border border-hairline bg-surface p-3"
+                    className="rounded-lg border border-hairline bg-bg p-3"
                   >
                     <div className="text-sm font-medium text-ink">
                       {item.title}
@@ -518,7 +532,7 @@ export default async function CustomerProjectPage({
                   </div>
                 ))
               ) : (
-                <div className="rounded-lg border border-hairline bg-surface p-3 md:col-span-3">
+                <div className="rounded-lg border border-hairline bg-bg p-3 md:col-span-3">
                   <div className="text-sm font-medium text-ink">
                     Nächster Arbeitsschritt wird vorbereitet
                   </div>
@@ -529,151 +543,7 @@ export default async function CustomerProjectPage({
                 </div>
               )}
             </div>
-          </div>
-        </PortalCard>
-
-        <PortalCard>
-          <PortalSectionTitle
-            eyebrow="Einfacher Ablauf"
-            title="So läuft dieses Projekt"
-          >
-            Der Fahrplan zeigt die Projektlogik. Die Navigation darunter
-            bündelt den Alltag in Status, offene Punkte sowie Dateien und
-            Rechnungen.
-          </PortalSectionTitle>
-          <div className="mt-5 grid gap-3 md:grid-cols-4">
-            {customerChecklist.map((item, index) => (
-              <Link
-                key={item.id}
-                href={stepHref(item.hrefView)}
-                className={`rounded-lg border p-4 transition-colors hover:border-copper ${
-                  item.status === "done"
-                    ? "border-success/25 bg-success/10"
-                    : item.status === "current"
-                      ? "border-copper/30 bg-copper/10"
-                      : "border-hairline bg-bg"
-                }`}
-              >
-                <div className="flex items-center justify-between gap-3">
-                  <span className="font-mono text-[10.5px] uppercase tracking-[0.14em] text-copper">
-                    Schritt {index + 1}
-                  </span>
-                  {item.status === "done" && (
-                    <CheckCircle2 className="h-4 w-4 text-success" />
-                  )}
-                </div>
-                <h3 className="mt-3 text-sm font-medium text-ink">
-                  {item.title}
-                </h3>
-                <p className="mt-1 text-[12px] leading-relaxed text-muted">
-                  {item.body}
-                </p>
-              </Link>
-            ))}
-          </div>
-        </PortalCard>
-
-        <PortalCard>
-          <div className="grid gap-6 lg:grid-cols-[0.9fr_1.4fr]">
-            <div>
-              <PortalSectionTitle
-                eyebrow="Jetzt wichtig"
-                title="Ihre nächsten Schritte"
-              >
-                Das Portal zeigt zuerst, was von Ihnen gebraucht wird. Alles
-                andere bleibt in den Detailbereichen erreichbar.
-              </PortalSectionTitle>
-              <div className="mt-5 grid gap-3 text-sm sm:grid-cols-3 lg:grid-cols-1">
-                <div className="rounded-lg border border-hairline bg-bg p-3">
-                  <div className="font-medium text-ink">
-                    {formatStage(bundle.project.asdarStage)}
-                  </div>
-                  <div className="mt-1 text-[12px] text-muted">ASDAR Phase</div>
-                </div>
-                <div className="rounded-lg border border-hairline bg-bg p-3">
-                  <div className="font-medium text-ink">
-                    {pendingCustomerTasks.length}
-                  </div>
-                  <div className="mt-1 text-[12px] text-muted">
-                    offene Kundenaufgaben
-                  </div>
-                </div>
-                <div className="rounded-lg border border-hairline bg-bg p-3">
-                  <div className="font-medium text-ink">
-                    {pendingFileApprovals.length + pendingMilestoneApprovals.length}
-                  </div>
-                  <div className="mt-1 text-[12px] text-muted">
-                    offene Freigaben
-                  </div>
-                </div>
-              </div>
-            </div>
-
-            <div className="grid gap-3">
-              {nextActions.slice(0, 1).map((action) => (
-                <Link
-                  key={action.id}
-                  href={stepHref(action.hrefView)}
-                  className={`group rounded-lg border p-4 transition-colors hover:border-copper ${
-                    action.tone === "red"
-                      ? "border-critical/30 bg-critical/10"
-                      : action.tone === "green"
-                        ? "border-success/25 bg-success/10"
-                        : "border-copper/25 bg-copper/10"
-                  }`}
-                >
-                  <div className="flex items-start justify-between gap-4">
-                    <div className="flex gap-3">
-                      {action.tone === "green" ? (
-                        <CheckCircle2 className="mt-0.5 h-4 w-4 shrink-0 text-success" />
-                      ) : (
-                        <AlertTriangle
-                          className={`mt-0.5 h-4 w-4 shrink-0 ${
-                            action.tone === "red" ? "text-critical" : "text-copper"
-                          }`}
-                        />
-                      )}
-                      <div>
-                        <h3 className="text-sm font-medium text-ink">
-                          {action.title}
-                        </h3>
-                        <p className="mt-1 text-sm leading-relaxed text-ink2">
-                          {action.body}
-                        </p>
-                      </div>
-                    </div>
-                    <span className="inline-flex shrink-0 items-center gap-1.5 text-[12px] font-medium text-copper">
-                      {action.cta}
-                      <ArrowRight className="h-3.5 w-3.5 transition-transform group-hover:translate-x-0.5" />
-                    </span>
-                  </div>
-                </Link>
-              ))}
-              {nextActions.length > 1 && (
-                <details className="rounded-lg border border-hairline bg-bg p-4">
-                  <summary className="cursor-pointer text-sm font-medium text-copper">
-                    Weitere Hinweise anzeigen
-                  </summary>
-                  <div className="mt-3 space-y-3">
-                    {nextActions.slice(1, 4).map((action) => (
-                      <Link
-                        key={action.id}
-                        href={stepHref(action.hrefView)}
-                        className="block rounded-lg border border-hairline bg-surface p-3 transition-colors hover:border-copper"
-                      >
-                        <div className="text-sm font-medium text-ink">
-                          {action.title}
-                        </div>
-                        <p className="mt-1 text-[12px] leading-relaxed text-muted">
-                          {action.body}
-                        </p>
-                      </Link>
-                    ))}
-                  </div>
-                </details>
-              )}
-            </div>
-          </div>
+          </details>
         </PortalCard>
 
         <nav
@@ -984,43 +854,19 @@ export default async function CustomerProjectPage({
               </div>
             </PortalCard>
 
-            <PortalCard>
-              <PortalSectionTitle eyebrow="Updates" title="Projektfortschritt">
-                Kurze Statusmeldungen, die Assad für Sie freigegeben hat.
-              </PortalSectionTitle>
-              <div className="mt-5 space-y-4">
-                {updates.length === 0 ? (
-                  <EmptyState title="Noch keine Updates">
-                    Sobald ein Update veröffentlicht wird, erscheint es hier.
-                  </EmptyState>
-                ) : (
-                  updates.map((update) => (
-                    <article
-                      key={update.id}
-                      className="border-l-2 border-copper pl-4"
-                    >
-                      <div className="flex flex-wrap items-center gap-2">
-                        <Badge>{formatStage(update.asdarStage)}</Badge>
-                        <span className="text-[12px] text-muted">
-                          {formatDate(update.createdAt)}
-                        </span>
-                      </div>
-                      <h3 className="mt-2 font-medium text-ink">
-                        {update.title}
-                      </h3>
-                      <p className="mt-2 whitespace-pre-line text-sm leading-relaxed text-ink2">
-                        {update.body}
-                      </p>
-                    </article>
-                  ))
-                )}
-              </div>
-            </PortalCard>
           </div>
         )}
 
         {activeView === "actions" && (
-          <div className="grid gap-6 md:grid-cols-2">
+          <details className="rounded-lg border border-hairline bg-surface p-4 shadow-card">
+            <summary className="cursor-pointer text-sm font-medium text-copper">
+              Weitere Aufgaben, Freigaben und Nachrichten anzeigen
+            </summary>
+            <p className="mt-2 text-[12px] leading-relaxed text-muted">
+              Diese Details brauchen Sie nur, wenn der obere nächste Schritt
+              nicht ausreicht oder Sie bewusst tiefer ins Projekt gehen möchten.
+            </p>
+            <div className="mt-5 grid gap-6 md:grid-cols-2">
             <PortalCard className="md:col-span-2">
               <PortalSectionTitle
                 eyebrow="Entscheidungen"
@@ -1248,7 +1094,6 @@ export default async function CustomerProjectPage({
                         </form>
                         <form
                           action={customerTaskFileAction}
-                          encType="multipart/form-data"
                           className="space-y-2 border-t border-hairline pt-3"
                         >
                           <input type="hidden" name="locale" value={safe} />
@@ -1498,59 +1343,68 @@ export default async function CustomerProjectPage({
                 )}
               </div>
             </PortalCard>
-          </div>
+            </div>
+          </details>
         )}
 
         {activeView === "overview" && (
           <PortalCard>
-            <PortalSectionTitle eyebrow="Nachrichten" title="Kommentare" />
-            <form action={addProjectCommentAction} className="mt-5 space-y-3">
-              <input type="hidden" name="locale" value={safe} />
-              <input type="hidden" name="projectId" value={projectId} />
-              <input name="topic" placeholder="Thema" className={fieldClass} />
-              <textarea
-                name="message"
-                required
-                placeholder="Ihre Nachricht an Assad"
-                className={textareaClass}
-              />
-              <button
-                type="submit"
-                className="inline-flex items-center gap-2 rounded-lg bg-copper px-4 py-2.5 text-sm font-medium text-oncopper transition-colors hover:bg-copper-hi"
-              >
-                <MessageCircle className="h-4 w-4" />
-                Kommentar senden
-              </button>
-            </form>
-            <div className="mt-5 space-y-3">
-              {comments.map((comment) => {
-                const [author, ...messageParts] = comment.body.split("\n\n");
-                return (
-                  <article
-                    key={comment.id}
-                    className="rounded-lg border border-hairline bg-bg p-3"
-                  >
-                    <div className="flex flex-wrap items-center gap-2">
-                      <Badge>
-                        {comment.title.replace(/^Kommentar:\s*/, "")}
-                      </Badge>
-                      <span className="text-[12px] text-muted">
-                        {formatDate(comment.createdAt)}
-                      </span>
-                    </div>
-                    <div className="mt-2 text-sm font-medium text-ink">
-                      {author}
-                    </div>
-                    <p className="mt-1 whitespace-pre-line text-sm leading-relaxed text-ink2">
-                      {messageParts.join("\n\n")}
-                    </p>
-                  </article>
-                );
-              })}
-              {comments.length === 0 && (
-                <p className="text-sm text-muted">Noch keine Kommentare.</p>
-              )}
-            </div>
+            <details>
+              <summary className="cursor-pointer text-sm font-medium text-copper">
+                Nachricht an Assad senden oder Kommentare ansehen
+              </summary>
+              <p className="mt-2 text-[12px] leading-relaxed text-muted">
+                Öffnen Sie diesen Bereich nur, wenn Sie eine Frage haben oder
+                alte Kommentare nachlesen möchten.
+              </p>
+              <form action={addProjectCommentAction} className="mt-5 space-y-3">
+                <input type="hidden" name="locale" value={safe} />
+                <input type="hidden" name="projectId" value={projectId} />
+                <input name="topic" placeholder="Thema" className={fieldClass} />
+                <textarea
+                  name="message"
+                  required
+                  placeholder="Ihre Nachricht an Assad"
+                  className={textareaClass}
+                />
+                <button
+                  type="submit"
+                  className="inline-flex items-center gap-2 rounded-lg bg-copper px-4 py-2.5 text-sm font-medium text-oncopper transition-colors hover:bg-copper-hi"
+                >
+                  <MessageCircle className="h-4 w-4" />
+                  Kommentar senden
+                </button>
+              </form>
+              <div className="mt-5 space-y-3">
+                {comments.map((comment) => {
+                  const [author, ...messageParts] = comment.body.split("\n\n");
+                  return (
+                    <article
+                      key={comment.id}
+                      className="rounded-lg border border-hairline bg-bg p-3"
+                    >
+                      <div className="flex flex-wrap items-center gap-2">
+                        <Badge>
+                          {comment.title.replace(/^Kommentar:\s*/, "")}
+                        </Badge>
+                        <span className="text-[12px] text-muted">
+                          {formatDate(comment.createdAt)}
+                        </span>
+                      </div>
+                      <div className="mt-2 text-sm font-medium text-ink">
+                        {author}
+                      </div>
+                      <p className="mt-1 whitespace-pre-line text-sm leading-relaxed text-ink2">
+                        {messageParts.join("\n\n")}
+                      </p>
+                    </article>
+                  );
+                })}
+                {comments.length === 0 && (
+                  <p className="text-sm text-muted">Noch keine Kommentare.</p>
+                )}
+              </div>
+            </details>
           </PortalCard>
         )}
 

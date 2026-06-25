@@ -41,6 +41,7 @@ import {
   createFileRequestAction,
   generateDiagnosisPackAction,
   generateFinalReportAction,
+  generateOfferRecommendationAction,
   generateProposalAction,
   generateProjectBriefAction,
   inviteCustomerAction,
@@ -102,6 +103,7 @@ import {
   buildProjectCopilotPanel,
   buildProjectHealthScore,
   buildProjectKpiSnapshot,
+  latestOrBuildOfferRecommendation,
   buildProjectTimeline,
   buildWorkflowSnapshots,
 } from "@/lib/portal/operations";
@@ -140,6 +142,13 @@ function adminProjectView(value?: string): AdminProjectView | null {
     value === "access"
     ? value
     : null;
+}
+
+function amountInputValue(cents: number) {
+  return (cents / 100).toLocaleString("de-DE", {
+    minimumFractionDigits: 2,
+    maximumFractionDigits: 2,
+  });
 }
 
 function HiddenProjectFields({
@@ -201,6 +210,7 @@ export default async function AdminProjectPage({
   const workflowSnapshots = buildWorkflowSnapshots(bundle);
   const clientAnalytics = buildClientAnalytics(bundle);
   const projectCopilot = buildProjectCopilotPanel(bundle);
+  const offerRecommendation = latestOrBuildOfferRecommendation(bundle);
   const similar = findSimilarProjectBundles(bundles, bundle);
   const matchedTemplate = matchConsultingTemplate(bundle.organization.industry);
   const template =
@@ -2779,7 +2789,6 @@ export default async function AdminProjectPage({
             </form>
             <form
               action={addFileAction}
-              encType="multipart/form-data"
               className="mt-5 space-y-3"
             >
               <HiddenProjectFields locale={safe} projectId={projectId} />
@@ -3197,35 +3206,131 @@ export default async function AdminProjectPage({
                 ))}
               </div>
             )}
+            <div className="mt-5 rounded-lg border border-copper/25 bg-copper/10 p-4">
+              <div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
+                <div>
+                  <div className="flex items-center gap-2 text-sm font-medium text-ink">
+                    <CreditCard className="h-4 w-4 text-copper" />
+                    Offer Studio
+                  </div>
+                  <p className="mt-2 text-sm leading-relaxed text-ink2">
+                    Empfehlung aus Intake, Template, Readiness,
+                    Komplexitätsfaktoren und Projektstand. Bitte prüfen, dann
+                    als Proposal erzeugen.
+                  </p>
+                </div>
+                <form action={generateOfferRecommendationAction}>
+                  <HiddenProjectFields locale={safe} projectId={projectId} />
+                  <button
+                    type="submit"
+                    className="inline-flex items-center justify-center gap-2 rounded-lg border border-hairline bg-surface px-3 py-2 text-sm font-medium text-ink transition-colors hover:border-copper hover:text-copper"
+                  >
+                    <WandSparkles className="h-4 w-4" />
+                    Neu berechnen
+                  </button>
+                </form>
+              </div>
+              <div className="mt-4 grid gap-3 md:grid-cols-4">
+                <div className="rounded-lg border border-hairline bg-surface p-3">
+                  <div className="text-[11px] text-muted">Paket</div>
+                  <div className="mt-1 text-sm font-medium text-ink">
+                    {offerRecommendation.packageLabel}
+                  </div>
+                </div>
+                <div className="rounded-lg border border-hairline bg-surface p-3">
+                  <div className="text-[11px] text-muted">Preis</div>
+                  <div className="mt-1 text-sm font-medium text-ink">
+                    {formatCurrency(offerRecommendation.recommendedPriceCents)}
+                  </div>
+                  <div className="mt-1 text-[11px] text-muted">
+                    {formatCurrency(offerRecommendation.priceMinCents)} -{" "}
+                    {formatCurrency(offerRecommendation.priceMaxCents)}
+                  </div>
+                </div>
+                <div className="rounded-lg border border-hairline bg-surface p-3">
+                  <div className="text-[11px] text-muted">Zeitrahmen</div>
+                  <div className="mt-1 text-sm font-medium text-ink">
+                    {offerRecommendation.timeline}
+                  </div>
+                  <div className="mt-1 text-[11px] text-muted">
+                    {offerRecommendation.effortDays[0]}-
+                    {offerRecommendation.effortDays[1]} Beratungstage
+                  </div>
+                </div>
+                <div className="rounded-lg border border-hairline bg-surface p-3">
+                  <div className="text-[11px] text-muted">Sicherheit</div>
+                  <div className="mt-1 text-sm font-medium text-ink">
+                    {offerRecommendation.confidence}/100
+                  </div>
+                  <div className="mt-1 text-[11px] text-muted">
+                    {offerRecommendation.confidenceLabel} · Komplexität{" "}
+                    {offerRecommendation.complexityScore}/100
+                  </div>
+                </div>
+              </div>
+              <div className="mt-4 grid gap-3 lg:grid-cols-3">
+                <div className="rounded-lg border border-hairline bg-surface p-3">
+                  <div className="text-sm font-medium text-ink">Deliverables</div>
+                  <ul className="mt-2 space-y-1 text-[12px] leading-relaxed text-muted">
+                    {offerRecommendation.deliverables.slice(0, 5).map((item) => (
+                      <li key={item}>- {item}</li>
+                    ))}
+                  </ul>
+                </div>
+                <div className="rounded-lg border border-hairline bg-surface p-3">
+                  <div className="text-sm font-medium text-ink">Annahmen</div>
+                  <ul className="mt-2 space-y-1 text-[12px] leading-relaxed text-muted">
+                    {offerRecommendation.assumptions.slice(0, 5).map((item) => (
+                      <li key={item}>- {item}</li>
+                    ))}
+                  </ul>
+                </div>
+                <div className="rounded-lg border border-hairline bg-surface p-3">
+                  <div className="text-sm font-medium text-ink">Noch klären</div>
+                  <ul className="mt-2 space-y-1 text-[12px] leading-relaxed text-muted">
+                    {offerRecommendation.nextQuestions.slice(0, 5).map((item) => (
+                      <li key={item}>- {item}</li>
+                    ))}
+                  </ul>
+                </div>
+              </div>
+            </div>
+
             <form action={generateProposalAction} className="mt-5 space-y-3">
-              <div className="rounded-lg border border-copper/25 bg-copper/10 p-3">
+              <div className="rounded-lg border border-hairline bg-bg p-3">
                 <div className="text-sm font-medium text-ink">
-                  Proposal Generator
+                  Proposal aus Empfehlung erstellen
                 </div>
                 <p className="mt-1 text-[12px] leading-relaxed text-ink2">
-                  Erstellt ein kundensichtbares Angebot als Datei und optional
-                  eine Rechnung.
+                  Felder sind vorgefüllt. Assad kann Scope, Ergebnis,
+                  Zeitrahmen und Preis vor dem Senden anpassen.
                 </p>
               </div>
               <HiddenProjectFields locale={safe} projectId={projectId} />
               <textarea
                 name="scope"
                 placeholder="Leistungsumfang"
+                defaultValue={offerRecommendation.scope}
                 className={textareaClass}
               />
               <textarea
                 name="outcomes"
                 placeholder="Ergebnisse / Deliverables"
+                defaultValue={offerRecommendation.outcomes}
                 className={textareaClass}
               />
               <input
                 name="timeline"
                 placeholder="Zeitrahmen"
+                defaultValue={offerRecommendation.timeline}
                 className={fieldClass}
               />
               <input
                 name="amount"
                 placeholder="2900,00"
+                defaultValue={amountInputValue(
+                  offerRecommendation.recommendedPriceCents,
+                )}
                 className={fieldClass}
               />
               <label className="flex items-center gap-2 text-sm text-ink2">

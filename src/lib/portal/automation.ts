@@ -79,6 +79,34 @@ export function buildIntakeQuestions(bundle: ProjectBundle): IntakeQuestion[] {
       placeholder: "Zeit sparen, schneller reagieren, bessere Daten, mehr Automatisierung...",
     },
     {
+      id: "teamSize",
+      label: "Team und Nutzer",
+      prompt:
+        "Wie viele Personen arbeiten mit dem Prozess oder wären von einer Lösung betroffen?",
+      placeholder: "z.B. 5 Mitarbeitende im Backoffice, 12 Nutzer im Vertrieb...",
+    },
+    {
+      id: "processVolume",
+      label: "Prozessvolumen",
+      prompt:
+        "Wie oft passiert der wichtigste Prozess pro Woche oder Monat?",
+      placeholder: "z.B. 40 Anfragen pro Woche, 25 Angebote pro Monat...",
+    },
+    {
+      id: "manualHours",
+      label: "Manueller Aufwand",
+      prompt:
+        "Wie viel Zeit kostet der Prozess aktuell ungefähr pro Woche?",
+      placeholder: "z.B. 8 Stunden pro Woche, 30 Minuten pro Vorgang...",
+    },
+    {
+      id: "budgetTiming",
+      label: "Budget und Timing",
+      prompt:
+        "Gibt es einen Budgetrahmen, eine gewünschte Deadline oder interne Freigabewege?",
+      placeholder: "Budgetrahmen, gewünschter Start, Deadline, Entscheider...",
+    },
+    {
       id: "currentTools",
       label: "Aktuelle Tools",
       prompt:

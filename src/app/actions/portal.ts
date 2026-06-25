@@ -34,8 +34,11 @@ import {
 import {
   buildChangeRequests,
   buildDecisionCenter,
+  buildProjectOfferRecommendation,
   buildProjectDiagnosis,
+  formatOfferRecommendationReport,
   formatDiagnosisReport,
+  latestOrBuildOfferRecommendation,
   shouldSendUserNotification,
   type NotificationPreferenceKey,
   USER_NOTIFICATION_PREFS_MARKER,
@@ -1053,6 +1056,10 @@ export async function submitCustomerIntakeAction(formData: FormData) {
     ["Unternehmenskontext", text(formData, "companyContext")],
     ["Probleme und Engpässe", text(formData, "issues")],
     ["Ziele", text(formData, "goals")],
+    ["Team und Nutzer", text(formData, "teamSize")],
+    ["Prozessvolumen", text(formData, "processVolume")],
+    ["Manueller Aufwand", text(formData, "manualHours")],
+    ["Budget und Timing", text(formData, "budgetTiming")],
     ["Aktuelle Tools", text(formData, "currentTools")],
     ["Daten und Dokumente", text(formData, "dataSituation")],
     ["Rahmenbedingungen", text(formData, "constraints")],
@@ -1113,7 +1120,11 @@ export async function submitCustomerIntakeAction(formData: FormData) {
         text(formData, "dataSituation"),
       ),
       constraints: appendNote(
-        bundle.intelligence.constraints,
+        appendNote(
+          bundle.intelligence.constraints,
+          "Kundeninput: Budget und Timing",
+          text(formData, "budgetTiming"),
+        ),
         "Kundeninput: Rahmenbedingungen",
         text(formData, "constraints"),
       ),
@@ -1142,11 +1153,23 @@ export async function submitCustomerIntakeAction(formData: FormData) {
 
     const updatedBundle = getProjectBundle(store, projectId);
     if (updatedBundle) {
+      const offerRecommendation = buildProjectOfferRecommendation(updatedBundle, {
+        id: id("offer"),
+        createdAt: now,
+      });
       store.aiInsights.push({
         id: id("insight"),
         projectId,
         title: `Intake Recommendations: ${now.slice(0, 10)}`,
         body: buildConsultantBrief(updatedBundle),
+        kind: "guidance",
+        createdAt: now,
+      });
+      store.aiInsights.push({
+        id: id("insight"),
+        projectId,
+        title: `Offer Recommendation: ${offerRecommendation.packageLabel}`,
+        body: formatOfferRecommendationReport(offerRecommendation),
         kind: "guidance",
         createdAt: now,
       });
@@ -1756,6 +1779,43 @@ export async function generateDiagnosisPackAction(formData: FormData) {
 
   revalidateProjectViews(locale, projectId);
   redirect(`${adminProjectPath(locale, projectId)}?saved=diagnosis`);
+}
+
+export async function generateOfferRecommendationAction(formData: FormData) {
+  const locale = safeLocale(formData.get("locale"));
+  const user = await requireAdmin(locale);
+  const projectId = text(formData, "projectId");
+  const sourceStore = await readStore();
+  const bundle = getProjectBundle(sourceStore, projectId);
+  if (!bundle) redirect(`/${locale}/portal/admin`);
+
+  const now = new Date().toISOString();
+  const recommendation = buildProjectOfferRecommendation(bundle, {
+    id: id("offer"),
+    createdAt: now,
+  });
+
+  await mutateStore((store) => {
+    if (!getProjectBundle(store, projectId)) return;
+    store.aiInsights.push({
+      id: id("insight"),
+      projectId,
+      title: `Offer Recommendation: ${recommendation.packageLabel}`,
+      body: formatOfferRecommendationReport(recommendation),
+      kind: "guidance",
+      createdAt: now,
+    });
+    addAuditUpdate({
+      store,
+      projectId,
+      userId: user.id,
+      title: "Offer Recommendation generiert",
+      body: `${recommendation.packageLabel}: ${recommendation.timeline}, ${recommendation.confidence}/100 Confidence, ${recommendation.recommendedPriceCents} Cent.`,
+    });
+  });
+
+  revalidatePath(adminProjectPath(locale, projectId));
+  redirect(`${adminProjectPath(locale, projectId)}?saved=offer`);
 }
 
 export async function addUpdateAction(formData: FormData) {
@@ -3112,6 +3172,10 @@ export async function generateProposalAction(formData: FormData) {
   const sourceStore = await readStore();
   const bundle = getProjectBundle(sourceStore, projectId);
   if (!bundle) redirect(`/${locale}/portal/admin`);
+  const recommendation = latestOrBuildOfferRecommendation(bundle);
+  const finalScope = scope || recommendation.scope;
+  const finalOutcomes = outcomes || recommendation.outcomes;
+  const finalTimeline = timeline || recommendation.timeline;
 
   const now = new Date();
   const proposalId = id("proposal");
@@ -3119,13 +3183,13 @@ export async function generateProposalAction(formData: FormData) {
     .getTime()
     .toString()
     .slice(-5)}`;
-  const amountCents = cents(amount);
+  const amountCents = amount ? cents(amount) : recommendation.recommendedPriceCents;
   const buffer = createProposalPdf({
     bundle,
     proposalNumber,
-    scope,
-    outcomes,
-    timeline,
+    scope: finalScope,
+    outcomes: finalOutcomes,
+    timeline: finalTimeline,
     amountCents,
   });
   const storagePath = await savePortalFile({
@@ -3146,6 +3210,7 @@ export async function generateProposalAction(formData: FormData) {
       description: [
         "Kundenangebot als PDF. Bitte prüfen und im Portal freigeben.",
         amountCents > 0 ? `Betrag: ${amountCents} Cent` : "",
+        `Empfohlenes Paket: ${recommendation.packageLabel}`,
         `Proposal-ID: ${proposalNumber}`,
       ]
         .filter(Boolean)
@@ -3176,7 +3241,7 @@ export async function generateProposalAction(formData: FormData) {
         id: id("invoice"),
         projectId,
         number: proposalNumber.replace("AD-P", "AD"),
-        description: scope || "ASDAR Consulting",
+        description: finalScope || "ASDAR Consulting",
         amountCents,
         currency: "EUR",
         status: "sent",
