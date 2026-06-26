@@ -116,6 +116,9 @@ export function ContactForm({
       {state.status === "invalid" && (
         <p className="text-[13px] text-critical">{t.validation}</p>
       )}
+      {state.status === "rate" && (
+        <p className="text-[13px] text-critical">{t.rateLimit}</p>
+      )}
       {(state.status === "noconfig" || state.status === "error") && (
         <p className="text-[13px] text-ink2">
           {t.errorTitle} — {t.fallback}{" "}

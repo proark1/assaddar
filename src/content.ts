@@ -8,7 +8,7 @@ export function isLocale(value: string): value is Locale {
 export const SITE_URL = "https://assad-dar.de";
 
 // Cal.com booking link, e.g. "assaddar/erstgespraech". Empty = booking button hidden.
-export const CAL_LINK = "";
+export const CAL_LINK = process.env.NEXT_PUBLIC_CAL_LINK ?? "";
 
 const de = {
   meta: {
@@ -161,7 +161,7 @@ const de = {
     ofLabel: "von 100",
     hint: "0 = trifft nicht zu · 20 = voll erfüllt",
     cta: "Ergebnis im Erstgespräch besprechen",
-    ctaHref: "#kontakt",
+    ctaHref: "#readiness-check",
   },
   examples: {
     kicker: "KI in der Praxis",
@@ -279,6 +279,7 @@ const de = {
     heading: "Vier Wege, mit der ASDAR Method zu starten.",
     sub: "Alle Angebote basieren auf der ASDAR Method — einem klaren Prozess zur Analyse, Strukturierung, Digitalisierung, Automatisierung und Umsetzung.",
     methodLabel: "Methodik",
+    ctaHref: "/de/termin",
     note: "Vom schnellen Einstieg bis zur laufenden Begleitung.",
     items: [
       {
@@ -549,7 +550,7 @@ const de = {
   termin: {
     title: "Erstgespräch buchen",
     intro:
-      "Schreiben Sie mir kurz, worum es geht — oder buchen Sie direkt einen Termin. 30 Minuten, keine Slides, kein Druck, auf Deutsch oder Englisch.",
+      "Schreiben Sie mir kurz, worum es geht. Danach klären wir in 30 Minuten den sinnvollsten nächsten Schritt — keine Slides, kein Druck, auf Deutsch oder Englisch.",
     formTitle: "Nachricht senden",
     name: "Name",
     email: "E-Mail",
@@ -566,6 +567,8 @@ const de = {
     fallback: "bitte schreiben Sie mir direkt an",
     validation:
       "Bitte füllen Sie Name, E-Mail und Nachricht aus und bestätigen Sie den Datenschutz.",
+    rateLimit:
+      "Zu viele Anfragen in kurzer Zeit. Bitte versuchen Sie es später erneut oder schreiben Sie direkt per E-Mail.",
     directTitle: "Lieber direkt?",
     directNote: "Per E-Mail oder Telefon erreichen Sie mich am schnellsten.",
     phone: "+49 173 8665472",
@@ -600,7 +603,7 @@ const en: Dict = {
       { label: "ASDAR Method", href: "/en/asdar-method" },
       { label: "Services", href: "/en/angebote" },
       { label: "Industries", href: "/en/branchen" },
-      { label: "Blog", href: "/de/blog" },
+      { label: "Blog (DE)", href: "/de/blog" },
       { label: "About", href: "/en/ueber-mich" },
       { label: "Products", href: "/en/meine-produkte" },
     ],
@@ -736,7 +739,7 @@ const en: Dict = {
     ofLabel: "of 100",
     hint: "0 = not at all · 20 = fully in place",
     cta: "Discuss your result in a call",
-    ctaHref: "#kontakt",
+    ctaHref: "#readiness-check",
   },
   examples: {
     kicker: "AI in practice",
@@ -854,6 +857,7 @@ const en: Dict = {
     heading: "Four ways to start with the ASDAR Method.",
     sub: "Every offer is built on the ASDAR Method — a clear process to analyze, structure, digitize, automate, and execute.",
     methodLabel: "Method",
+    ctaHref: "/en/termin",
     note: "From a fast start to ongoing guidance.",
     items: [
       {
@@ -1120,7 +1124,7 @@ const en: Dict = {
   termin: {
     title: "Book a call",
     intro:
-      "Tell me briefly what it's about — or book a slot directly. 30 minutes, no slides, no pressure, in German or English.",
+      "Tell me briefly what it's about. Then we clarify the most useful next step in 30 minutes — no slides, no pressure, in German or English.",
     formTitle: "Send a message",
     name: "Name",
     email: "E-mail",
@@ -1137,6 +1141,8 @@ const en: Dict = {
     fallback: "please write to me directly at",
     validation:
       "Please fill in name, e-mail and message, and confirm the privacy consent.",
+    rateLimit:
+      "Too many requests in a short time. Please try again later or write directly by e-mail.",
     directTitle: "Prefer direct?",
     directNote: "E-mail or phone is the fastest way to reach me.",
     phone: "+49 173 8665472",

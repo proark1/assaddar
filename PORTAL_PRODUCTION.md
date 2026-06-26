@@ -15,6 +15,12 @@ APP_URL=https://assad-dar.de
 PORTAL_DATA_BACKEND=postgres
 DATABASE_URL=
 RESEND_API_KEY=
+CONTACT_FROM_EMAIL="ASSADDAR Website <hello@assad-dar.de>"
+PORTAL_FILE_STORAGE=supabase
+SUPABASE_URL=
+SUPABASE_SERVICE_ROLE_KEY=
+SUPABASE_STORAGE_BUCKET=portal-files
+CRON_SECRET=
 ```
 
 Generate `AUTH_SECRET` with:
@@ -22,6 +28,15 @@ Generate `AUTH_SECRET` with:
 ```bash
 openssl rand -base64 48
 ```
+
+Validate the environment before launch:
+
+```bash
+pnpm check:production
+```
+
+At runtime, production portal routes fail closed if the core portal
+configuration is incomplete instead of falling back to local JSON data.
 
 ## Database
 
@@ -36,13 +51,6 @@ The current app keeps the local demo backend as a fallback. Once
 `PORTAL_DATA_BACKEND=postgres` is set, the existing portal store API reads and
 writes through Postgres instead.
 
-## Still To Connect
-
-The database foundation is ready. Remaining production integrations are:
-
-- Supabase Storage/S3 file storage
-- audit logging and backup policy
-
 ## Email Verification And Password Reset
 
 Set:
@@ -50,6 +58,7 @@ Set:
 ```env
 AUTH_REQUIRE_EMAIL_VERIFICATION=true
 RESEND_API_KEY=
+CONTACT_FROM_EMAIL="ASSADDAR Portal <portal@assad-dar.de>"
 ```
 
 New customer registrations receive an email verification token. Password reset
@@ -88,6 +97,27 @@ https://assad-dar.de/api/stripe/webhook
 ```
 
 The webhook marks invoices as paid on `checkout.session.completed`.
+
+## Audit And Backups
+
+The portal records customer-visible and internal project events in
+`portal_project_updates`; internal entries are used as the operational audit
+trail for payments, automation, leads, and admin actions that publish project
+state. Keep internal updates private and avoid deleting them during normal
+project cleanup.
+
+Before using the portal with real customer data, enable:
+
+- Supabase automated Postgres backups with point-in-time recovery.
+- Supabase Storage object backups or replication for the private
+  `portal-files` bucket.
+- Stripe webhook event retention in Stripe for payment reconciliation.
+- A monthly restore drill: restore a recent database backup into a staging
+  project and verify one customer project, file metadata, and invoice status.
+
+Keep `CRON_SECRET` configured for reminder endpoints and rotate
+`AUTH_SECRET`, `SUPABASE_SERVICE_ROLE_KEY`, and provider API keys after any
+suspected exposure.
 
 ## External AI Providers
 

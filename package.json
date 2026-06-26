@@ -5,6 +5,10 @@
   "scripts": {
     "dev": "next dev",
     "build": "next build",
+    "typecheck": "tsc --noEmit",
+    "check:links": "node scripts/check-internal-links.mjs",
+    "check:production": "node scripts/portal-production-check.mjs",
+    "check": "pnpm typecheck && pnpm check:links && pnpm build && pnpm test:portal",
     "start": "next start",
     "test:portal": "node scripts/portal-smoke.mjs"
   },

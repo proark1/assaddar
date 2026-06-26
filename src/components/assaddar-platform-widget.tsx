@@ -12,6 +12,10 @@ const API_URL =
 const ASSISTANT_ID =
   process.env.NEXT_PUBLIC_ASSADDAR_ASSISTANT_ID ??
   "asst_5965790b88cc480b836f5eca";
+const WIDGET_ENABLED_ENV = process.env.NEXT_PUBLIC_ASSADDAR_WIDGET_ENABLED;
+const WIDGET_ENABLED =
+  WIDGET_ENABLED_ENV === "true" ||
+  (WIDGET_ENABLED_ENV !== "false" && process.env.NODE_ENV === "production");
 
 const PRIVATE_ROUTE_PARTS = new Set([
   "portal",
@@ -30,7 +34,7 @@ export function AssaddarPlatformWidget() {
     PRIVATE_ROUTE_PARTS.has(part),
   );
 
-  if (isPrivateRoute) {
+  if (!WIDGET_ENABLED || isPrivateRoute) {
     return null;
   }
 

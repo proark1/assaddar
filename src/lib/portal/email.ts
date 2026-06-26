@@ -1,4 +1,5 @@
 import { Resend } from "resend";
+import { contactFromEmail } from "./config";
 
 export async function sendPortalEmail({
   to,
@@ -11,10 +12,12 @@ export async function sendPortalEmail({
 }) {
   const key = process.env.RESEND_API_KEY;
   if (!key) return false;
+  const from = contactFromEmail();
+  if (!from) return false;
 
   const resend = new Resend(key);
   const result = await resend.emails.send({
-    from: "Assad Dar Portal <onboarding@resend.dev>",
+    from,
     to: [to],
     subject,
     text,

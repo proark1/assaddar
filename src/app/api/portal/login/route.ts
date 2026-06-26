@@ -1,7 +1,10 @@
 import { NextResponse, type NextRequest } from "next/server";
 import { isLocale, type Locale } from "@/content";
 import { createSessionCookie } from "@/lib/portal/auth";
-import { requireEmailVerification } from "@/lib/portal/config";
+import {
+  portalProductionConfigErrors,
+  requireEmailVerification,
+} from "@/lib/portal/config";
 import { checkRateLimit, clientIpFromHeaders } from "@/lib/portal/rate-limit";
 import { findUserByEmailForLogin } from "@/lib/portal/store";
 import { verifyPassword } from "@/lib/portal/password";
@@ -27,6 +30,11 @@ function redirectTo(request: NextRequest, path: string) {
 export async function POST(request: NextRequest) {
   const formData = await request.formData();
   const locale = safeLocale(formData.get("locale"));
+  const configErrors = portalProductionConfigErrors();
+  if (configErrors.length > 0) {
+    return redirectTo(request, `/${locale}/login?error=config`);
+  }
+
   const email = String(formData.get("email") || "").trim().toLowerCase();
   const password = String(formData.get("password") || "");
   const rateLimit = await checkRateLimit(

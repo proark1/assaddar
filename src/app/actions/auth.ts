@@ -4,7 +4,11 @@ import { redirect } from "next/navigation";
 import { headers } from "next/headers";
 import { isLocale, type Locale } from "@/content";
 import { clearSession, getCurrentUser, setSession } from "@/lib/portal/auth";
-import { appUrl, requireEmailVerification } from "@/lib/portal/config";
+import {
+  appUrl,
+  portalProductionConfigErrors,
+  requireEmailVerification,
+} from "@/lib/portal/config";
 import { sendPortalEmail } from "@/lib/portal/email";
 import {
   createRegisteredCustomerForAuth,
@@ -28,8 +32,15 @@ function nextPath(locale: Locale, value: FormDataEntryValue | null) {
   return `/${locale}/portal`;
 }
 
+function ensurePortalReady(locale: Locale) {
+  if (portalProductionConfigErrors().length > 0) {
+    redirect(`/${locale}/login?error=config`);
+  }
+}
+
 export async function loginAction(formData: FormData) {
   const locale = safeLocale(formData.get("locale"));
+  ensurePortalReady(locale);
   const email = String(formData.get("email") || "").trim().toLowerCase();
   const password = String(formData.get("password") || "");
   const requestHeaders = await headers();
@@ -60,6 +71,7 @@ export async function loginAction(formData: FormData) {
 
 export async function registerAction(formData: FormData) {
   const locale = safeLocale(formData.get("locale"));
+  ensurePortalReady(locale);
   const name = String(formData.get("name") || "").trim();
   const email = String(formData.get("email") || "").trim().toLowerCase();
   const password = String(formData.get("password") || "");
@@ -129,6 +141,7 @@ export async function logoutAction(formData: FormData) {
 
 export async function requestPasswordResetAction(formData: FormData) {
   const locale = safeLocale(formData.get("locale"));
+  ensurePortalReady(locale);
   const email = String(formData.get("email") || "").trim().toLowerCase();
   const requestHeaders = await headers();
   const rateLimit = await checkRateLimit(
@@ -172,6 +185,7 @@ export async function requestPasswordResetAction(formData: FormData) {
 
 export async function resetPasswordAction(formData: FormData) {
   const locale = safeLocale(formData.get("locale"));
+  ensurePortalReady(locale);
   const rawToken = String(formData.get("token") || "");
   const password = String(formData.get("password") || "");
 
@@ -196,6 +210,7 @@ export async function resetPasswordAction(formData: FormData) {
 
 export async function verifyEmailAction(formData: FormData) {
   const locale = safeLocale(formData.get("locale"));
+  ensurePortalReady(locale);
   const rawToken = String(formData.get("token") || "");
 
   const ok = await mutateStore((store) => {
@@ -216,6 +231,7 @@ export async function verifyEmailAction(formData: FormData) {
 
 export async function changePasswordAction(formData: FormData) {
   const locale = safeLocale(formData.get("locale"));
+  ensurePortalReady(locale);
   const currentPassword = String(formData.get("currentPassword") || "");
   const password = String(formData.get("password") || "");
   const confirm = String(formData.get("confirm") || "");
@@ -244,6 +260,7 @@ export async function changePasswordAction(formData: FormData) {
 
 export async function acceptInviteAction(formData: FormData) {
   const locale = safeLocale(formData.get("locale"));
+  ensurePortalReady(locale);
   const rawToken = String(formData.get("token") || "");
   const password = String(formData.get("password") || "");
   const confirm = String(formData.get("confirm") || "");

@@ -101,6 +101,8 @@ export default async function Home({
         <Market t={t.market} />
         <EvidenceNumbers locale={safe} />
         <ReadinessAndRoiTools locale={safe} />
+        <TrustSignals locale={safe} />
+        <MiniCaseStudies locale={safe} />
         <NextStepsTimeline locale={safe} />
         <MethodSection t={t.method} />
         <BeforeAfterWorkflow locale={safe} />
@@ -108,8 +110,6 @@ export default async function Home({
         <WhyAssad locale={safe} />
         <Angebote t={t.angebote} />
         <Branchen t={t.branchen} />
-        <TrustSignals locale={safe} />
-        <MiniCaseStudies locale={safe} />
         <About t={t.about} locale={safe} />
         <ProductsPreview locale={safe} />
         <Blog t={t.blog} />

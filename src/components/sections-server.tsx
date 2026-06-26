@@ -68,7 +68,7 @@ export function Hero({ t }: { t: Dict["hero"] }) {
     <Section className="relative overflow-hidden pb-0 pt-10 md:pt-14">
       <DecorativeLines />
       <Container className="relative">
-        <div className="grid gap-8 lg:min-h-[500px] lg:grid-cols-[minmax(0,0.98fr)_minmax(340px,0.72fr)] lg:items-end">
+        <div className="grid gap-3 sm:gap-8 lg:min-h-[500px] lg:grid-cols-[minmax(0,0.98fr)_minmax(340px,0.72fr)] lg:items-end">
           <div className="pb-10 md:pb-14 lg:pb-16">
             <Kicker>{t.kicker}</Kicker>
             <h1 className="mt-5 max-w-3xl font-serif text-[34px] font-normal leading-[1.12] tracking-[-0.01em] text-ink sm:text-5xl md:text-[52px]">
@@ -105,7 +105,7 @@ export function Hero({ t }: { t: Dict["hero"] }) {
           </div>
 
           <Reveal delay={0.15}>
-            <div className="relative mx-auto flex min-h-[300px] w-full max-w-[420px] items-end justify-center overflow-hidden sm:min-h-[390px] lg:min-h-[500px] lg:max-w-none">
+            <div className="relative mx-auto flex min-h-[220px] w-full max-w-[340px] items-end justify-center overflow-hidden sm:min-h-[390px] sm:max-w-[420px] lg:min-h-[500px] lg:max-w-none">
               <svg
                 aria-hidden="true"
                 viewBox="0 0 420 520"
@@ -130,7 +130,7 @@ export function Hero({ t }: { t: Dict["hero"] }) {
                 width={800}
                 height={1200}
                 priority
-                className="relative z-10 h-[300px] w-auto object-contain object-bottom sm:h-[390px] lg:h-[500px]"
+                className="relative z-10 h-[230px] w-auto object-contain object-bottom sm:h-[390px] lg:h-[500px]"
               />
             </div>
           </Reveal>
@@ -654,13 +654,13 @@ export function Angebote({ t }: { t: Dict["angebote"] }) {
                 <p className="mt-4 flex-1 text-sm leading-relaxed text-ink2">
                   {s.purpose}
                 </p>
-                <a
-                  href="#kontakt"
+                <Link
+                  href={t.ctaHref}
                   className="group mt-6 inline-flex w-fit items-center gap-1.5 text-sm font-medium text-copper"
                 >
                   {s.cta}
                   <ArrowRight className="h-3.5 w-3.5 transition-transform group-hover:translate-x-0.5" />
-                </a>
+                </Link>
               </div>
             </Reveal>
           ))}

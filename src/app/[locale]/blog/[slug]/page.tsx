@@ -308,19 +308,19 @@ export default async function BlogArticle({
 
               <div className="mb-10 grid gap-4 md:grid-cols-2">
                 <Link
-                  href="/de#score"
+                  href="/de#readiness-check"
                   className="group rounded-2xl border border-copper/30 bg-copper/10 p-5 transition-colors hover:border-copper"
                 >
                   <Gauge className="h-5 w-5 text-copper" />
                   <h2 className="mt-3 text-base font-medium text-ink">
-                    ASDAR Score berechnen
+                    ASDAR Potenzial-Check starten
                   </h2>
                   <p className="mt-2 text-sm leading-relaxed text-ink2">
                     Prüfen Sie in wenigen Minuten, ob Ihr Prozess reif für KI
                     und Automatisierung ist.
                   </p>
                   <span className="mt-4 inline-flex items-center gap-1.5 text-sm font-medium text-copper">
-                    Score starten
+                    Check starten
                     <ArrowRight className="h-3.5 w-3.5 transition-transform group-hover:translate-x-0.5" />
                   </span>
                 </Link>
@@ -387,7 +387,7 @@ export default async function BlogArticle({
                   {t.finalCta.sub}
                 </p>
                 <Link
-                  href="/de#kontakt"
+                  href="/de/termin"
                   className="group mt-6 inline-flex items-center justify-center gap-2 rounded-lg bg-copper px-5 py-3 text-sm font-medium text-oncopper shadow-[0_2px_8px_rgba(166,110,47,0.25)] transition-all hover:-translate-y-0.5 hover:bg-copper-hi"
                 >
                   {t.finalCta.cta}
@@ -406,15 +406,15 @@ export default async function BlogArticle({
                   Welcher Prozess lohnt sich?
                 </h2>
                 <p className="mt-2 text-sm leading-relaxed text-ink2">
-                  Nutzen Sie den ASDAR Score oder buchen Sie direkt ein kurzes
-                  Gespräch.
+                  Nutzen Sie den ASDAR Potenzial-Check oder buchen Sie direkt
+                  ein kurzes Gespräch.
                 </p>
                 <div className="mt-4 grid gap-2">
                   <Link
-                    href="/de#score"
+                    href="/de#readiness-check"
                     className="inline-flex items-center justify-center gap-2 rounded-lg bg-copper px-3 py-2 text-[12px] font-medium text-oncopper transition-colors hover:bg-copper-hi"
                   >
-                    Score starten
+                    Check starten
                     <ArrowRight className="h-3.5 w-3.5" />
                   </Link>
                   <Link

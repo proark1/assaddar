@@ -1,10 +1,13 @@
 "use server";
 
+import { headers } from "next/headers";
 import { Resend } from "resend";
+import { contactFromEmail } from "@/lib/portal/config";
+import { checkRateLimit, clientIpFromHeaders } from "@/lib/portal/rate-limit";
 import { id, mutateStore } from "@/lib/portal/store";
 
 export type ContactState = {
-  status: "idle" | "ok" | "invalid" | "noconfig" | "error";
+  status: "idle" | "ok" | "invalid" | "rate" | "noconfig" | "error";
 };
 
 const EMAIL_RE = /.+@.+\..+/;
@@ -120,6 +123,17 @@ export async function submitContact(
     return { status: "invalid" };
   }
 
+  const requestHeaders = await headers();
+  const rateLimit = await checkRateLimit(
+    `contact:${clientIpFromHeaders(requestHeaders)}:${email}`,
+    5,
+    60 * 60 * 1000,
+  );
+
+  if (!rateLimit.allowed) {
+    return { status: "rate" };
+  }
+
   await createWebsiteLead({
     name,
     email,
@@ -130,6 +144,8 @@ export async function submitContact(
 
   const key = process.env.RESEND_API_KEY;
   if (!key) return { status: "noconfig" };
+  const from = contactFromEmail();
+  if (!from) return { status: "noconfig" };
 
   try {
     const resend = new Resend(key);
@@ -142,7 +158,7 @@ export async function submitContact(
     lines.push("", message);
 
     const result = await resend.emails.send({
-      from: "ASSADDAR Website <onboarding@resend.dev>",
+      from,
       to: ["assad.dar@gmail.com"],
       replyTo: email,
       subject: `Neue Anfrage über assad-dar.de — ${name}`,

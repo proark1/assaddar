@@ -4,6 +4,7 @@ import { redirect } from "next/navigation";
 import type { Locale } from "@/content";
 import { findUserByIdForSession } from "./store";
 import type { User } from "./types";
+import { assertPortalProductionReady, requireProductionSecret } from "./config";
 
 const COOKIE_NAME = "assaddar_session";
 const ONE_WEEK_SECONDS = 60 * 60 * 24 * 7;
@@ -15,8 +16,10 @@ type SessionPayload = {
 
 function secret() {
   return (
-    process.env.AUTH_SECRET ??
-    process.env.NEXTAUTH_SECRET ??
+    requireProductionSecret(
+      "AUTH_SECRET",
+      process.env.AUTH_SECRET ?? process.env.NEXTAUTH_SECRET,
+    ) ||
     "assaddar-local-development-secret-change-me"
   );
 }
@@ -108,6 +111,7 @@ export async function getCurrentUser(): Promise<User | null> {
 }
 
 export async function requireUser(locale: Locale) {
+  assertPortalProductionReady();
   const user = await getCurrentUser();
   if (!user) redirect(`/${locale}/login`);
   return user;

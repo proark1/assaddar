@@ -680,10 +680,12 @@ export default async function AsdarMethodPage({
                 {t.score.intro}
               </p>
               <Link
-                href={`/${safe}#score`}
+                href={`/${safe}#readiness-check`}
                 className="group mt-6 inline-flex items-center gap-1.5 text-sm font-medium text-copper"
               >
-                {isDe ? "ASDAR Score auf Home nutzen" : "Use ASDAR Score on Home"}
+                {isDe
+                  ? "ASDAR Potenzial-Check auf Home nutzen"
+                  : "Use the ASDAR potential check on Home"}
                 <ArrowRight className="h-3.5 w-3.5 transition-transform group-hover:translate-x-0.5" />
               </Link>
             </div>

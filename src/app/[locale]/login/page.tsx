@@ -29,10 +29,12 @@ export default async function LoginPage({
   const invalid = query.error === "invalid";
   const needsVerification = query.error === "verify";
   const rateLimited = query.error === "rate";
+  const configError = query.error === "config";
   const hasNotice =
     invalid ||
     needsVerification ||
     rateLimited ||
+    configError ||
     query.verify === "sent" ||
     query.verified === "1" ||
     query.reset === "1";
@@ -70,6 +72,12 @@ export default async function LoginPage({
               <p className="rounded-md border border-critical/30 bg-critical/10 px-3 py-2 text-sm text-critical">
                 Zu viele Login-Versuche. Bitte versuchen Sie es in einigen
                 Minuten erneut.
+              </p>
+            )}
+            {configError && (
+              <p className="rounded-md border border-critical/30 bg-critical/10 px-3 py-2 text-sm text-critical">
+                Das Portal ist noch nicht vollständig für die Produktion
+                konfiguriert.
               </p>
             )}
             {query.verify === "sent" && (

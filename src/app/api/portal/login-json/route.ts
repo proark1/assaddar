@@ -1,7 +1,10 @@
 import { NextResponse, type NextRequest } from "next/server";
 import { isLocale, type Locale } from "@/content";
 import { createSessionCookie } from "@/lib/portal/auth";
-import { requireEmailVerification } from "@/lib/portal/config";
+import {
+  portalProductionConfigErrors,
+  requireEmailVerification,
+} from "@/lib/portal/config";
 import { checkRateLimit, clientIpFromHeaders } from "@/lib/portal/rate-limit";
 import { findUserByEmailForLogin } from "@/lib/portal/store";
 import { verifyPassword } from "@/lib/portal/password";
@@ -25,6 +28,14 @@ function jsonError(message: string, status = 400) {
 }
 
 export async function POST(request: NextRequest) {
+  const configErrors = portalProductionConfigErrors();
+  if (configErrors.length > 0) {
+    return jsonError(
+      "Das Portal ist noch nicht vollständig für die Produktion konfiguriert.",
+      503,
+    );
+  }
+
   let payload: { locale?: string; email?: string; password?: string; next?: string };
   try {
     payload = await request.json();
