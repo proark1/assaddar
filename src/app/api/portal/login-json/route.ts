@@ -8,6 +8,7 @@ import {
 import { checkRateLimit, clientIpFromHeaders } from "@/lib/portal/rate-limit";
 import { findUserByEmailForLogin } from "@/lib/portal/store";
 import { verifyPassword } from "@/lib/portal/password";
+import { getAuthCopy } from "@/lib/portal/auth-copy";
 
 export const dynamic = "force-dynamic";
 export const runtime = "nodejs";
@@ -44,6 +45,7 @@ export async function POST(request: NextRequest) {
   }
 
   const locale = safeLocale(payload.locale);
+  const copy = getAuthCopy(locale).loginApi;
   const email = String(payload.email || "").trim().toLowerCase();
   const password = String(payload.password || "");
   const rateLimit = await checkRateLimit(
@@ -53,20 +55,17 @@ export async function POST(request: NextRequest) {
   );
 
   if (!rateLimit.allowed) {
-    return jsonError(
-      "Zu viele Login-Versuche. Bitte versuchen Sie es in einigen Minuten erneut.",
-      429,
-    );
+    return jsonError(copy.rate, 429);
   }
 
   const user = await findUserByEmailForLogin(email);
 
   if (!user || !verifyPassword(password, user.passwordHash)) {
-    return jsonError("Login nicht möglich. Bitte prüfen Sie E-Mail und Passwort.", 401);
+    return jsonError(copy.invalid, 401);
   }
 
   if (requireEmailVerification() && !user.emailVerifiedAt) {
-    return jsonError("Bitte bestätigen Sie zuerst Ihre E-Mail-Adresse.", 403);
+    return jsonError(copy.verify, 403);
   }
 
   const response = NextResponse.json({

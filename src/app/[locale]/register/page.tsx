@@ -6,13 +6,22 @@ import { registerAction } from "@/app/actions/auth";
 import { getCurrentUser } from "@/lib/portal/auth";
 import { fieldClass } from "@/components/portal/chrome";
 import { isLocale, type Locale } from "@/content";
+import { getAuthCopy } from "@/lib/portal/auth-copy";
 
 export const dynamic = "force-dynamic";
 
-export const metadata: Metadata = {
-  title: "Portal Registrierung | Assad Dar",
-  robots: { index: false, follow: false },
-};
+export async function generateMetadata({
+  params,
+}: {
+  params: Promise<{ locale: string }>;
+}): Promise<Metadata> {
+  const { locale } = await params;
+  const safe: Locale = isLocale(locale) ? locale : "de";
+  return {
+    title: getAuthCopy(safe).register.metaTitle,
+    robots: { index: false, follow: false },
+  };
+}
 
 export default async function RegisterPage({
   params,
@@ -27,6 +36,7 @@ export default async function RegisterPage({
   if (current) redirect(`/${safe}/portal`);
 
   const query = await searchParams;
+  const c = getAuthCopy(safe).register;
 
   return (
     <main className="flex min-h-screen items-center justify-center bg-bg px-5 py-12">
@@ -38,18 +48,15 @@ export default async function RegisterPage({
           ASSADDAR.
         </Link>
         <h1 className="mt-6 font-serif text-3xl font-normal text-ink">
-          Kundenkonto erstellen
+          {c.title}
         </h1>
-        <p className="mt-3 text-sm leading-relaxed text-ink2">
-          Nach der Registrierung kann Assad Ihr Konto einem oder mehreren
-          Projekten zuordnen.
-        </p>
+        <p className="mt-3 text-sm leading-relaxed text-ink2">{c.intro}</p>
 
         <form action={registerAction} className="mt-7 space-y-4">
           <input type="hidden" name="locale" value={safe} />
           <div>
             <label htmlFor="name" className="mb-1.5 block text-sm text-ink2">
-              Name
+              {c.nameLabel}
             </label>
             <input
               id="name"
@@ -61,7 +68,7 @@ export default async function RegisterPage({
           </div>
           <div>
             <label htmlFor="email" className="mb-1.5 block text-sm text-ink2">
-              E-Mail
+              {c.emailLabel}
             </label>
             <input
               id="email"
@@ -74,7 +81,7 @@ export default async function RegisterPage({
           </div>
           <div>
             <label htmlFor="password" className="mb-1.5 block text-sm text-ink2">
-              Passwort
+              {c.passwordLabel}
             </label>
             <input
               id="password"
@@ -85,25 +92,22 @@ export default async function RegisterPage({
               autoComplete="new-password"
               className={fieldClass}
             />
-            <p className="mt-1.5 text-[12px] text-muted">
-              Mindestens 8 Zeichen.
-            </p>
+            <p className="mt-1.5 text-[12px] text-muted">{c.passwordHint}</p>
           </div>
 
           {query.error === "invalid" && (
             <p className="rounded-md border border-critical/30 bg-critical/10 px-3 py-2 text-sm text-critical">
-              Bitte füllen Sie Name, E-Mail und Passwort korrekt aus.
+              {c.invalid}
             </p>
           )}
           {query.error === "exists" && (
             <p className="rounded-md border border-critical/30 bg-critical/10 px-3 py-2 text-sm text-critical">
-              Für diese E-Mail existiert bereits ein Konto.
+              {c.exists}
             </p>
           )}
           {query.error === "rate" && (
             <p className="rounded-md border border-critical/30 bg-critical/10 px-3 py-2 text-sm text-critical">
-              Zu viele Registrierungsversuche. Bitte versuchen Sie es später
-              erneut.
+              {c.rate}
             </p>
           )}
 
@@ -112,14 +116,14 @@ export default async function RegisterPage({
             className="inline-flex w-full items-center justify-center gap-2 rounded-lg bg-copper px-5 py-3 text-sm font-medium text-oncopper shadow-[0_2px_8px_rgba(166,110,47,0.25)] transition-colors hover:bg-copper-hi"
           >
             <UserPlus className="h-4 w-4" />
-            Konto erstellen
+            {c.submit}
           </button>
         </form>
 
         <p className="mt-6 text-sm text-ink2">
-          Schon registriert?{" "}
+          {c.haveAccount}{" "}
           <Link href={`/${safe}/login`} className="text-copper hover:underline">
-            Einloggen
+            {c.loginLink}
           </Link>
         </p>
       </section>

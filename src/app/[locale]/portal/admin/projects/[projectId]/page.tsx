@@ -2,7 +2,6 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import {
-  Archive,
   ArrowRight,
   Bell,
   Bot,
@@ -115,6 +114,7 @@ import {
   PortalShell,
   textareaClass,
 } from "@/components/portal/chrome";
+import { ArchiveProjectConfirm } from "@/components/portal/destructive-actions";
 
 export const dynamic = "force-dynamic";
 
@@ -346,19 +346,38 @@ export default async function AdminProjectPage({
         </>
       }
     >
-      {(query.saved || query.assigned || query.error) && (
-        <div className="mb-6 rounded-lg border border-copper/30 bg-copper/10 px-4 py-3 text-sm text-ink">
+      {(query.saved || query.assigned === "1") && (
+        <p
+          role="status"
+          aria-live="polite"
+          className="mb-6 rounded-lg border border-success/30 bg-success/10 px-4 py-3 text-sm text-success"
+        >
           {query.saved && "Gespeichert."}
           {query.assigned === "1" && " Kunde wurde zugeordnet."}
-          {query.assigned === "0" &&
-            " Kein passender registrierter Kunde gefunden."}
-          {query.error === "file" && " Datei konnte nicht hochgeladen werden."}
+        </p>
+      )}
+      {query.assigned === "0" && (
+        <p
+          role="status"
+          aria-live="polite"
+          className="mb-6 rounded-lg border border-strong bg-surface2 px-4 py-3 text-sm text-ink2"
+        >
+          Kein passender registrierter Kunde gefunden.
+        </p>
+      )}
+      {query.error && (
+        <p
+          role="alert"
+          aria-live="assertive"
+          className="mb-6 rounded-lg border border-critical/30 bg-critical/10 px-4 py-3 text-sm text-critical"
+        >
+          {query.error === "file" && "Datei konnte nicht hochgeladen werden."}
           {query.error === "ai" &&
-            " AI Scan konnte nicht gespeichert werden. Prüfen Sie Provider-Key und Modell."}
+            "AI Scan konnte nicht gespeichert werden. Prüfen Sie Provider-Key und Modell."}
           {query.error === "archive" &&
-            " Zum Archivieren bitte ARCHIVIEREN exakt eingeben."}
-          {query.error === "comment" && " Bitte einen Kommentar eintragen."}
-        </div>
+            "Zum Archivieren bitte ARCHIVIEREN exakt eingeben."}
+          {query.error === "comment" && "Bitte einen Kommentar eintragen."}
+        </p>
       )}
 
       <PortalCard className="mb-6 border-copper/30 bg-copper/10">
@@ -830,20 +849,7 @@ export default async function AdminProjectPage({
                   Setzt das Projekt auf abgeschlossen. Kunden behalten Zugriff
                   auf bestehende Updates, Dateien und Rechnungen.
                 </p>
-                <div className="mt-3 grid gap-3 sm:grid-cols-[1fr_auto]">
-                  <input
-                    name="confirmation"
-                    placeholder="ARCHIVIEREN"
-                    className={fieldClass}
-                  />
-                  <button
-                    type="submit"
-                    className="inline-flex items-center justify-center gap-2 rounded-lg border border-critical/40 px-4 py-2.5 text-sm font-medium text-critical transition-colors hover:bg-critical/10"
-                  >
-                    <Archive className="h-4 w-4" />
-                    Archivieren
-                  </button>
-                </div>
+                <ArchiveProjectConfirm />
               </div>
             </form>
           </PortalCard>

@@ -25,7 +25,14 @@ export async function generateMetadata({
   return {
     title,
     description: a.headline,
-    alternates: { canonical: `/${safe}/ueber-mich` },
+    alternates: {
+      canonical: `/${safe}/ueber-mich`,
+      languages: {
+        de: "/de/ueber-mich",
+        en: "/en/ueber-mich",
+        "x-default": "/de/ueber-mich",
+      },
+    },
     openGraph: { type: "profile", title, description: a.headline, url: `/${safe}/ueber-mich` },
   };
 }

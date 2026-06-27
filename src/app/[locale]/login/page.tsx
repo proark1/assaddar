@@ -2,13 +2,22 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import { PortalLoginForm } from "@/components/portal/login-form";
 import { isLocale, type Locale } from "@/content";
+import { getAuthCopy } from "@/lib/portal/auth-copy";
 
 export const dynamic = "force-dynamic";
 
-export const metadata: Metadata = {
-  title: "Portal Login | Assad Dar",
-  robots: { index: false, follow: false },
-};
+export async function generateMetadata({
+  params,
+}: {
+  params: Promise<{ locale: string }>;
+}): Promise<Metadata> {
+  const { locale } = await params;
+  const safe: Locale = isLocale(locale) ? locale : "de";
+  return {
+    title: getAuthCopy(safe).login.metaTitle,
+    robots: { index: false, follow: false },
+  };
+}
 
 export default async function LoginPage({
   params,
@@ -26,6 +35,7 @@ export default async function LoginPage({
   const { locale } = await params;
   const safe: Locale = isLocale(locale) ? locale : "de";
   const query = await searchParams;
+  const c = getAuthCopy(safe).login;
   const invalid = query.error === "invalid";
   const needsVerification = query.error === "verify";
   const rateLimited = query.error === "rate";
@@ -49,70 +59,65 @@ export default async function LoginPage({
           ASSADDAR.
         </Link>
         <h1 className="mt-6 font-serif text-3xl font-normal text-ink">
-          Kundenportal Login
+          {c.title}
         </h1>
-        <p className="mt-3 text-sm leading-relaxed text-ink2">
-          Melden Sie sich an, um Projektstatus, Dateien, Aufgaben und Rechnungen
-          zu sehen.
-        </p>
+        <p className="mt-3 text-sm leading-relaxed text-ink2">{c.intro}</p>
 
         {hasNotice && (
           <div className="mt-7 space-y-4">
             {invalid && (
               <p className="rounded-md border border-critical/30 bg-critical/10 px-3 py-2 text-sm text-critical">
-                Login nicht möglich. Bitte prüfen Sie E-Mail und Passwort.
+                {c.notices.invalid}
               </p>
             )}
             {needsVerification && (
               <p className="rounded-md border border-critical/30 bg-critical/10 px-3 py-2 text-sm text-critical">
-                Bitte bestätigen Sie zuerst Ihre E-Mail-Adresse.
+                {c.notices.verify}
               </p>
             )}
             {rateLimited && (
               <p className="rounded-md border border-critical/30 bg-critical/10 px-3 py-2 text-sm text-critical">
-                Zu viele Login-Versuche. Bitte versuchen Sie es in einigen
-                Minuten erneut.
+                {c.notices.rate}
               </p>
             )}
             {configError && (
               <p className="rounded-md border border-critical/30 bg-critical/10 px-3 py-2 text-sm text-critical">
-                Das Portal ist noch nicht vollständig für die Produktion
-                konfiguriert.
+                {c.notices.config}
               </p>
             )}
             {query.verify === "sent" && (
               <p className="rounded-md border border-success/30 bg-success/10 px-3 py-2 text-sm text-success">
-                Bitte prüfen Sie Ihr Postfach und bestätigen Sie Ihre E-Mail.
+                {c.notices.verifySent}
               </p>
             )}
             {query.verified === "1" && (
               <p className="rounded-md border border-success/30 bg-success/10 px-3 py-2 text-sm text-success">
-                E-Mail bestätigt. Sie können sich jetzt anmelden.
+                {c.notices.verified}
               </p>
             )}
             {query.reset === "1" && (
               <p className="rounded-md border border-success/30 bg-success/10 px-3 py-2 text-sm text-success">
-                Passwort geändert. Sie können sich jetzt anmelden.
+                {c.notices.reset}
               </p>
             )}
           </div>
         )}
 
-        <PortalLoginForm locale={safe} next={query.next ?? ""} />
+        <PortalLoginForm locale={safe} next={query.next ?? ""} copy={c} />
 
         <p className="mt-6 text-sm text-ink2">
-          Noch kein Konto?{" "}
+          {c.noAccount}{" "}
           <Link href={`/${safe}/register`} className="text-copper hover:underline">
-            Registrieren
+            {c.registerLink}
           </Link>
         </p>
         <p className="mt-2 text-sm text-ink2">
-          Passwort vergessen?{" "}
+          {c.forgotPrompt}{" "}
           <Link
             href={`/${safe}/forgot-password`}
             className="text-copper hover:underline"
           >
-            Zurücksetzen
+            {c.forgotLink}
           </Link>
         </p>
       </section>

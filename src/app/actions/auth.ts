@@ -10,6 +10,7 @@ import {
   requireEmailVerification,
 } from "@/lib/portal/config";
 import { sendPortalEmail } from "@/lib/portal/email";
+import { getAuthCopy } from "@/lib/portal/auth-copy";
 import {
   createRegisteredCustomerForAuth,
   findUserByEmail,
@@ -114,17 +115,11 @@ export async function registerAction(formData: FormData) {
     const verifyUrl = `${appUrl()}/${locale}/verify-email?token=${encodeURIComponent(
       token.rawToken,
     )}`;
+    const copy = getAuthCopy(locale);
     await sendPortalEmail({
       to: email,
-      subject: "Assad Dar Portal: E-Mail bestätigen",
-      text: [
-        `Hallo ${name},`,
-        "",
-        "bitte bestätigen Sie Ihre E-Mail-Adresse für das Assad Dar Portal:",
-        verifyUrl,
-        "",
-        "Der Link ist 24 Stunden gültig.",
-      ].join("\n"),
+      subject: copy.emails.verify.subject,
+      text: copy.emails.verify.body(name, verifyUrl),
     });
     redirect(`/${locale}/login?verify=sent`);
   }
@@ -166,17 +161,11 @@ export async function requestPasswordResetAction(formData: FormData) {
     const resetUrl = `${appUrl()}/${locale}/reset-password?token=${encodeURIComponent(
       result.rawToken,
     )}`;
+    const copy = getAuthCopy(locale);
     await sendPortalEmail({
       to: result.email,
-      subject: "Assad Dar Portal: Passwort zurücksetzen",
-      text: [
-        `Hallo ${result.name},`,
-        "",
-        "über diesen Link können Sie Ihr Passwort zurücksetzen:",
-        resetUrl,
-        "",
-        "Der Link ist 60 Minuten gültig. Falls Sie die Anfrage nicht gestellt haben, können Sie diese E-Mail ignorieren.",
-      ].join("\n"),
+      subject: copy.emails.reset.subject,
+      text: copy.emails.reset.body(result.name, resetUrl),
     });
   }
 

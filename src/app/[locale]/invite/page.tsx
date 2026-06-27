@@ -4,13 +4,22 @@ import { UserCheck } from "lucide-react";
 import { acceptInviteAction } from "@/app/actions/auth";
 import { fieldClass } from "@/components/portal/chrome";
 import { isLocale, type Locale } from "@/content";
+import { getAuthCopy } from "@/lib/portal/auth-copy";
 
 export const dynamic = "force-dynamic";
 
-export const metadata: Metadata = {
-  title: "Portal Einladung | Assad Dar",
-  robots: { index: false, follow: false },
-};
+export async function generateMetadata({
+  params,
+}: {
+  params: Promise<{ locale: string }>;
+}): Promise<Metadata> {
+  const { locale } = await params;
+  const safe: Locale = isLocale(locale) ? locale : "de";
+  return {
+    title: getAuthCopy(safe).invite.metaTitle,
+    robots: { index: false, follow: false },
+  };
+}
 
 export default async function InvitePage({
   params,
@@ -22,6 +31,7 @@ export default async function InvitePage({
   const { locale } = await params;
   const safe: Locale = isLocale(locale) ? locale : "de";
   const query = await searchParams;
+  const c = getAuthCopy(safe).invite;
 
   return (
     <main className="flex min-h-screen items-center justify-center bg-bg px-5 py-12">
@@ -33,22 +43,18 @@ export default async function InvitePage({
           ASSADDAR.
         </Link>
         <h1 className="mt-6 font-serif text-3xl font-normal text-ink">
-          Portal Einladung annehmen
+          {c.title}
         </h1>
-        <p className="mt-3 text-sm leading-relaxed text-ink2">
-          Legen Sie ein Passwort fest. Danach werden Sie direkt in Ihr
-          Projektportal weitergeleitet.
-        </p>
+        <p className="mt-3 text-sm leading-relaxed text-ink2">{c.intro}</p>
 
         {query.error === "token" && (
           <p className="mt-5 rounded-md border border-critical/30 bg-critical/10 px-3 py-2 text-sm text-critical">
-            Der Einladungslink ist ungültig oder abgelaufen.
+            {c.token}
           </p>
         )}
         {query.error === "invalid" && (
           <p className="mt-5 rounded-md border border-critical/30 bg-critical/10 px-3 py-2 text-sm text-critical">
-            Bitte geben Sie ein gültiges Passwort ein und bestätigen Sie es
-            identisch.
+            {c.invalid}
           </p>
         )}
 
@@ -57,7 +63,7 @@ export default async function InvitePage({
           <input type="hidden" name="token" value={query.token ?? ""} />
           <div>
             <label htmlFor="password" className="mb-1.5 block text-sm text-ink2">
-              Passwort
+              {c.passwordLabel}
             </label>
             <input
               id="password"
@@ -71,7 +77,7 @@ export default async function InvitePage({
           </div>
           <div>
             <label htmlFor="confirm" className="mb-1.5 block text-sm text-ink2">
-              Passwort bestätigen
+              {c.confirmLabel}
             </label>
             <input
               id="confirm"
@@ -88,7 +94,7 @@ export default async function InvitePage({
             className="inline-flex w-full items-center justify-center gap-2 rounded-lg bg-copper px-5 py-3 text-sm font-medium text-oncopper shadow-[0_2px_8px_rgba(166,110,47,0.25)] transition-colors hover:bg-copper-hi"
           >
             <UserCheck className="h-4 w-4" />
-            Einladung annehmen
+            {c.submit}
           </button>
         </form>
       </section>

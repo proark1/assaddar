@@ -3,6 +3,7 @@
 import { useState } from "react";
 import { LogIn } from "lucide-react";
 import type { Locale } from "@/content";
+import type { AuthCopy } from "@/lib/portal/auth-copy";
 
 const fieldClass =
   "w-full rounded-lg border border-hairline bg-bg px-3 py-2 text-sm text-ink outline-none transition-colors placeholder:text-muted focus:border-copper";
@@ -10,9 +11,11 @@ const fieldClass =
 export function PortalLoginForm({
   locale,
   next,
+  copy,
 }: {
   locale: Locale;
   next: string;
+  copy: AuthCopy["login"];
 }) {
   const [pending, setPending] = useState(false);
   const [error, setError] = useState("");
@@ -51,7 +54,7 @@ export function PortalLoginForm({
       };
 
       if (!response.ok || !result.ok || !result.redirectTo) {
-        setError(result.message || "Login nicht moeglich. Bitte erneut versuchen.");
+        setError(result.message || copy.genericError);
         setPending(false);
         return;
       }
@@ -63,8 +66,8 @@ export function PortalLoginForm({
     } catch (cause) {
       setError(
         cause instanceof DOMException && cause.name === "AbortError"
-          ? "Der Login dauert zu lange. Bitte Verbindung pruefen und erneut versuchen."
-          : "Login konnte nicht abgeschlossen werden. Bitte erneut versuchen.",
+          ? copy.timeoutError
+          : copy.failError,
       );
       setPending(false);
     } finally {
@@ -83,7 +86,7 @@ export function PortalLoginForm({
       <input type="hidden" name="next" value={next} />
       <div>
         <label htmlFor="email" className="mb-1.5 block text-sm text-ink2">
-          E-Mail
+          {copy.emailLabel}
         </label>
         <input
           id="email"
@@ -96,7 +99,7 @@ export function PortalLoginForm({
       </div>
       <div>
         <label htmlFor="password" className="mb-1.5 block text-sm text-ink2">
-          Passwort
+          {copy.passwordLabel}
         </label>
         <input
           id="password"
@@ -119,9 +122,9 @@ export function PortalLoginForm({
           role="status"
           className="rounded-md border border-success/30 bg-success/10 px-3 py-2 text-sm text-success"
         >
-          Login erfolgreich.{" "}
+          {copy.successPrefix}{" "}
           <a href={redirectTo} className="font-medium underline underline-offset-4">
-            Portal oeffnen
+            {copy.openPortal}
           </a>
         </p>
       )}
@@ -132,11 +135,7 @@ export function PortalLoginForm({
         className="inline-flex w-full items-center justify-center gap-2 rounded-lg bg-copper px-5 py-3 text-sm font-medium text-oncopper shadow-[0_2px_8px_rgba(166,110,47,0.25)] transition-colors hover:bg-copper-hi disabled:cursor-wait disabled:opacity-70"
       >
         <LogIn className="h-4 w-4" />
-        {redirectTo
-          ? "Portal wird geoeffnet..."
-          : pending
-            ? "Einloggen..."
-            : "Einloggen"}
+        {redirectTo ? copy.opening : pending ? copy.submitting : copy.submit}
       </button>
     </form>
   );

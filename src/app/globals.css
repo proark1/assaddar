@@ -1,6 +1,11 @@
 @import "tailwindcss";
 @plugin "@tailwindcss/typography";
 
+/* The site themes via a `.dark` class on <html> (set pre-paint), not the OS
+   media query — point Tailwind's `dark:` variant at that class so `dark:`
+   utilities (icons, prose-invert) follow the actual toggle, not the OS. */
+@custom-variant dark (&:where(.dark, .dark *));
+
 @theme {
   --color-bg: var(--bg);
   --color-surface: var(--surface);
@@ -67,7 +72,7 @@
 
   --ink: #f4f2ee;
   --ink2: #a7aeb8;
-  --muted: #6b727d;
+  --muted: #8b929c; /* ~4.6:1 on dark surfaces — was #6b727d (~3.9:1, below AA) */
 
   --success: #5fae7e;
   --critical: #c8615a;
@@ -105,6 +110,19 @@ input[type="range"] {
 
 a {
   -webkit-tap-highlight-color: transparent;
+}
+
+/* German compounds run long — balance headline wraps, hyphenate DE body copy. */
+h1,
+h2,
+h3,
+h4 {
+  text-wrap: balance;
+}
+
+:lang(de) p,
+:lang(de) li {
+  hyphens: auto;
 }
 
 @media (prefers-reduced-motion: reduce) {

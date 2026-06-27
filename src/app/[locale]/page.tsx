@@ -61,6 +61,8 @@ export default async function Home({
     },
     makesOffer: t.angebote.items.map((s) => ({
       "@type": "Offer",
+      price: s.price.replace(/[^\d]/g, ""),
+      priceCurrency: "EUR",
       itemOffered: {
         "@type": "Service",
         name: `${s.product} — ${s.methodik}`,

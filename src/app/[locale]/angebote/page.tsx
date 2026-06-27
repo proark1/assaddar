@@ -73,7 +73,14 @@ export async function generateMetadata({
   return {
     title,
     description: t.angebote.sub,
-    alternates: { canonical: `/${safe}/angebote` },
+    alternates: {
+      canonical: `/${safe}/angebote`,
+      languages: {
+        de: "/de/angebote",
+        en: "/en/angebote",
+        "x-default": "/de/angebote",
+      },
+    },
     openGraph: {
       type: "website",
       title,
@@ -110,6 +117,11 @@ export default async function AngebotePage({
           "@type": "Person",
           name: "Assad Dar",
           url: `${SITE_URL}/${safe}/ueber-mich`,
+        },
+        offers: {
+          "@type": "Offer",
+          price: item.price.replace(/[^\d]/g, ""),
+          priceCurrency: "EUR",
         },
       },
     })),

@@ -1,4 +1,5 @@
 import { randomUUID } from "crypto";
+import type PG from "postgres";
 import { getSql } from "./database";
 import type { ConsultingTemplate } from "./templates";
 import type {
@@ -21,6 +22,17 @@ import type {
 } from "./types";
 
 type Row = Record<string, unknown>;
+
+/** The pooled postgres.js client. */
+type Db = ReturnType<typeof getSql>;
+/** Common base shared by the pooled client and a transaction handle. */
+type SqlLike = PG.ISql;
+
+/**
+ * Stable key for the cluster-wide advisory lock that serializes whole-store
+ * mutations. Any constant works; it just has to be the same everywhere.
+ */
+const STORE_LOCK_KEY = 728_413;
 
 export type CreateProjectInput = {
   userId: string;
@@ -766,8 +778,9 @@ export async function createPostgresProjectForAdmin({
   return projectId;
 }
 
-export async function readPostgresStore(): Promise<PortalStore> {
-  const sql = getSql();
+export async function readPostgresStore(
+  sql: SqlLike = getSql(),
+): Promise<PortalStore> {
   const [
     users,
     organizations,
@@ -1026,10 +1039,8 @@ export async function readPostgresStore(): Promise<PortalStore> {
   };
 }
 
-export async function writePostgresStore(store: PortalStore) {
-  const sql = getSql();
-
-  await sql.begin(async (tx) => {
+async function writeStoreRows(tx: SqlLike, store: PortalStore) {
+  {
     for (const user of store.users) {
       await tx`
         insert into portal_users (id, name, email, password_hash, role, email_verified_at, created_at)
@@ -1248,5 +1259,41 @@ export async function writePostgresStore(store: PortalStore) {
           updated_at = excluded.updated_at
       `;
     }
+  }
+}
+
+export async function writePostgresStore(
+  store: PortalStore,
+  sql: Db = getSql(),
+) {
+  await sql.begin(async (tx) => {
+    await writeStoreRows(tx, store);
   });
+}
+
+/**
+ * Atomic read-modify-write for the whole store on Postgres.
+ *
+ * The read-all / mutate / write-all pattern is only safe if no other request
+ * interleaves between the read and the write — otherwise the later write-all
+ * clobbers the earlier one (lost update). An in-process queue can't guarantee
+ * that across serverless instances, so we serialize cluster-wide with a
+ * transaction-scoped advisory lock: a second mutation blocks on the lock until
+ * the first commits, then reads the already-committed state. The lock releases
+ * automatically on commit or rollback, so an error can't leak it.
+ */
+export async function mutatePostgresStore<T>(
+  mutator: (store: PortalStore) => T | Promise<T>,
+): Promise<T> {
+  const sql = getSql();
+  const result = await sql.begin(async (tx) => {
+    await tx`select pg_advisory_xact_lock(${STORE_LOCK_KEY})`;
+    const store = await readPostgresStore(tx);
+    const mutated = await mutator(store);
+    // Write the rows directly on this same locked transaction so the
+    // read and the write commit as one atomic unit.
+    await writeStoreRows(tx, store);
+    return mutated;
+  });
+  return result as T;
 }

@@ -67,7 +67,7 @@ export function AssadChatbot({ locale }: { locale: Locale }) {
             </div>
             <button
               type="button"
-              aria-label="Chat schließen"
+              aria-label={locale === "de" ? "Chat schließen" : "Close chat"}
               onClick={() => setOpen(false)}
               className="inline-flex h-8 w-8 items-center justify-center rounded-lg text-ink2 transition-colors hover:bg-surface2 hover:text-ink"
             >
@@ -118,7 +118,7 @@ export function AssadChatbot({ locale }: { locale: Locale }) {
             <button
               type="submit"
               disabled={pending}
-              aria-label="Nachricht senden"
+              aria-label={locale === "de" ? "Nachricht senden" : "Send message"}
               className="inline-flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-copper text-oncopper transition-colors hover:bg-copper-hi disabled:opacity-60"
             >
               <Send className="h-4 w-4" />
