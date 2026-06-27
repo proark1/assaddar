@@ -8,6 +8,33 @@ const fieldClass =
   "w-full rounded-lg border border-hairline bg-bg px-3 py-2 text-sm text-ink outline-none transition-colors placeholder:text-muted focus:border-copper";
 
 /**
+ * Submit button that reflects the form's pending state — disables itself and
+ * swaps to `pendingLabel` while the server action runs, preventing double
+ * submits. Drop-in replacement for a plain `<button type="submit">`.
+ */
+export function SubmitButton({
+  className = "",
+  pendingLabel,
+  children,
+}: {
+  className?: string;
+  pendingLabel?: React.ReactNode;
+  children: React.ReactNode;
+}) {
+  const { pending } = useFormStatus();
+  return (
+    <button
+      type="submit"
+      disabled={pending}
+      aria-busy={pending}
+      className={className}
+    >
+      {pending && pendingLabel ? pendingLabel : children}
+    </button>
+  );
+}
+
+/**
  * Submit button that demands a native confirmation before letting the form's
  * server action run, and reflects the pending state. For genuinely
  * irreversible actions (e.g. removing a generated asset).

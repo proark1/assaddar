@@ -18,6 +18,7 @@ import {
   PortalSectionTitle,
   PortalShell,
 } from "@/components/portal/chrome";
+import { SubmitButton } from "@/components/portal/destructive-actions";
 
 export const dynamic = "force-dynamic";
 
@@ -191,13 +192,18 @@ export default async function PortalSettingsPage({
                 className={fieldClass}
               />
             </div>
-            <button
-              type="submit"
-              className="inline-flex items-center gap-2 rounded-lg bg-copper px-4 py-2.5 text-sm font-medium text-oncopper transition-colors hover:bg-copper-hi"
+            <SubmitButton
+              pendingLabel={
+                <>
+                  <KeyRound className="h-4 w-4" />
+                  Wird gespeichert...
+                </>
+              }
+              className="inline-flex items-center gap-2 rounded-lg bg-copper px-4 py-2.5 text-sm font-medium text-oncopper transition-colors hover:bg-copper-hi disabled:cursor-wait disabled:opacity-70"
             >
               <KeyRound className="h-4 w-4" />
               Passwort speichern
-            </button>
+            </SubmitButton>
           </form>
         </PortalCard>
       </div>
@@ -237,13 +243,18 @@ export default async function PortalSettingsPage({
                 </span>
               </label>
             ))}
-            <button
-              type="submit"
-              className="inline-flex w-full items-center justify-center gap-2 rounded-lg bg-copper px-4 py-2.5 text-sm font-medium text-oncopper transition-colors hover:bg-copper-hi"
+            <SubmitButton
+              pendingLabel={
+                <>
+                  <MailCheck className="h-4 w-4" />
+                  Wird gespeichert...
+                </>
+              }
+              className="inline-flex w-full items-center justify-center gap-2 rounded-lg bg-copper px-4 py-2.5 text-sm font-medium text-oncopper transition-colors hover:bg-copper-hi disabled:cursor-wait disabled:opacity-70"
             >
               <MailCheck className="h-4 w-4" />
               Benachrichtigungen speichern
-            </button>
+            </SubmitButton>
           </form>
         </PortalCard>
 

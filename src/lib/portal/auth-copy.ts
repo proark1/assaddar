@@ -124,6 +124,23 @@ const de = {
           "Der Link ist 60 Minuten gültig. Falls Sie die Anfrage nicht gestellt haben, können Sie diese E-Mail ignorieren.",
         ].join("\n"),
     },
+    invite: {
+      subject: (projectName: string) =>
+        `Einladung zum Assad Dar Portal: ${projectName}`,
+      body: (name: string, company: string, url: string) =>
+        [
+          `Hallo ${name},`,
+          "",
+          `Assad Dar hat ein Projektportal für ${company} vorbereitet.`,
+          "Bitte legen Sie über diesen Link Ihr Passwort fest:",
+          url,
+          "",
+          "Der Link ist 7 Tage gültig.",
+          "",
+          "Viele Grüße",
+          "Assad Dar",
+        ].join("\n"),
+    },
   },
 };
 
@@ -241,6 +258,23 @@ const en: typeof de = {
           url,
           "",
           "The link is valid for 60 minutes. If you didn't request this, you can ignore this email.",
+        ].join("\n"),
+    },
+    invite: {
+      subject: (projectName: string) =>
+        `Assad Dar Portal invitation: ${projectName}`,
+      body: (name: string, company: string, url: string) =>
+        [
+          `Hello ${name},`,
+          "",
+          `Assad Dar has prepared a project portal for ${company}.`,
+          "Please set your password via this link:",
+          url,
+          "",
+          "The link is valid for 7 days.",
+          "",
+          "Best regards",
+          "Assad Dar",
         ].join("\n"),
     },
   },
