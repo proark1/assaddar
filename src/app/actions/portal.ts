@@ -12,6 +12,7 @@ import {
 import { applyPortalAutomationRules } from "@/lib/portal/automation-rules";
 import { appUrl } from "@/lib/portal/config";
 import { sendPortalEmail } from "@/lib/portal/email";
+import { getAuthCopy } from "@/lib/portal/auth-copy";
 import {
   createProjectForAdmin,
   findUserByEmail,
@@ -496,21 +497,15 @@ export async function createProjectAction(formData: FormData) {
     const inviteUrl = `${appUrl()}/${locale}/invite?token=${encodeURIComponent(
       inviteResult.rawToken,
     )}`;
+    const inviteCopy = getAuthCopy(locale).emails.invite;
     await sendPortalEmail({
       to: inviteResult.email,
-      subject: `Einladung zum Assad Dar Portal: ${inviteResult.projectName}`,
-      text: [
-        `Hallo ${inviteResult.name},`,
-        "",
-        `Assad Dar hat ein Projektportal fuer ${inviteResult.company} vorbereitet.`,
-        "Bitte legen Sie ueber diesen Link Ihr Passwort fest:",
+      subject: inviteCopy.subject(inviteResult.projectName),
+      text: inviteCopy.body(
+        inviteResult.name,
+        inviteResult.company,
         inviteUrl,
-        "",
-        "Der Link ist 7 Tage gueltig.",
-        "",
-        "Viele Gruesse",
-        "Assad Dar",
-      ].join("\n"),
+      ),
     });
   }
 
@@ -811,21 +806,11 @@ export async function inviteCustomerAction(formData: FormData) {
   const inviteUrl = `${appUrl()}/${locale}/invite?token=${encodeURIComponent(
     result.rawToken,
   )}`;
+  const inviteCopy = getAuthCopy(locale).emails.invite;
   await sendPortalEmail({
     to: result.email,
-    subject: `Einladung zum Assad Dar Portal: ${result.projectName}`,
-    text: [
-      `Hallo ${result.name},`,
-      "",
-      `Assad Dar hat Sie zum Projektportal für ${result.company} eingeladen.`,
-      "Bitte legen Sie über diesen Link Ihr Passwort fest:",
-      inviteUrl,
-      "",
-      "Der Link ist 7 Tage gültig.",
-      "",
-      "Viele Grüße",
-      "Assad Dar",
-    ].join("\n"),
+    subject: inviteCopy.subject(result.projectName),
+    text: inviteCopy.body(result.name, result.company, inviteUrl),
   });
 
   revalidatePath(adminProjectPath(locale, projectId));
