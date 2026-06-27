@@ -405,14 +405,26 @@ export default async function CustomerProjectPage({
       activeNav="dashboard"
       backHref={`/${safe}/portal`}
     >
-      {(query.saved || query.error) && (
-        <div className="mb-6 rounded-lg border border-copper/30 bg-copper/10 px-4 py-3 text-sm text-ink">
-          {query.saved && "Gespeichert."}
+      {query.saved && (
+        <p
+          role="status"
+          aria-live="polite"
+          className="mb-6 rounded-lg border border-success/30 bg-success/10 px-4 py-3 text-sm text-success"
+        >
+          Gespeichert.
+        </p>
+      )}
+      {query.error && (
+        <p
+          role="alert"
+          aria-live="assertive"
+          className="mb-6 rounded-lg border border-critical/30 bg-critical/10 px-4 py-3 text-sm text-critical"
+        >
           {query.error === "intake" &&
-            " Bitte mindestens ein Intake-Feld ausfüllen."}
-          {query.error === "file" && " Datei konnte nicht hochgeladen werden."}
-          {query.error === "comment" && " Bitte einen Kommentar eintragen."}
-        </div>
+            "Bitte mindestens ein Intake-Feld ausfüllen."}
+          {query.error === "file" && "Datei konnte nicht hochgeladen werden."}
+          {query.error === "comment" && "Bitte einen Kommentar eintragen."}
+        </p>
       )}
 
       <div className="space-y-6">

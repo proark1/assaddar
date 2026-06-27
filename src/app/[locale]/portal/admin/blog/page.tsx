@@ -11,6 +11,7 @@ import {
   BlogHeroBulkCompressor,
   BlogHeroCompressor,
 } from "@/components/portal/blog-hero-compressor";
+import { ConfirmSubmit } from "@/components/portal/destructive-actions";
 import {
   Badge,
   PortalCard,
@@ -166,12 +167,13 @@ export default async function BlogHeroAdminPage({
               {existing && (
                 <form action={deleteBlogHeroAction} className="mt-3">
                   <input type="hidden" name="slug" value={post.slug} />
-                  <button
-                    type="submit"
-                    className="text-[12px] text-muted underline-offset-2 transition-colors hover:text-critical hover:underline"
+                  <ConfirmSubmit
+                    confirmText={`Hero-Bild für „${post.title}" wirklich entfernen? Der Artikel nutzt dann wieder den SVG-Hero.`}
+                    pendingLabel="Wird entfernt..."
+                    className="text-[12px] text-muted underline-offset-2 transition-colors hover:text-critical hover:underline disabled:opacity-60"
                   >
                     Hero-Bild entfernen
-                  </button>
+                  </ConfirmSubmit>
                 </form>
               )}
             </PortalCard>

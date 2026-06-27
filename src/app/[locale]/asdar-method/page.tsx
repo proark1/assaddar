@@ -40,7 +40,14 @@ export async function generateMetadata({
   return {
     title,
     description: t.method.sub,
-    alternates: { canonical: `/${safe}/asdar-method` },
+    alternates: {
+      canonical: `/${safe}/asdar-method`,
+      languages: {
+        de: "/de/asdar-method",
+        en: "/en/asdar-method",
+        "x-default": "/de/asdar-method",
+      },
+    },
     openGraph: {
       type: "website",
       title,

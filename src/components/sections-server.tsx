@@ -129,7 +129,7 @@ export function Hero({ t }: { t: Dict["hero"] }) {
                 alt="Assad Dar"
                 width={800}
                 height={1200}
-                priority
+                sizes="(min-width: 1024px) 340px, (min-width: 640px) 265px, 155px"
                 className="relative z-10 h-[230px] w-auto object-contain object-bottom sm:h-[390px] lg:h-[500px]"
               />
             </div>

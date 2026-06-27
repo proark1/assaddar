@@ -314,7 +314,14 @@ export async function generateMetadata({
       safe === "de"
         ? "Eigene KI- und Softwareprodukte von Assad Dar: Training, Startup-OS, Meeting-Plattform, Meeting-Bots, Schulmanagement und Browser-Strategiespiel."
         : "Assad Dar's own AI and software products: training, startup OS, meeting platform, meeting bots, school management, and browser strategy game.",
-    alternates: { canonical: `/${safe}/meine-produkte` },
+    alternates: {
+      canonical: `/${safe}/meine-produkte`,
+      languages: {
+        de: "/de/meine-produkte",
+        en: "/en/meine-produkte",
+        "x-default": "/de/meine-produkte",
+      },
+    },
     openGraph: {
       type: "website",
       title,
@@ -444,8 +451,8 @@ export default async function MeineProduktePage({
                             alt={story.logoAlt}
                             width={128}
                             height={128}
+                            sizes="80px"
                             className="h-20 w-20 object-contain"
-                            priority={product.name === "unmutenow.ai"}
                           />
                         </div>
                         <div className="mt-6 font-mono text-[10.5px] uppercase tracking-[0.12em] text-copper">

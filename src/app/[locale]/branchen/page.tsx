@@ -258,7 +258,14 @@ export async function generateMetadata({
   return {
     title,
     description: t.branchen.intro,
-    alternates: { canonical: `/${safe}/branchen` },
+    alternates: {
+      canonical: `/${safe}/branchen`,
+      languages: {
+        de: "/de/branchen",
+        en: "/en/branchen",
+        "x-default": "/de/branchen",
+      },
+    },
     openGraph: {
       type: "website",
       title,

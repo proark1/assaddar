@@ -20,7 +20,14 @@ export async function generateMetadata({
   return {
     title: t.termin.title,
     description: t.termin.intro,
-    alternates: { canonical: `/${safe}/termin` },
+    alternates: {
+      canonical: `/${safe}/termin`,
+      languages: {
+        de: "/de/termin",
+        en: "/en/termin",
+        "x-default": "/de/termin",
+      },
+    },
   };
 }
 
@@ -45,16 +52,21 @@ export default async function TerminPage({
   const t = getDict(safe);
   const tt = t.termin;
   const email = t.finalCta.email;
+  const isDe = safe === "de";
   const leadContext =
     query.source === "asdar-check"
       ? [
-          "ASDAR Potenzial-Check",
+          isDe ? "ASDAR Potenzial-Check" : "ASDAR potential check",
           query.score && `Score: ${query.score}/100`,
-          query.band && `Einordnung: ${query.band}`,
-          query.bottleneck && `Engpass: ${query.bottleneck}`,
-          query.monthlyHours && `Geschätzte freie Stunden/Monat: ${query.monthlyHours}`,
-          query.monthlyValue && `Geschätzter Wert/Monat: ${query.monthlyValue} EUR`,
-          query.annualValue && `Geschätzter Wert/Jahr: ${query.annualValue} EUR`,
+          query.band && `${isDe ? "Einordnung" : "Assessment"}: ${query.band}`,
+          query.bottleneck &&
+            `${isDe ? "Engpass" : "Bottleneck"}: ${query.bottleneck}`,
+          query.monthlyHours &&
+            `${isDe ? "Geschätzte freie Stunden/Monat" : "Estimated free hours/month"}: ${query.monthlyHours}`,
+          query.monthlyValue &&
+            `${isDe ? "Geschätzter Wert/Monat" : "Estimated value/month"}: ${query.monthlyValue} EUR`,
+          query.annualValue &&
+            `${isDe ? "Geschätzter Wert/Jahr" : "Estimated value/year"}: ${query.annualValue} EUR`,
         ]
           .filter(Boolean)
           .join("\n")

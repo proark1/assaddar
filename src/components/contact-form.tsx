@@ -37,7 +37,9 @@ export function ContactForm({
     <form action={action} className="space-y-4">
       {leadContext && (
         <div className="rounded-lg border border-copper/30 bg-copper/10 p-4 text-sm leading-relaxed text-ink2">
-          <div className="font-medium text-ink">ASDAR Check Ergebnis</div>
+          <div className="font-medium text-ink">
+            {locale === "de" ? "ASDAR Check Ergebnis" : "ASDAR check result"}
+          </div>
           <p className="mt-2 whitespace-pre-line text-[12px] text-muted">
             {leadContext}
           </p>

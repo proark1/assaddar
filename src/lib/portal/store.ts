@@ -10,6 +10,7 @@ import {
   type CreateRegisteredCustomerInput,
   findPostgresUserByEmail,
   findPostgresUserById,
+  mutatePostgresStore,
   readPostgresCustomersWithProjectBundles,
   readPostgresProjectBundleForUser,
   readPostgresProjectBundlesForUser,
@@ -302,6 +303,14 @@ export async function writeStore(store: PortalStore) {
 export async function mutateStore<T>(
   mutator: (store: PortalStore) => T | Promise<T>,
 ): Promise<T> {
+  // Postgres: serialize the read-modify-write cluster-wide via an advisory lock
+  // so concurrent serverless instances can't lose each other's updates.
+  if (isPostgresBackendEnabled()) {
+    return mutatePostgresStore(mutator);
+  }
+
+  // JSON file backend (local/dev): a single process owns the file, so an
+  // in-process queue is enough to serialize writes.
   const run = async () => {
     const store = await readStore();
     const result = await mutator(store);

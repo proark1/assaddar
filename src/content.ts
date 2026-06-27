@@ -519,12 +519,12 @@ const de = {
         a: "Tools sind selten das Problem, Adoption schon. Meine Laufbahn ist Change-Management an Orten, die sich wehren. Ich bleibe, bis es ohne mich läuft.",
       },
       {
-        q: "Was kostet das Audit genau?",
-        a: "Die KI-Prozessanalyse kostet fest €4.500. Sie erhalten die Effizienz-Karte mit mindestens fünf bewerteten Prozessschritten und einem kalkulierten 90-Tage-Plan — schriftlich, fester Umfang.",
+        q: "Was kosten die Angebote?",
+        a: "Die Preise hängen vom Umfang ab: ASDAR Snapshot ab 490 € für den schnellen Einstieg, ASDAR Audit mit ASDAR Score und Roadmap ab 2.900 €, ASDAR Sprint zur Umsetzung eines Use Cases ab 5.900 € und ASDAR Advisory als laufende Begleitung ab 2.500 €/Monat. Fester Umfang, vorab transparent.",
       },
       {
         q: "Wie schnell sehen wir Ergebnisse?",
-        a: "Die Effizienz-Karte liegt nach zwei Wochen vor. Die ersten Quick Wins sind meist innerhalb von 30 Tagen umsetzbar.",
+        a: "Erste Quick Wins sind meist innerhalb von 30 Tagen umsetzbar. Der ASDAR Snapshot zeigt schon nach wenigen Tagen erste Potenziale; das ASDAR Audit liefert eine vollständige Roadmap in rund zwei Wochen.",
       },
       {
         q: "Wie viel Zeit kostet das Audit mein Team?",
@@ -1093,12 +1093,12 @@ const en: Dict = {
         a: "Tools are rarely the problem; adoption is. My career is change management in places that resist it. I stay until it runs without me.",
       },
       {
-        q: "What exactly does the audit cost?",
-        a: "The AI Process Audit is a fixed €4,500. You get the Efficiency Map with at least five scored process steps and a costed 90-day plan — in writing, fixed scope.",
+        q: "What do the offers cost?",
+        a: "Pricing depends on scope: ASDAR Snapshot from €490 for a fast start, ASDAR Audit with ASDAR Score and roadmap from €2,900, ASDAR Sprint to implement a use case from €5,900, and ASDAR Advisory for ongoing support from €2,500/month. Fixed scope, transparent upfront.",
       },
       {
         q: "How fast do we see results?",
-        a: "The Efficiency Map is ready in two weeks. The first quick wins are usually actionable within 30 days.",
+        a: "First quick wins are usually actionable within 30 days. The ASDAR Snapshot surfaces initial potential within days; the ASDAR Audit delivers a full roadmap in about two weeks.",
       },
       {
         q: "How much of my team's time does the audit take?",

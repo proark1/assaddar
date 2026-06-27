@@ -4,13 +4,22 @@ import { Mail } from "lucide-react";
 import { requestPasswordResetAction } from "@/app/actions/auth";
 import { fieldClass } from "@/components/portal/chrome";
 import { isLocale, type Locale } from "@/content";
+import { getAuthCopy } from "@/lib/portal/auth-copy";
 
 export const dynamic = "force-dynamic";
 
-export const metadata: Metadata = {
-  title: "Passwort zurücksetzen | Assad Dar",
-  robots: { index: false, follow: false },
-};
+export async function generateMetadata({
+  params,
+}: {
+  params: Promise<{ locale: string }>;
+}): Promise<Metadata> {
+  const { locale } = await params;
+  const safe: Locale = isLocale(locale) ? locale : "de";
+  return {
+    title: getAuthCopy(safe).forgot.metaTitle,
+    robots: { index: false, follow: false },
+  };
+}
 
 export default async function ForgotPasswordPage({
   params,
@@ -22,6 +31,7 @@ export default async function ForgotPasswordPage({
   const { locale } = await params;
   const safe: Locale = isLocale(locale) ? locale : "de";
   const query = await searchParams;
+  const c = getAuthCopy(safe).forgot;
 
   return (
     <main className="flex min-h-screen items-center justify-center bg-bg px-5 py-12">
@@ -33,22 +43,20 @@ export default async function ForgotPasswordPage({
           ASSADDAR.
         </Link>
         <h1 className="mt-6 font-serif text-3xl font-normal text-ink">
-          Passwort zurücksetzen
+          {c.title}
         </h1>
-        <p className="mt-3 text-sm leading-relaxed text-ink2">
-          Wenn ein Konto existiert, senden wir einen Link zum Zurücksetzen.
-        </p>
+        <p className="mt-3 text-sm leading-relaxed text-ink2">{c.intro}</p>
 
         {query.sent === "1" ? (
           <div className="mt-7 rounded-md border border-success/30 bg-success/10 px-3 py-3 text-sm leading-relaxed text-success">
-            Bitte prüfen Sie Ihr Postfach. Der Link ist 60 Minuten gültig.
+            {c.sent}
           </div>
         ) : (
           <form action={requestPasswordResetAction} className="mt-7 space-y-4">
             <input type="hidden" name="locale" value={safe} />
             <div>
               <label htmlFor="email" className="mb-1.5 block text-sm text-ink2">
-                E-Mail
+                {c.emailLabel}
               </label>
               <input
                 id="email"
@@ -64,15 +72,15 @@ export default async function ForgotPasswordPage({
               className="inline-flex w-full items-center justify-center gap-2 rounded-lg bg-copper px-5 py-3 text-sm font-medium text-oncopper shadow-[0_2px_8px_rgba(166,110,47,0.25)] transition-colors hover:bg-copper-hi"
             >
               <Mail className="h-4 w-4" />
-              Link senden
+              {c.submit}
             </button>
           </form>
         )}
 
         <p className="mt-6 text-sm text-ink2">
-          Zurück zum{" "}
+          {c.backTo}{" "}
           <Link href={`/${safe}/login`} className="text-copper hover:underline">
-            Login
+            {c.loginLink}
           </Link>
         </p>
       </section>
