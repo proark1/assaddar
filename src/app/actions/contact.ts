@@ -12,16 +12,22 @@ export type ContactState = {
 
 const EMAIL_RE = /.+@.+\..+/;
 
-async function createWebsiteLead(input: {
+type WebsiteLeadInput = {
   name: string;
   email: string;
   company: string;
   message: string;
   leadContext: string;
-}) {
+};
+
+async function createWebsiteLead(input: WebsiteLeadInput) {
   await mutateStore((store) => {
     const now = new Date().toISOString();
     const admin = store.users.find((user) => user.role === "admin");
+    if (!admin) {
+      throw new Error("Website lead capture requires a portal admin user.");
+    }
+
     const orgId = id("org");
     const projectId = id("project");
     const leadId = id("lead");
@@ -99,10 +105,18 @@ async function createWebsiteLead(input: {
         .join("\n"),
       visibility: "internal",
       asdarStage: "analyse",
-      createdBy: admin?.id ?? "website_contact",
+      createdBy: admin.id,
       createdAt: now,
     });
   });
+}
+
+async function captureWebsiteLead(input: WebsiteLeadInput) {
+  try {
+    await createWebsiteLead(input);
+  } catch (error) {
+    console.error("Website lead capture failed", error);
+  }
 }
 
 export async function submitContact(
@@ -134,13 +148,13 @@ export async function submitContact(
     return { status: "rate" };
   }
 
-  await createWebsiteLead({
+  const leadInput = {
     name,
     email,
     company,
     message,
     leadContext,
-  });
+  };
 
   const key = process.env.RESEND_API_KEY;
   if (!key) return { status: "noconfig" };
@@ -165,6 +179,7 @@ export async function submitContact(
       text: lines.join("\n"),
     });
     if (result.error) return { status: "error" };
+    await captureWebsiteLead(leadInput);
     return { status: "ok" };
   } catch {
     return { status: "error" };
