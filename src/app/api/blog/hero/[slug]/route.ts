@@ -5,6 +5,7 @@ import { getPost } from "@/blog/posts";
 import { getCurrentUser } from "@/lib/portal/auth";
 import { id } from "@/lib/portal/store";
 import { readPortalFile, savePortalFile } from "@/lib/portal/storage";
+import { isFileLike, readBlogHeroUpload } from "@/lib/portal/uploads";
 import { getBlogHero, saveBlogHero } from "@/lib/blog-hero/store";
 
 // Public: blog hero images are served on public article pages.
@@ -58,32 +59,37 @@ export async function POST(
 
   const form = await request.formData();
   const file = form.get("file");
-  if (!file || typeof file !== "object" || !("arrayBuffer" in file)) {
+  if (!isFileLike(file)) {
     return NextResponse.json(
       { ok: false, message: "Keine komprimierte Datei empfangen." },
       { status: 400 },
     );
   }
 
-  const upload = file as File;
-  if (!upload.size || !upload.type.startsWith("image/")) {
+  let upload;
+  try {
+    upload = await readBlogHeroUpload(file);
+  } catch {
     return NextResponse.json(
       { ok: false, message: "Datei ist kein Bild." },
       { status: 400 },
     );
   }
 
-  const mimeType = String(form.get("mimeType") || upload.type || "image/webp");
-  const extension = mimeType.includes("jpeg") ? "jpg" : "webp";
+  const mimeType = upload.contentType;
+  const extension = mimeType.includes("jpeg")
+    ? "jpg"
+    : mimeType.includes("png")
+      ? "png"
+      : "webp";
   const width = Number(form.get("width") || existing.width);
   const height = Number(form.get("height") || existing.height);
-  const bytes = Buffer.from(await upload.arrayBuffer());
   const fileId = id("hero");
   const storagePath = await savePortalFile({
     projectId: "blog-hero",
     fileId,
     filename: `${slug}-compressed.${extension}`,
-    bytes,
+    bytes: upload.bytes,
     contentType: mimeType,
   });
 
@@ -96,7 +102,7 @@ export async function POST(
     height: Number.isFinite(height) && height > 0 ? height : existing.height,
     alt: existing.alt || `Illustration zum Artikel: ${post.title}`,
     provider: `${existing.provider}+compressed`,
-    size: bytes.length,
+    size: upload.bytes.length,
     createdBy: user.id,
     generatedAt: new Date().toISOString(),
   });
@@ -106,6 +112,6 @@ export async function POST(
 
   return NextResponse.json({
     ok: true,
-    size: bytes.length,
+    size: upload.bytes.length,
   });
 }

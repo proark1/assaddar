@@ -12,6 +12,7 @@ import {
 import { sendPortalEmail } from "@/lib/portal/email";
 import { getAuthCopy } from "@/lib/portal/auth-copy";
 import {
+  bumpUserSessionVersion,
   createRegisteredCustomerForAuth,
   findUserByEmail,
   id,
@@ -39,6 +40,10 @@ function ensurePortalReady(locale: Locale) {
   }
 }
 
+function bumpSessionVersion(user: { sessionVersion?: number }) {
+  user.sessionVersion = (user.sessionVersion ?? 0) + 1;
+}
+
 export async function loginAction(formData: FormData) {
   const locale = safeLocale(formData.get("locale"));
   ensurePortalReady(locale);
@@ -49,6 +54,7 @@ export async function loginAction(formData: FormData) {
     `login:${clientIpFromHeaders(requestHeaders)}:${email}`,
     8,
     15 * 60 * 1000,
+    { failClosed: true },
   );
 
   if (!rateLimit.allowed) {
@@ -86,6 +92,7 @@ export async function registerAction(formData: FormData) {
     `register:${clientIpFromHeaders(requestHeaders)}:${email}`,
     4,
     60 * 60 * 1000,
+    { failClosed: true },
   );
 
   if (!rateLimit.allowed) {
@@ -130,6 +137,8 @@ export async function registerAction(formData: FormData) {
 
 export async function logoutAction(formData: FormData) {
   const locale = safeLocale(formData.get("locale"));
+  const current = await getCurrentUser();
+  if (current) await bumpUserSessionVersion(current.id);
   await clearSession();
   redirect(`/${locale}`);
 }
@@ -143,6 +152,7 @@ export async function requestPasswordResetAction(formData: FormData) {
     `password-reset:${clientIpFromHeaders(requestHeaders)}:${email}`,
     4,
     60 * 60 * 1000,
+    { failClosed: true },
   );
 
   if (!rateLimit.allowed) {
@@ -189,6 +199,7 @@ export async function resetPasswordAction(formData: FormData) {
     if (!user) return false;
 
     user.passwordHash = hashPassword(password);
+    bumpSessionVersion(user);
     token.consumedAt = new Date().toISOString();
     return true;
   });
@@ -239,6 +250,7 @@ export async function changePasswordAction(formData: FormData) {
 
     user.passwordHash = hashPassword(password);
     user.emailVerifiedAt = user.emailVerifiedAt ?? new Date().toISOString();
+    bumpSessionVersion(user);
     return true;
   });
 
@@ -267,6 +279,7 @@ export async function acceptInviteAction(formData: FormData) {
     const now = new Date().toISOString();
     user.passwordHash = hashPassword(password);
     user.emailVerifiedAt = now;
+    bumpSessionVersion(user);
     token.consumedAt = now;
     return { userId: user.id };
   });

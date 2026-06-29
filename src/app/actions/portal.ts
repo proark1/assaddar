@@ -26,7 +26,9 @@ import {
 } from "@/lib/portal/store";
 import { createInvoiceCheckoutUrl } from "@/lib/portal/payments";
 import { hashPassword } from "@/lib/portal/password";
+import { externalAiIdentifier, redactForExternalAi } from "@/lib/portal/privacy";
 import { savePortalFile } from "@/lib/portal/storage";
+import { isFileLike, readPortalUpload } from "@/lib/portal/uploads";
 import {
   createFinalReportPdf,
   createProjectBriefPdf,
@@ -45,7 +47,6 @@ import {
   USER_NOTIFICATION_PREFS_MARKER,
 } from "@/lib/portal/operations";
 import {
-  buildTemplatePrompt,
   effectiveConsultingTemplates,
   getEffectiveConsultingTemplate,
   getConsultingTemplate,
@@ -180,14 +181,6 @@ function cents(value: string) {
   const normalized = value.replace(/\./g, "").replace(",", ".");
   const amount = Number.parseFloat(normalized);
   return Number.isFinite(amount) ? Math.round(amount * 100) : 0;
-}
-
-function safeFilename(value: string) {
-  return value
-    .normalize("NFKD")
-    .replace(/[^\w. -]/g, "")
-    .replace(/\s+/g, "-")
-    .slice(0, 120);
 }
 
 function adminProjectPath(locale: Locale, projectId: string) {
@@ -454,6 +447,7 @@ export async function createProjectAction(formData: FormData) {
         email: customerEmail,
         passwordHash: hashPassword(randomTemporaryPassword()),
         role: "customer",
+        sessionVersion: 0,
         createdAt: now,
       };
       store.users.push(customer);
@@ -763,6 +757,7 @@ export async function inviteCustomerAction(formData: FormData) {
         email,
         passwordHash: hashPassword(randomTemporaryPassword()),
         role: "customer",
+        sessionVersion: 0,
         createdAt: now,
       };
       store.users.push(customer);
@@ -2549,12 +2544,16 @@ export async function customerTaskFileAction(formData: FormData) {
   if (user.role === "admin") redirect(adminProjectPath(locale, projectId));
 
   const file = formData.get("file");
-  if (!file || typeof file !== "object" || !("arrayBuffer" in file)) {
+  if (!isFileLike(file)) {
     redirect(`${customerProjectPath(locale, projectId)}?error=file`);
   }
 
-  const upload = file as File;
-  if (!upload.size) redirect(`${customerProjectPath(locale, projectId)}?error=file`);
+  let upload;
+  try {
+    upload = await readPortalUpload(file);
+  } catch {
+    redirect(`${customerProjectPath(locale, projectId)}?error=file`);
+  }
 
   const sourceStore = await readStore();
   const sourceTask = sourceStore.tasks.find(
@@ -2565,15 +2564,13 @@ export async function customerTaskFileAction(formData: FormData) {
   }
 
   const fileId = id("file");
-  const safeName = safeFilename(upload.name || "upload.bin");
-  const displayName = text(formData, "name") || upload.name || "Datei";
-  const buffer = Buffer.from(await upload.arrayBuffer());
+  const displayName = text(formData, "name") || file.name || "Datei";
   const storagePath = await savePortalFile({
     projectId,
     fileId,
-    filename: safeName,
-    bytes: buffer,
-    contentType: upload.type || "application/octet-stream",
+    filename: upload.safeName,
+    bytes: upload.bytes,
+    contentType: upload.contentType,
   });
 
   await mutateStore((store) => {
@@ -2590,8 +2587,8 @@ export async function customerTaskFileAction(formData: FormData) {
       name: displayName,
       description: `Zur Aufgabe "${task.title}" hochgeladen von ${user.name}.`,
       storagePath,
-      mimeType: upload.type || "application/octet-stream",
-      size: upload.size,
+      mimeType: upload.contentType,
+      size: upload.bytes.length,
       visibility: "customer",
       category: "customer_upload",
       approvalStatus: "not_required",
@@ -2802,24 +2799,26 @@ export async function addFileAction(formData: FormData) {
   const projectId = text(formData, "projectId");
   const file = formData.get("file");
 
-  if (!file || typeof file !== "object" || !("arrayBuffer" in file)) {
+  if (!isFileLike(file)) {
     redirect(`${adminProjectPath(locale, projectId)}?error=file`);
   }
 
-  const upload = file as File;
-  if (!upload.size) redirect(`${adminProjectPath(locale, projectId)}?error=file`);
+  let upload;
+  try {
+    upload = await readPortalUpload(file);
+  } catch {
+    redirect(`${adminProjectPath(locale, projectId)}?error=file`);
+  }
 
   const fileId = id("file");
-  const safeName = safeFilename(upload.name || "upload.bin");
   const fileVisibility = visibility(text(formData, "visibility"));
-  const displayName = text(formData, "name") || upload.name || "Datei";
-  const buffer = Buffer.from(await upload.arrayBuffer());
+  const displayName = text(formData, "name") || file.name || "Datei";
   const storagePath = await savePortalFile({
     projectId,
     fileId,
-    filename: safeName,
-    bytes: buffer,
-    contentType: upload.type || "application/octet-stream",
+    filename: upload.safeName,
+    bytes: upload.bytes,
+    contentType: upload.contentType,
   });
 
   await mutateStore((store) => {
@@ -2830,8 +2829,8 @@ export async function addFileAction(formData: FormData) {
       name: displayName,
       description: text(formData, "description"),
       storagePath,
-      mimeType: upload.type || "application/octet-stream",
-      size: upload.size,
+      mimeType: upload.contentType,
+      size: upload.bytes.length,
       visibility: fileVisibility,
       category:
         fileVisibility === "customer" ? "consultant_deliverable" : "other",
@@ -3332,6 +3331,7 @@ export async function runAiScanAction(formData: FormData) {
   const locale = safeLocale(formData.get("locale"));
   const user = await requireAdmin(locale);
   const projectId = text(formData, "projectId");
+  const confirmed = checkbox(formData, "confirmExternalAi");
   const providers = [
     formData.get("provider_openai") === "on" ? "openai" : "",
     formData.get("provider_gemini") === "on" ? "gemini" : "",
@@ -3342,23 +3342,35 @@ export async function runAiScanAction(formData: FormData) {
 
   const sourceStore = await readStore();
   const bundle = getProjectBundle(sourceStore, projectId);
-  if (!bundle || providers.length === 0) {
+  if (!bundle || providers.length === 0 || !confirmed) {
     redirect(`${adminProjectPath(locale, projectId)}?error=ai`);
   }
 
+  const template = matchConsultingTemplate(bundle.organization.industry);
+  const templatePrompt = [
+    `Industry playbook: ${template.label}`,
+    `Best for: ${template.bestFor}`,
+    `Kickoff goal: ${template.kickoffGoal}`,
+    `Quick wins: ${template.quickWins.join("; ")}`,
+    `Automation ideas: ${template.automationIdeas.join("; ")}`,
+    `Risks: ${template.risks.join("; ")}`,
+    `Meeting moves: ${template.meetingMoves.join("; ")}`,
+    `Current project: ${externalAiIdentifier(bundle.project.name, "Project")} / ${externalAiIdentifier(bundle.organization.name)}`,
+  ].join("\n");
+
   const prompt = [
-    `Company: ${bundle.organization.name}`,
-    `Industry: ${bundle.organization.industry}`,
+    `Company: ${externalAiIdentifier(bundle.organization.name)}`,
+    `Industry: ${redactForExternalAi(bundle.organization.industry)}`,
     `ASDAR stage: ${bundle.project.asdarStage}`,
-    `Context: ${bundle.intelligence.companyContext}`,
-    `Issues: ${bundle.intelligence.issues}`,
-    `Goals: ${bundle.intelligence.goals}`,
-    `Tools: ${bundle.intelligence.currentTools}`,
-    `Data situation: ${bundle.intelligence.dataSituation}`,
-    `Constraints: ${bundle.intelligence.constraints}`,
-    `Opportunities: ${bundle.intelligence.opportunities}`,
+    `Context: ${redactForExternalAi(bundle.intelligence.companyContext)}`,
+    `Issues: ${redactForExternalAi(bundle.intelligence.issues)}`,
+    `Goals: ${redactForExternalAi(bundle.intelligence.goals)}`,
+    `Tools: ${redactForExternalAi(bundle.intelligence.currentTools)}`,
+    `Data situation: ${redactForExternalAi(bundle.intelligence.dataSituation)}`,
+    `Constraints: ${redactForExternalAi(bundle.intelligence.constraints)}`,
+    `Opportunities: ${redactForExternalAi(bundle.intelligence.opportunities)}`,
     "",
-    buildTemplatePrompt(bundle, matchConsultingTemplate(bundle.organization.industry)),
+    templatePrompt,
     "",
     "Return concise consulting ideas for Assad as the consultant. Do not write a customer-facing strategy.",
     "Use exactly these section headings:",

@@ -8,6 +8,7 @@ import { getDict, SITE_URL } from "@/content";
 import { getPost, posts } from "@/blog/posts";
 import { enrich } from "@/blog/enrich";
 import { getBlogHero } from "@/lib/blog-hero/store";
+import { sanitizeRenderedHtml } from "@/lib/markdown";
 import {
   extractSections,
   injectHeadingIds,
@@ -352,7 +353,12 @@ export default async function BlogArticle({
                       </div>
                     ) : null
                   ) : seg ? (
-                    <div key={idx} dangerouslySetInnerHTML={{ __html: seg }} />
+                    <div
+                      key={idx}
+                      dangerouslySetInnerHTML={{
+                        __html: sanitizeRenderedHtml(seg),
+                      }}
+                    />
                   ) : null,
                 )}
               </div>

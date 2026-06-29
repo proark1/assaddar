@@ -1,3 +1,4 @@
+import { isIP } from "net";
 import { mutateStore } from "./store";
 import { isPostgresBackendEnabled } from "./config";
 import { checkPostgresRateLimit } from "./store-postgres";
@@ -11,6 +12,16 @@ type Bucket = {
   resetAt: number;
 };
 
+type RateLimitResult = {
+  allowed: boolean;
+  retryAfterSeconds: number;
+  remaining: number;
+};
+
+type RateLimitOptions = {
+  failClosed?: boolean;
+};
+
 const buckets = new Map<string, Bucket>();
 
 function cleanupExpired(now: number) {
@@ -21,13 +32,23 @@ function cleanupExpired(now: number) {
   }
 }
 
-export function clientIpFromHeaders(headers: HeaderReader) {
-  const forwardedFor = headers.get("x-forwarded-for");
-  if (forwardedFor) return forwardedFor.split(",")[0]?.trim() || "unknown";
+function cleanIp(value: string | null) {
+  if (!value || value.length > 512) return null;
 
+  for (const part of value.split(",")) {
+    const token = part.trim().replace(/^\[/, "").replace(/\]$/, "");
+    const withoutPort = token.replace(/^(\d+\.\d+\.\d+\.\d+):\d+$/, "$1");
+    if (isIP(withoutPort)) return withoutPort;
+  }
+
+  return null;
+}
+
+export function clientIpFromHeaders(headers: HeaderReader) {
   return (
-    headers.get("x-real-ip")?.trim() ||
-    headers.get("cf-connecting-ip")?.trim() ||
+    cleanIp(headers.get("cf-connecting-ip")) ||
+    cleanIp(headers.get("x-real-ip")) ||
+    cleanIp(headers.get("x-forwarded-for")) ||
     "unknown"
   );
 }
@@ -36,7 +57,7 @@ function memoryRateLimit(
   key: string,
   limit: number,
   windowMs: number,
-): { allowed: boolean; retryAfterSeconds: number; remaining: number } {
+): RateLimitResult {
   const now = Date.now();
   cleanupExpired(now);
 
@@ -70,7 +91,8 @@ export async function checkRateLimit(
   key: string,
   limit: number,
   windowMs: number,
-): Promise<{ allowed: boolean; retryAfterSeconds: number; remaining: number }> {
+  options: RateLimitOptions = {},
+): Promise<RateLimitResult> {
   try {
     if (isPostgresBackendEnabled()) {
       return await checkPostgresRateLimit(key, limit, windowMs);
@@ -121,6 +143,13 @@ export async function checkRateLimit(
       };
     });
   } catch {
+    if (options.failClosed) {
+      return {
+        allowed: false,
+        retryAfterSeconds: Math.ceil(windowMs / 1000),
+        remaining: 0,
+      };
+    }
     return memoryRateLimit(key, limit, windowMs);
   }
 }

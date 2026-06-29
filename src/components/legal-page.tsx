@@ -1,6 +1,6 @@
-import { marked } from "marked";
 import { getDict, type Locale } from "@/content";
 import { legal, type LegalKey } from "@/legal";
+import { renderMarkdownToSafeHtml } from "@/lib/markdown";
 import { Nav } from "./nav";
 import { Footer } from "./footer";
 
@@ -13,11 +13,7 @@ export function LegalPage({
 }) {
   const t = getDict(locale);
   const doc = legal[locale][docKey];
-  const html = marked.parse(doc.body, {
-    async: false,
-    gfm: true,
-    breaks: true,
-  }) as string;
+  const html = renderMarkdownToSafeHtml(doc.body);
 
   return (
     <>

@@ -23,6 +23,7 @@ export type User = {
   passwordHash: string;
   role: UserRole;
   emailVerifiedAt?: string;
+  sessionVersion: number;
   createdAt: string;
 };
 

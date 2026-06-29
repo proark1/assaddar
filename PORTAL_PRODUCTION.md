@@ -21,6 +21,8 @@ SUPABASE_URL=
 SUPABASE_SERVICE_ROLE_KEY=
 SUPABASE_STORAGE_BUCKET=portal-files
 CRON_SECRET=
+PORTAL_MAX_UPLOAD_BYTES=12582912
+BLOG_HERO_MAX_UPLOAD_BYTES=5242880
 ```
 
 Generate `AUTH_SECRET` with:
@@ -79,6 +81,11 @@ SUPABASE_STORAGE_BUCKET=portal-files
 The app stores only metadata in Postgres. File bytes go to the configured
 storage provider.
 
+Uploads are validated before being read into memory. Keep
+`PORTAL_MAX_UPLOAD_BYTES` and `BLOG_HERO_MAX_UPLOAD_BYTES` intentionally small
+for the deployment tier; raise them only when the serverless memory budget can
+handle the worst-case concurrent uploads.
+
 ## Stripe
 
 Set:
@@ -132,7 +139,11 @@ GEMINI_MODEL=
 GROK_API_KEY=
 GROK_MODEL=
 GROK_API_BASE=https://api.x.ai/v1
+EXTERNAL_AI_SEND_IDENTIFIERS=false
 ```
 
 Scan results are saved as internal `aiInsights` on the project and are not
 visible to customers unless Assad publishes a separate customer update.
+By default, company/project names are replaced before external provider calls;
+set `EXTERNAL_AI_SEND_IDENTIFIERS=true` only when the customer and data
+processing setup permit it.

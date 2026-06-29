@@ -12,6 +12,22 @@ type AiRequest = {
   prompt: string;
 };
 
+const DEFAULT_TIMEOUT_MS = 20_000;
+
+async function fetchWithTimeout(
+  input: string,
+  init: RequestInit,
+  timeoutMs = DEFAULT_TIMEOUT_MS,
+) {
+  const controller = new AbortController();
+  const timeout = setTimeout(() => controller.abort(), timeoutMs);
+  try {
+    return await fetch(input, { ...init, signal: controller.signal });
+  } finally {
+    clearTimeout(timeout);
+  }
+}
+
 function plainText(value: unknown): string {
   if (typeof value === "string") return value;
   return "";
@@ -51,7 +67,7 @@ async function callOpenAi({ system, prompt }: Omit<AiRequest, "provider">) {
   const model = process.env.OPENAI_MODEL;
   if (!key || !model) return null;
 
-  const response = await fetch("https://api.openai.com/v1/responses", {
+  const response = await fetchWithTimeout("https://api.openai.com/v1/responses", {
     method: "POST",
     headers: {
       authorization: `Bearer ${key}`,
@@ -77,7 +93,7 @@ async function callGemini({ system, prompt }: Omit<AiRequest, "provider">) {
   const endpoint = `https://generativelanguage.googleapis.com/v1beta/models/${encodeURIComponent(
     model,
   )}:generateContent?key=${encodeURIComponent(key)}`;
-  const response = await fetch(endpoint, {
+  const response = await fetchWithTimeout(endpoint, {
     method: "POST",
     headers: { "content-type": "application/json" },
     body: JSON.stringify({
@@ -97,20 +113,23 @@ async function callGrok({ system, prompt }: Omit<AiRequest, "provider">) {
   const base = process.env.GROK_API_BASE || "https://api.x.ai/v1";
   if (!key || !model) return null;
 
-  const response = await fetch(`${base.replace(/\/$/, "")}/chat/completions`, {
-    method: "POST",
-    headers: {
-      authorization: `Bearer ${key}`,
-      "content-type": "application/json",
+  const response = await fetchWithTimeout(
+    `${base.replace(/\/$/, "")}/chat/completions`,
+    {
+      method: "POST",
+      headers: {
+        authorization: `Bearer ${key}`,
+        "content-type": "application/json",
+      },
+      body: JSON.stringify({
+        model,
+        messages: [
+          { role: "system", content: system },
+          { role: "user", content: prompt },
+        ],
+      }),
     },
-    body: JSON.stringify({
-      model,
-      messages: [
-        { role: "system", content: system },
-        { role: "user", content: prompt },
-      ],
-    }),
-  });
+  );
   const data = await parseJson(response);
   if (!response.ok) throw new Error("Grok request failed");
 

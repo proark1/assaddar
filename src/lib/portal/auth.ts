@@ -11,6 +11,7 @@ const ONE_WEEK_SECONDS = 60 * 60 * 24 * 7;
 
 type SessionPayload = {
   userId: string;
+  sessionVersion: number;
   expiresAt: number;
 };
 
@@ -50,12 +51,20 @@ function cookieDomain() {
   return process.env.AUTH_COOKIE_DOMAIN?.trim() || undefined;
 }
 
-export function createSessionCookie(userId: string) {
+function versionOf(user: Pick<User, "sessionVersion">) {
+  return user.sessionVersion ?? 0;
+}
+
+export function createSessionCookie(user: Pick<User, "id" | "sessionVersion">) {
   const expiresAt = Date.now() + ONE_WEEK_SECONDS * 1000;
 
   return {
     name: COOKIE_NAME,
-    value: encodeSession({ userId, expiresAt }),
+    value: encodeSession({
+      userId: user.id,
+      sessionVersion: versionOf(user),
+      expiresAt,
+    }),
     options: {
       domain: cookieDomain(),
       httpOnly: true,
@@ -92,14 +101,24 @@ function decodeSession(value?: string): SessionPayload | null {
 }
 
 export async function setSession(userId: string) {
+  const user = await findUserByIdForSession(userId);
+  if (!user) return;
+
   const jar = await cookies();
-  const session = createSessionCookie(userId);
+  const session = createSessionCookie(user);
   jar.set(session.name, session.value, session.options);
 }
 
 export async function clearSession() {
   const jar = await cookies();
-  jar.delete(COOKIE_NAME);
+  jar.set(COOKIE_NAME, "", {
+    domain: cookieDomain(),
+    httpOnly: true,
+    sameSite: "lax",
+    secure: process.env.NODE_ENV === "production",
+    path: "/",
+    maxAge: 0,
+  });
 }
 
 export async function getCurrentUser(): Promise<User | null> {
@@ -107,7 +126,10 @@ export async function getCurrentUser(): Promise<User | null> {
   const payload = decodeSession(jar.get(COOKIE_NAME)?.value);
   if (!payload) return null;
 
-  return findUserByIdForSession(payload.userId);
+  const user = await findUserByIdForSession(payload.userId);
+  if (!user) return null;
+  if ((payload.sessionVersion ?? 0) !== versionOf(user)) return null;
+  return user;
 }
 
 export async function requireUser(locale: Locale) {

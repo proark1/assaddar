@@ -2278,6 +2278,16 @@ export default async function AdminProjectPage({
                   />
                   Grok
                 </label>
+                <label className="flex items-start gap-2 rounded-lg border border-hairline bg-bg p-3 text-[12px] leading-relaxed text-muted">
+                  <input
+                    name="confirmExternalAi"
+                    type="checkbox"
+                    required
+                    className="mt-0.5 h-4 w-4 accent-[var(--color-copper)]"
+                  />
+                  Ich bestätige, dass der redigierte Projektkontext an die
+                  ausgewählten externen KI-Provider gesendet werden darf.
+                </label>
               </div>
               <button
                 type="submit"

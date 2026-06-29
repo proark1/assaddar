@@ -16,3 +16,10 @@ create table if not exists blog_hero_images (
   created_by text,
   generated_at timestamptz not null default now()
 );
+
+alter table blog_hero_images enable row level security;
+
+drop policy if exists "blog hero service role full access" on blog_hero_images;
+
+create policy "blog hero service role full access"
+  on blog_hero_images for all to service_role using (true) with check (true);

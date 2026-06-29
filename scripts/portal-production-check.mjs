@@ -32,6 +32,14 @@ if (process.env.AUTH_SECRET && process.env.AUTH_SECRET.length < 32) {
   failures.push("AUTH_SECRET should be at least 32 characters");
 }
 
+for (const name of ["PORTAL_MAX_UPLOAD_BYTES", "BLOG_HERO_MAX_UPLOAD_BYTES"]) {
+  if (!process.env[name]) continue;
+  const value = Number(process.env[name]);
+  if (!Number.isFinite(value) || value <= 0) {
+    failures.push(`${name} must be a positive byte count`);
+  }
+}
+
 if (failures.length > 0) {
   console.error("Portal production check failed:");
   for (const failure of failures) console.error(`- ${failure}`);

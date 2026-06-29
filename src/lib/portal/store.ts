@@ -8,6 +8,7 @@ import {
   createPostgresProjectForAdmin,
   type CreateProjectInput,
   type CreateRegisteredCustomerInput,
+  bumpPostgresUserSessionVersion,
   findPostgresUserByEmail,
   findPostgresUserById,
   mutatePostgresStore,
@@ -85,6 +86,7 @@ function buildSeedStore(): PortalStore {
         passwordHash: hashPassword(bootstrapAdminPassword()),
         role: "admin",
         emailVerifiedAt: createdAt,
+        sessionVersion: 0,
         createdAt,
       },
       {
@@ -94,6 +96,7 @@ function buildSeedStore(): PortalStore {
         passwordHash: hashPassword("kunde1234"),
         role: "customer",
         emailVerifiedAt: createdAt,
+        sessionVersion: 0,
         createdAt,
       },
     ],
@@ -246,7 +249,10 @@ function buildSeedStore(): PortalStore {
 function normalizeStore(store: PortalStore): PortalStore {
   return {
     ...store,
-    users: store.users ?? [],
+    users: (store.users ?? []).map((user) => ({
+      ...user,
+      sessionVersion: user.sessionVersion ?? 0,
+    })),
     organizations: store.organizations ?? [],
     projects: store.projects ?? [],
     projectMembers: store.projectMembers ?? [],
@@ -352,6 +358,18 @@ export async function findUserByEmailForLogin(
 
   const store = await readStore();
   return findUserByEmail(store, normalized) ?? null;
+}
+
+export async function bumpUserSessionVersion(userId: string) {
+  if (isPostgresBackendEnabled()) {
+    await bumpPostgresUserSessionVersion(userId);
+    return;
+  }
+
+  await mutateStore((store) => {
+    const user = store.users.find((entry) => entry.id === userId);
+    if (user) user.sessionVersion = (user.sessionVersion ?? 0) + 1;
+  });
 }
 
 export function getProjectAccess(
@@ -493,6 +511,7 @@ export async function createRegisteredCustomerForAuth(
       passwordHash: input.passwordHash,
       role: "customer",
       emailVerifiedAt: input.emailVerifiedAt,
+      sessionVersion: 0,
       createdAt: input.createdAt,
     });
 

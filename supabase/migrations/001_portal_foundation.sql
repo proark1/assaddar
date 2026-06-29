@@ -5,6 +5,7 @@ create table if not exists portal_users (
   password_hash text not null,
   role text not null check (role in ('admin', 'customer')),
   email_verified_at timestamptz,
+  session_version integer not null default 0,
   created_at timestamptz not null default now()
 );
 
@@ -140,3 +141,5 @@ create index if not exists portal_auth_tokens_user_id_idx on portal_auth_tokens(
 
 alter table portal_users
   add column if not exists email_verified_at timestamptz;
+alter table portal_users
+  add column if not exists session_version integer not null default 0;

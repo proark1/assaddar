@@ -52,6 +52,7 @@ export async function POST(request: NextRequest) {
     `login:${clientIpFromHeaders(request.headers)}:${email || "unknown"}`,
     8,
     10 * 60 * 1000,
+    { failClosed: true },
   );
 
   if (!rateLimit.allowed) {
@@ -72,7 +73,7 @@ export async function POST(request: NextRequest) {
     ok: true,
     redirectTo: nextPath(locale, payload.next),
   });
-  const session = createSessionCookie(user.id);
+  const session = createSessionCookie(user);
   response.cookies.set(session.name, session.value, session.options);
   return response;
 }
