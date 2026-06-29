@@ -145,7 +145,7 @@ const de: AboutContent = {
       ],
     },
   ],
-  expertiseTitle: "Worin ich tief bin",
+  expertiseTitle: "Wo ich unter anderem helfen kann",
   expertise: [
     "KI-gestützte Unternehmenstransformation",
     "Prozess- & Systemarchitektur (SAP, Process Governance)",
@@ -183,9 +183,9 @@ const de: AboutContent = {
     "Duales Studium bei Bayer — B.Sc. Information Science for Business, FHDW Bergisch Gladbach (2010–2013)",
   languagesTitle: "Sprachen",
   languages: "Deutsch (Muttersprache), Englisch (verhandlungssicher)",
-  ctaTitle: "Lassen Sie uns über Ihr Unternehmen sprechen.",
+  ctaTitle: "Lassen Sie mich Ihr Unternehmen verstehen.",
   ctaText:
-    "30 Minuten, keine Slides — wir schauen, wo Digital & KI bei Ihnen den größten Hebel haben.",
+    "30 Minuten, keine Slides — ich schaue mit Ihnen, wo Digital & KI den größten Hebel haben.",
   ctaButton: "Erstgespräch buchen",
   backHome: "Zur Startseite",
 };
@@ -337,9 +337,9 @@ const en: AboutContent = {
     "Dual study program at Bayer — B.Sc. Information Science for Business, FHDW Bergisch Gladbach (2010–2013)",
   languagesTitle: "Languages",
   languages: "German (native), English (fluent)",
-  ctaTitle: "Let's talk about your company.",
+  ctaTitle: "Let me understand your company.",
   ctaText:
-    "30 minutes, no slides — we look at where digital & AI give you the biggest leverage.",
+    "30 minutes, no slides — I look with you at where digital & AI can create the biggest leverage.",
   ctaButton: "Book a call",
   backHome: "Back to home",
 };

@@ -321,7 +321,7 @@ const de = {
     kicker: "Branchen",
     heading: "Branchen, in denen KI sofort Wirkung zeigt.",
     intro:
-      "Jede Branche ist anders. Aber viele Probleme ähneln sich: zu viele manuelle Aufgaben, zu viele E-Mails, zu viele Excel-Listen, zu wenig Transparenz und zu wenig Zeit. Mit der ASDAR Method finden wir, welche Prozesse sich durch KI und Digitalisierung verbessern lassen.",
+      "Jede Branche ist anders. Aber viele Probleme ähneln sich: zu viele manuelle Aufgaben, zu viele E-Mails, zu viele Excel-Listen, zu wenig Transparenz und zu wenig Zeit. Mit der ASDAR Method finde ich, welche Prozesse sich durch KI und Digitalisierung verbessern lassen.",
     items: [
       {
         icon: "HeartPulse",
@@ -531,16 +531,12 @@ const de = {
         q: "Wie viel Zeit kostet das Audit mein Team?",
         a: "Wenig. Ein 90-minütiger Workshop plus zwei, drei kurze Rückfragen. Die Analysearbeit mache ich, nicht Ihr Team.",
       },
-      {
-        q: "Sie haben noch keine Mittelstands-Referenzen — warum sollte ich der Erste sein?",
-        a: "Weil Sie dafür den Gründungspreis und meine volle Aufmerksamkeit bekommen. Die Methode ist erprobt — in 19 Jahren Konzern-Transformation. Neu ist nur das Format für inhabergeführte Unternehmen.",
-      },
     ],
   },
   finalCta: {
     kicker: "Nächster Schritt",
     heading: "Bereit, manuelle Arbeit zu reduzieren?",
-    sub: "Senden Sie kurz Ihr Thema über das Formular. Danach klären wir in 30 Minuten, welcher Prozess zuerst einfacher werden sollte.",
+    sub: "Senden Sie kurz Ihr Thema über das Formular. Danach kläre ich mit Ihnen in 30 Minuten, welcher Prozess zuerst einfacher werden sollte.",
     cta: "ASDAR Analyse anfragen",
     ctaHref: "/de/termin",
     or: "oder per E-Mail an",
@@ -551,7 +547,7 @@ const de = {
   termin: {
     title: "Erstgespräch buchen",
     intro:
-      "Schreiben Sie mir kurz, worum es geht. Danach klären wir in 30 Minuten den sinnvollsten nächsten Schritt — keine Slides, kein Druck, auf Deutsch oder Englisch.",
+      "Schreiben Sie mir kurz, worum es geht. Danach kläre ich mit Ihnen in 30 Minuten den sinnvollsten nächsten Schritt — keine Slides, kein Druck, auf Deutsch oder Englisch.",
     formTitle: "Nachricht senden",
     name: "Name",
     email: "E-Mail",
@@ -902,7 +898,7 @@ const en: Dict = {
     kicker: "Industries",
     heading: "Industries where AI delivers right away.",
     intro:
-      "Every industry is different. But many problems look alike: too many manual tasks, too many emails, too many Excel lists, too little transparency, and too little time. With the ASDAR Method, we find which processes AI and digitalization can improve.",
+      "Every industry is different. But many problems look alike: too many manual tasks, too many emails, too many Excel lists, too little transparency, and too little time. With the ASDAR Method, I identify which processes AI and digitalization can improve.",
     items: [
       {
         icon: "HeartPulse",
@@ -1117,7 +1113,7 @@ const en: Dict = {
   finalCta: {
     kicker: "Next step",
     heading: "Ready to reduce manual work?",
-    sub: "Send the topic through the short form. Then we clarify in 30 minutes which process should become simpler first.",
+    sub: "Send the topic through the short form. Then I clarify with you in 30 minutes which process should become simpler first.",
     cta: "Request an ASDAR analysis",
     ctaHref: "/en/termin",
     or: "or email",
@@ -1128,7 +1124,7 @@ const en: Dict = {
   termin: {
     title: "Book a call",
     intro:
-      "Tell me briefly what it's about. Then we clarify the most useful next step in 30 minutes — no slides, no pressure, in German or English.",
+      "Tell me briefly what it's about. Then I clarify the most useful next step with you in 30 minutes — no slides, no pressure, in German or English.",
     formTitle: "Send a message",
     name: "Name",
     email: "E-mail",

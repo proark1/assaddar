@@ -232,7 +232,7 @@ export default async function AsdarMethodPage({
             "Messpunkte, Review-Rhythmus und Folgeautomatisierungen definieren.",
           ],
           questions: [
-            "Wie messen wir Wirkung?",
+            "Wie messe ich Wirkung?",
             "Was wird nach dem Pilot standardisiert?",
             "Welche Entscheidungen braucht der Kunde jetzt?",
           ],
@@ -314,7 +314,7 @@ export default async function AsdarMethodPage({
             "Define metrics, review rhythm, and follow-up automations.",
           ],
           questions: [
-            "How do we measure impact?",
+            "How do I measure impact?",
             "What becomes standard after the pilot?",
             "Which decisions does the client need now?",
           ],
@@ -336,7 +336,7 @@ export default async function AsdarMethodPage({
         {
           Icon: Workflow,
           title: "Im Termin",
-          text: "Wir gehen die ASDAR-Schritte geführt durch, markieren Engpässe live und halten offene Entscheidungen sofort fest.",
+          text: "Ich gehe mit Ihnen die ASDAR-Schritte geführt durch, markiere Engpässe live und halte offene Entscheidungen sofort fest.",
         },
         {
           Icon: Route,
@@ -353,7 +353,7 @@ export default async function AsdarMethodPage({
         {
           Icon: Workflow,
           title: "During the session",
-          text: "We move through the ASDAR steps, mark bottlenecks live, and capture open decisions immediately.",
+          text: "I guide you through the ASDAR steps, mark bottlenecks live, and capture open decisions immediately.",
         },
         {
           Icon: Route,
@@ -539,8 +539,8 @@ export default async function AsdarMethodPage({
                 </span>
                 <h2 className="mt-3 font-serif text-2xl font-normal text-ink md:text-3xl">
                   {isDe
-                    ? "Was wir dafür aufnehmen"
-                    : "What we collect first"}
+                    ? "Was ich dafür aufnehme"
+                    : "What I collect first"}
                 </h2>
                 <p className="mt-4 text-sm leading-relaxed text-ink2">
                   {isDe
