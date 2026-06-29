@@ -143,7 +143,6 @@ export async function submitContact(
     `contact:${clientIpFromHeaders(requestHeaders)}:${email}`,
     5,
     60 * 60 * 1000,
-    { failClosed: true },
   );
 
   if (!rateLimit.allowed) {
