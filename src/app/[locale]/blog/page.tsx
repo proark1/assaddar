@@ -10,6 +10,7 @@ import {
 } from "@/lib/blog-hero/store";
 import { Nav } from "@/components/nav";
 import { Footer } from "@/components/footer";
+import { JsonLd } from "@/components/json-ld";
 
 export const dynamicParams = false;
 
@@ -166,14 +167,8 @@ export default async function BlogIndex({
 
   return (
     <>
-      <script
-        type="application/ld+json"
-        dangerouslySetInnerHTML={{ __html: JSON.stringify(blogLd) }}
-      />
-      <script
-        type="application/ld+json"
-        dangerouslySetInnerHTML={{ __html: JSON.stringify(breadcrumbLd) }}
-      />
+      <JsonLd data={blogLd} />
+      <JsonLd data={breadcrumbLd} />
 
       <Nav t={t.nav} locale="de" subpage />
 

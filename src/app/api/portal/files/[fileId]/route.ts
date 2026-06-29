@@ -1,9 +1,10 @@
 import { NextResponse } from "next/server";
 import { getCurrentUser } from "@/lib/portal/auth";
 import { getProjectAccess, readStore } from "@/lib/portal/store";
-import { readPortalFile } from "@/lib/portal/storage";
+import { streamPortalFile } from "@/lib/portal/storage";
 
 export const dynamic = "force-dynamic";
+export const runtime = "nodejs";
 
 function contentDispositionFilename(name: string, mimeType: string) {
   const withExtension =
@@ -38,21 +39,21 @@ export async function GET(
   }
 
   try {
-    const stored = await readPortalFile(file);
-    const body = stored.bytes.buffer.slice(
-      stored.bytes.byteOffset,
-      stored.bytes.byteOffset + stored.bytes.byteLength,
-    ) as ArrayBuffer;
-    return new NextResponse(body, {
+    const stored = await streamPortalFile(file);
+    const headers = new Headers({
+      "Content-Type": stored.contentType,
+      "Content-Disposition": contentDispositionFilename(
+        file.name,
+        stored.contentType,
+      ),
+      "Cache-Control": "private, no-store",
+      "X-Content-Type-Options": "nosniff",
+    });
+    if (stored.size) headers.set("Content-Length", String(stored.size));
+
+    return new NextResponse(stored.body, {
       headers: {
-        "Content-Type": stored.contentType,
-        "Content-Length": String(stored.size),
-        "Content-Disposition": contentDispositionFilename(
-          file.name,
-          stored.contentType,
-        ),
-        "Cache-Control": "private, no-store",
-        "X-Content-Type-Options": "nosniff",
+        ...Object.fromEntries(headers.entries()),
       },
     });
   } catch {

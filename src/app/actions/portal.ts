@@ -1,10 +1,11 @@
 "use server";
 import { randomBytes } from "crypto";
 import { revalidatePath } from "next/cache";
+import { headers } from "next/headers";
 import { redirect } from "next/navigation";
 import { isLocale, type Locale } from "@/content";
 import { requireAdmin, requireUser } from "@/lib/portal/auth";
-import { requestExternalAiInsight } from "@/lib/portal/ai-providers";
+import { runExternalAiScan } from "@/lib/portal/ai-scan";
 import {
   buildConsultantBrief,
   buildCustomerSafeSummary,
@@ -26,7 +27,7 @@ import {
 } from "@/lib/portal/store";
 import { createInvoiceCheckoutUrl } from "@/lib/portal/payments";
 import { hashPassword } from "@/lib/portal/password";
-import { externalAiIdentifier, redactForExternalAi } from "@/lib/portal/privacy";
+import { rejectUntrustedOrigin } from "@/lib/portal/security";
 import { savePortalFile } from "@/lib/portal/storage";
 import { isFileLike, readPortalUpload } from "@/lib/portal/uploads";
 import {
@@ -105,6 +106,23 @@ function status(value: string): ProjectStatus {
     return value;
   }
   return "discovery";
+}
+
+async function ensureTrustedActionOrigin(locale: Locale) {
+  const requestHeaders = await headers();
+  if (rejectUntrustedOrigin(requestHeaders)) {
+    redirect(`/${locale}/login?error=origin`);
+  }
+}
+
+async function requireUserAction(locale: Locale) {
+  await ensureTrustedActionOrigin(locale);
+  return requireUser(locale);
+}
+
+async function requireAdminAction(locale: Locale) {
+  await ensureTrustedActionOrigin(locale);
+  return requireAdmin(locale);
 }
 
 function taskStatus(value: string): ProjectTask["status"] {
@@ -230,7 +248,7 @@ function changeRequestStatus(value: string) {
 }
 
 async function requireProjectAccessForAction(locale: Locale, projectId: string) {
-  const user = await requireUser(locale);
+  const user = await requireUserAction(locale);
   const store = await readStore();
   if (!getProjectAccess(store, user.id, projectId)) {
     redirect(`/${locale}/portal`);
@@ -295,7 +313,7 @@ async function notifyProjectCustomers({
 
 export async function createProjectAction(formData: FormData) {
   const locale = safeLocale(formData.get("locale"));
-  const user = await requireAdmin(locale);
+  const user = await requireAdminAction(locale);
 
   const company = text(formData, "company");
   const customerName = text(formData, "customerName");
@@ -509,7 +527,7 @@ export async function createProjectAction(formData: FormData) {
 
 export async function runPortalAutomationsAction(formData: FormData) {
   const locale = safeLocale(formData.get("locale"));
-  const user = await requireAdmin(locale);
+  const user = await requireAdminAction(locale);
   const returnTo = text(formData, "returnTo") || `/${locale}/portal/admin`;
 
   const summary = await mutateStore((store) =>
@@ -528,7 +546,7 @@ export async function runPortalAutomationsAction(formData: FormData) {
 
 export async function runProjectAutomationsAction(formData: FormData) {
   const locale = safeLocale(formData.get("locale"));
-  const user = await requireAdmin(locale);
+  const user = await requireAdminAction(locale);
   const projectId = text(formData, "projectId");
   const returnTo =
     text(formData, "returnTo") ||
@@ -550,7 +568,7 @@ export async function runProjectAutomationsAction(formData: FormData) {
 
 export async function updateNotificationPreferencesAction(formData: FormData) {
   const locale = safeLocale(formData.get("locale"));
-  const user = await requireUser(locale);
+  const user = await requireUserAction(locale);
 
   const saved = await mutateStore((store) => {
     const anchorProject = listProjectsForUser(store, user.id)[0];
@@ -589,7 +607,7 @@ export async function updateNotificationPreferencesAction(formData: FormData) {
 
 export async function saveTemplateOverrideAction(formData: FormData) {
   const locale = safeLocale(formData.get("locale"));
-  const user = await requireAdmin(locale);
+  const user = await requireAdminAction(locale);
   const templateId = text(formData, "templateId");
   const sourceStore = await readStore();
   const base = getConsultingTemplate(templateId);
@@ -630,7 +648,7 @@ export async function saveTemplateOverrideAction(formData: FormData) {
 
 export async function markNotificationDoneAction(formData: FormData) {
   const locale = safeLocale(formData.get("locale"));
-  const user = await requireAdmin(locale);
+  const user = await requireAdminAction(locale);
   const projectId = text(formData, "projectId");
   const notificationId = text(formData, "notificationId");
   const returnTo = text(formData, "returnTo") || `/${locale}/portal/admin/today`;
@@ -657,7 +675,7 @@ export async function markNotificationDoneAction(formData: FormData) {
 
 export async function convertNotificationToTaskAction(formData: FormData) {
   const locale = safeLocale(formData.get("locale"));
-  const user = await requireAdmin(locale);
+  const user = await requireAdminAction(locale);
   const projectId = text(formData, "projectId");
   const notificationId = text(formData, "notificationId");
   const taskTitle = text(formData, "taskTitle") || "Notification nachfassen";
@@ -696,7 +714,7 @@ export async function convertNotificationToTaskAction(formData: FormData) {
 
 export async function assignCustomerAction(formData: FormData) {
   const locale = safeLocale(formData.get("locale"));
-  const user = await requireAdmin(locale);
+  const user = await requireAdminAction(locale);
   const projectId = text(formData, "projectId");
   const email = text(formData, "email").toLowerCase();
 
@@ -733,7 +751,7 @@ export async function assignCustomerAction(formData: FormData) {
 
 export async function inviteCustomerAction(formData: FormData) {
   const locale = safeLocale(formData.get("locale"));
-  const user = await requireAdmin(locale);
+  const user = await requireAdminAction(locale);
   const projectId = text(formData, "projectId");
   const email = text(formData, "email").toLowerCase();
   const name = text(formData, "name") || email;
@@ -814,7 +832,7 @@ export async function inviteCustomerAction(formData: FormData) {
 
 export async function updateProjectOverviewAction(formData: FormData) {
   const locale = safeLocale(formData.get("locale"));
-  const user = await requireAdmin(locale);
+  const user = await requireAdminAction(locale);
   const projectId = text(formData, "projectId");
 
   await mutateStore((store) => {
@@ -858,7 +876,7 @@ export async function updateProjectOverviewAction(formData: FormData) {
 
 export async function saveProjectKpiAction(formData: FormData) {
   const locale = safeLocale(formData.get("locale"));
-  const user = await requireAdmin(locale);
+  const user = await requireAdminAction(locale);
   const projectId = text(formData, "projectId");
   const baseline = text(formData, "baseline");
   const target = text(formData, "target");
@@ -935,7 +953,7 @@ export async function saveProjectKpiAction(formData: FormData) {
 
 export async function saveProjectWorkflowAction(formData: FormData) {
   const locale = safeLocale(formData.get("locale"));
-  const user = await requireAdmin(locale);
+  const user = await requireAdminAction(locale);
   const projectId = text(formData, "projectId");
   const title = text(formData, "title") || "Projekt-Workflow";
   const trigger = text(formData, "trigger");
@@ -998,7 +1016,7 @@ export async function saveProjectWorkflowAction(formData: FormData) {
 
 export async function updateIntelligenceAction(formData: FormData) {
   const locale = safeLocale(formData.get("locale"));
-  const user = await requireAdmin(locale);
+  const user = await requireAdminAction(locale);
   const projectId = text(formData, "projectId");
 
   await mutateStore((store) => {
@@ -1187,7 +1205,7 @@ export async function submitCustomerIntakeAction(formData: FormData) {
 
 export async function applyConsultingTemplateAction(formData: FormData) {
   const locale = safeLocale(formData.get("locale"));
-  const user = await requireAdmin(locale);
+  const user = await requireAdminAction(locale);
   const projectId = text(formData, "projectId");
   const sourceStore = await readStore();
   const template =
@@ -1301,7 +1319,7 @@ export async function applyConsultingTemplateAction(formData: FormData) {
 
 export async function completeSetupWizardAction(formData: FormData) {
   const locale = safeLocale(formData.get("locale"));
-  const user = await requireAdmin(locale);
+  const user = await requireAdminAction(locale);
   const projectId = text(formData, "projectId");
   const process = text(formData, "process");
   const bottleneck = text(formData, "bottleneck");
@@ -1417,7 +1435,7 @@ export async function completeSetupWizardAction(formData: FormData) {
 
 export async function addMeetingNoteAction(formData: FormData) {
   const locale = safeLocale(formData.get("locale"));
-  const user = await requireAdmin(locale);
+  const user = await requireAdminAction(locale);
   const projectId = text(formData, "projectId");
   const meetingTitle = text(formData, "meetingTitle") || "Meeting Notes";
   const notes = text(formData, "notes");
@@ -1501,7 +1519,7 @@ export async function addMeetingNoteAction(formData: FormData) {
 
 export async function scheduleProjectAppointmentAction(formData: FormData) {
   const locale = safeLocale(formData.get("locale"));
-  const user = await requireAdmin(locale);
+  const user = await requireAdminAction(locale);
   const projectId = text(formData, "projectId");
   const appointmentDate = text(formData, "appointmentDate");
   const appointmentTime = text(formData, "appointmentTime");
@@ -1559,7 +1577,7 @@ export async function scheduleProjectAppointmentAction(formData: FormData) {
 
 export async function publishDraftUpdateAction(formData: FormData) {
   const locale = safeLocale(formData.get("locale"));
-  const user = await requireAdmin(locale);
+  const user = await requireAdminAction(locale);
   const projectId = text(formData, "projectId");
   const title = text(formData, "title") || "Projektupdate";
   const body = text(formData, "body");
@@ -1608,7 +1626,7 @@ export async function publishDraftUpdateAction(formData: FormData) {
 
 export async function saveKnowledgeSnapshotAction(formData: FormData) {
   const locale = safeLocale(formData.get("locale"));
-  const user = await requireAdmin(locale);
+  const user = await requireAdminAction(locale);
   const projectId = text(formData, "projectId");
   const store = await readStore();
   const bundle = getProjectBundle(store, projectId);
@@ -1661,7 +1679,7 @@ export async function saveKnowledgeSnapshotAction(formData: FormData) {
 
 export async function generateDiagnosisPackAction(formData: FormData) {
   const locale = safeLocale(formData.get("locale"));
-  const user = await requireAdmin(locale);
+  const user = await requireAdminAction(locale);
   const projectId = text(formData, "projectId");
   const publishSummary = checkbox(formData, "publishSummary");
   const createTasks = checkbox(formData, "createTasks");
@@ -1763,7 +1781,7 @@ export async function generateDiagnosisPackAction(formData: FormData) {
 
 export async function generateOfferRecommendationAction(formData: FormData) {
   const locale = safeLocale(formData.get("locale"));
-  const user = await requireAdmin(locale);
+  const user = await requireAdminAction(locale);
   const projectId = text(formData, "projectId");
   const sourceStore = await readStore();
   const bundle = getProjectBundle(sourceStore, projectId);
@@ -1800,7 +1818,7 @@ export async function generateOfferRecommendationAction(formData: FormData) {
 
 export async function addUpdateAction(formData: FormData) {
   const locale = safeLocale(formData.get("locale"));
-  const user = await requireAdmin(locale);
+  const user = await requireAdminAction(locale);
   const projectId = text(formData, "projectId");
   const updateVisibility = visibility(text(formData, "visibility"));
   const title = text(formData, "title") || "Projektupdate";
@@ -1892,7 +1910,7 @@ export async function addProjectCommentAction(formData: FormData) {
 
 export async function createDecisionAction(formData: FormData) {
   const locale = safeLocale(formData.get("locale"));
-  const user = await requireAdmin(locale);
+  const user = await requireAdminAction(locale);
   const projectId = text(formData, "projectId");
   const title = text(formData, "title") || "Offene Entscheidung";
   const body = text(formData, "body");
@@ -2090,7 +2108,7 @@ export async function createChangeRequestAction(formData: FormData) {
 
 export async function updateChangeRequestAction(formData: FormData) {
   const locale = safeLocale(formData.get("locale"));
-  const user = await requireAdmin(locale);
+  const user = await requireAdminAction(locale);
   const projectId = text(formData, "projectId");
   const requestId = text(formData, "requestId");
   const sourceStore = await readStore();
@@ -2160,7 +2178,7 @@ export async function updateChangeRequestAction(formData: FormData) {
 
 export async function createFileRequestAction(formData: FormData) {
   const locale = safeLocale(formData.get("locale"));
-  const user = await requireAdmin(locale);
+  const user = await requireAdminAction(locale);
   const projectId = text(formData, "projectId");
   const title = text(formData, "title") || "Datei benötigt";
   const body = text(formData, "body");
@@ -2282,7 +2300,7 @@ export async function createCustomerTicketAction(formData: FormData) {
 
 export async function addTaskAction(formData: FormData) {
   const locale = safeLocale(formData.get("locale"));
-  const user = await requireAdmin(locale);
+  const user = await requireAdminAction(locale);
   const projectId = text(formData, "projectId");
   const title = text(formData, "title") || "Neue Aufgabe";
   const visibleToCustomer = checkbox(formData, "visibleToCustomer");
@@ -2330,7 +2348,7 @@ export async function addTaskAction(formData: FormData) {
 
 export async function addMilestoneAction(formData: FormData) {
   const locale = safeLocale(formData.get("locale"));
-  const user = await requireAdmin(locale);
+  const user = await requireAdminAction(locale);
   const projectId = text(formData, "projectId");
   const title = text(formData, "title") || "Neuer Meilenstein";
   const visibleToCustomer = checkbox(formData, "visibleToCustomer");
@@ -2376,7 +2394,7 @@ export async function addMilestoneAction(formData: FormData) {
 
 export async function updateTaskStatusAction(formData: FormData) {
   const locale = safeLocale(formData.get("locale"));
-  const user = await requireAdmin(locale);
+  const user = await requireAdminAction(locale);
   const projectId = text(formData, "projectId");
   const taskId = text(formData, "taskId");
   const nextStatus = taskStatus(text(formData, "status"));
@@ -2405,7 +2423,7 @@ export async function updateTaskStatusAction(formData: FormData) {
 
 export async function updateMilestoneStatusAction(formData: FormData) {
   const locale = safeLocale(formData.get("locale"));
-  const user = await requireAdmin(locale);
+  const user = await requireAdminAction(locale);
   const projectId = text(formData, "projectId");
   const milestoneId = text(formData, "milestoneId");
   const nextStatus = milestoneStatus(text(formData, "status"));
@@ -2434,7 +2452,7 @@ export async function updateMilestoneStatusAction(formData: FormData) {
 
 export async function archiveProjectAction(formData: FormData) {
   const locale = safeLocale(formData.get("locale"));
-  const user = await requireAdmin(locale);
+  const user = await requireAdminAction(locale);
   const projectId = text(formData, "projectId");
   const confirmation = text(formData, "confirmation");
 
@@ -2795,7 +2813,7 @@ export async function requestProposalChangesAction(formData: FormData) {
 
 export async function addFileAction(formData: FormData) {
   const locale = safeLocale(formData.get("locale"));
-  const user = await requireAdmin(locale);
+  const user = await requireAdminAction(locale);
   const projectId = text(formData, "projectId");
   const file = formData.get("file");
 
@@ -2865,7 +2883,7 @@ export async function addFileAction(formData: FormData) {
 
 export async function addInvoiceAction(formData: FormData) {
   const locale = safeLocale(formData.get("locale"));
-  const user = await requireAdmin(locale);
+  const user = await requireAdminAction(locale);
   const projectId = text(formData, "projectId");
   const invoiceId = id("invoice");
   const invoice: Invoice = {
@@ -2920,7 +2938,7 @@ export async function addInvoiceAction(formData: FormData) {
 
 export async function updateInvoiceStatusAction(formData: FormData) {
   const locale = safeLocale(formData.get("locale"));
-  const user = await requireAdmin(locale);
+  const user = await requireAdminAction(locale);
   const projectId = text(formData, "projectId");
   const invoiceId = text(formData, "invoiceId");
   const nextStatus =
@@ -2955,7 +2973,7 @@ export async function updateInvoiceStatusAction(formData: FormData) {
 
 export async function sendProjectReminderAction(formData: FormData) {
   const locale = safeLocale(formData.get("locale"));
-  const user = await requireAdmin(locale);
+  const user = await requireAdminAction(locale);
   const projectId = text(formData, "projectId");
   const reminderType = text(formData, "reminderType");
   const entityId = text(formData, "entityId");
@@ -3036,7 +3054,7 @@ export async function sendProjectReminderAction(formData: FormData) {
 
 export async function generateProjectBriefAction(formData: FormData) {
   const locale = safeLocale(formData.get("locale"));
-  const user = await requireAdmin(locale);
+  const user = await requireAdminAction(locale);
   const projectId = text(formData, "projectId");
   const publishSummary = checkbox(formData, "publishSummary");
   const createActions = checkbox(formData, "createActions");
@@ -3146,7 +3164,7 @@ export async function generateProjectBriefAction(formData: FormData) {
 
 export async function generateProposalAction(formData: FormData) {
   const locale = safeLocale(formData.get("locale"));
-  const user = await requireAdmin(locale);
+  const user = await requireAdminAction(locale);
   const projectId = text(formData, "projectId");
   const scope = text(formData, "scope");
   const outcomes = text(formData, "outcomes");
@@ -3257,7 +3275,7 @@ export async function generateProposalAction(formData: FormData) {
 
 export async function generateFinalReportAction(formData: FormData) {
   const locale = safeLocale(formData.get("locale"));
-  const user = await requireAdmin(locale);
+  const user = await requireAdminAction(locale);
   const projectId = text(formData, "projectId");
   const sourceStore = await readStore();
   const bundle = getProjectBundle(sourceStore, projectId);
@@ -3329,7 +3347,7 @@ export async function generateFinalReportAction(formData: FormData) {
 
 export async function runAiScanAction(formData: FormData) {
   const locale = safeLocale(formData.get("locale"));
-  const user = await requireAdmin(locale);
+  const user = await requireAdminAction(locale);
   const projectId = text(formData, "projectId");
   const confirmed = checkbox(formData, "confirmExternalAi");
   const providers = [
@@ -3346,50 +3364,7 @@ export async function runAiScanAction(formData: FormData) {
     redirect(`${adminProjectPath(locale, projectId)}?error=ai`);
   }
 
-  const template = matchConsultingTemplate(bundle.organization.industry);
-  const templatePrompt = [
-    `Industry playbook: ${template.label}`,
-    `Best for: ${template.bestFor}`,
-    `Kickoff goal: ${template.kickoffGoal}`,
-    `Quick wins: ${template.quickWins.join("; ")}`,
-    `Automation ideas: ${template.automationIdeas.join("; ")}`,
-    `Risks: ${template.risks.join("; ")}`,
-    `Meeting moves: ${template.meetingMoves.join("; ")}`,
-    `Current project: ${externalAiIdentifier(bundle.project.name, "Project")} / ${externalAiIdentifier(bundle.organization.name)}`,
-  ].join("\n");
-
-  const prompt = [
-    `Company: ${externalAiIdentifier(bundle.organization.name)}`,
-    `Industry: ${redactForExternalAi(bundle.organization.industry)}`,
-    `ASDAR stage: ${bundle.project.asdarStage}`,
-    `Context: ${redactForExternalAi(bundle.intelligence.companyContext)}`,
-    `Issues: ${redactForExternalAi(bundle.intelligence.issues)}`,
-    `Goals: ${redactForExternalAi(bundle.intelligence.goals)}`,
-    `Tools: ${redactForExternalAi(bundle.intelligence.currentTools)}`,
-    `Data situation: ${redactForExternalAi(bundle.intelligence.dataSituation)}`,
-    `Constraints: ${redactForExternalAi(bundle.intelligence.constraints)}`,
-    `Opportunities: ${redactForExternalAi(bundle.intelligence.opportunities)}`,
-    "",
-    templatePrompt,
-    "",
-    "Return concise consulting ideas for Assad as the consultant. Do not write a customer-facing strategy.",
-    "Use exactly these section headings:",
-    "Summary:",
-    "Automation ideas:",
-    "Risks:",
-    "Next questions:",
-    "Next actions:",
-    "Use short bullet points under each heading. Do not use a table.",
-  ].join("\n");
-
-  const system =
-    "You support Assad Dar, an AI and digitalization consultant using the ASDAR Method. Be specific, pragmatic, and concise. Do not invent facts beyond the project context.";
-
-  const results = await Promise.all(
-    providers.map((provider) =>
-      requestExternalAiInsight({ provider, system, prompt }),
-    ),
-  );
+  const results = await runExternalAiScan(bundle, providers);
 
   const savedCount = await mutateStore((store) => {
     if (!getProjectBundle(store, projectId)) return 0;

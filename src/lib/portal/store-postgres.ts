@@ -7,6 +7,7 @@ import type {
   AuthToken,
   Invoice,
   Organization,
+  PaymentEvent,
   PortalStore,
   Project,
   ProjectBundle,
@@ -309,6 +310,21 @@ function toInvoice(row: Row): Invoice {
     issuedAt: dateOnly(row.issued_at) ?? new Date().toISOString().slice(0, 10),
     dueDate: dateOnly(row.due_date),
     paymentUrl: value(row.payment_url) || undefined,
+    stripeSessionId: value(row.stripe_session_id) || undefined,
+    stripePaymentIntentId: value(row.stripe_payment_intent_id) || undefined,
+    paidAt: optionalIso(row.paid_at),
+    createdAt: iso(row.created_at),
+  };
+}
+
+function toPaymentEvent(row: Row): PaymentEvent {
+  return {
+    id: value(row.id),
+    provider: "stripe",
+    type: value(row.type),
+    entityId: value(row.entity_id) || undefined,
+    status: value(row.status) === "processed" ? "processed" : "ignored",
+    reason: value(row.reason),
     createdAt: iso(row.created_at),
   };
 }
@@ -803,6 +819,7 @@ export async function readPostgresStore(
     milestones,
     files,
     invoices,
+    paymentEvents,
     aiInsights,
     authTokens,
     templateOverrides,
@@ -818,6 +835,7 @@ export async function readPostgresStore(
     sql`select * from portal_project_milestones order by created_at asc`,
     sql`select * from portal_project_files order by uploaded_at desc`,
     sql`select * from portal_invoices order by created_at desc`,
+    sql`select * from portal_payment_events order by created_at desc`,
     sql`select * from portal_ai_insights order by created_at desc`,
     sql`select * from portal_auth_tokens order by created_at desc`,
     sql`select * from portal_template_overrides order by updated_at desc`,
@@ -1009,9 +1027,13 @@ export async function readPostgresStore(
         issuedAt: dateOnly(row.issued_at) ?? new Date().toISOString().slice(0, 10),
         dueDate: dateOnly(row.due_date),
         paymentUrl: value(row.payment_url) || undefined,
+        stripeSessionId: value(row.stripe_session_id) || undefined,
+        stripePaymentIntentId: value(row.stripe_payment_intent_id) || undefined,
+        paidAt: optionalIso(row.paid_at),
         createdAt: iso(row.created_at),
       }),
     ),
+    paymentEvents: (paymentEvents as Row[]).map(toPaymentEvent),
     aiInsights: (aiInsights as Row[]).map(
       (row): AiInsight => ({
         id: value(row.id),
@@ -1195,8 +1217,19 @@ async function writeStoreRows(tx: SqlLike, store: PortalStore) {
 
     for (const invoice of store.invoices) {
       await tx`
-        insert into portal_invoices (id, project_id, number, description, amount_cents, currency, status, issued_at, due_date, payment_url, created_at)
-        values (${invoice.id}, ${invoice.projectId}, ${invoice.number}, ${invoice.description}, ${invoice.amountCents}, ${invoice.currency}, ${invoice.status}, ${invoice.issuedAt}, ${invoice.dueDate ?? null}, ${invoice.paymentUrl ?? null}, ${invoice.createdAt})
+        insert into portal_invoices (
+          id, project_id, number, description, amount_cents, currency, status,
+          issued_at, due_date, payment_url, stripe_session_id,
+          stripe_payment_intent_id, paid_at, created_at
+        )
+        values (
+          ${invoice.id}, ${invoice.projectId}, ${invoice.number},
+          ${invoice.description}, ${invoice.amountCents}, ${invoice.currency},
+          ${invoice.status}, ${invoice.issuedAt}, ${invoice.dueDate ?? null},
+          ${invoice.paymentUrl ?? null}, ${invoice.stripeSessionId ?? null},
+          ${invoice.stripePaymentIntentId ?? null}, ${invoice.paidAt ?? null},
+          ${invoice.createdAt}
+        )
         on conflict (id) do update set
           number = excluded.number,
           description = excluded.description,
@@ -1205,7 +1238,24 @@ async function writeStoreRows(tx: SqlLike, store: PortalStore) {
           status = excluded.status,
           issued_at = excluded.issued_at,
           due_date = excluded.due_date,
-          payment_url = excluded.payment_url
+          payment_url = excluded.payment_url,
+          stripe_session_id = excluded.stripe_session_id,
+          stripe_payment_intent_id = excluded.stripe_payment_intent_id,
+          paid_at = excluded.paid_at
+      `;
+    }
+
+    for (const event of store.paymentEvents ?? []) {
+      await tx`
+        insert into portal_payment_events (
+          id, provider, type, entity_id, status, reason, created_at
+        )
+        values (
+          ${event.id}, ${event.provider}, ${event.type},
+          ${event.entityId ?? null}, ${event.status}, ${event.reason},
+          ${event.createdAt}
+        )
+        on conflict (id) do nothing
       `;
     }
 

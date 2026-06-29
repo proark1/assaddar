@@ -19,7 +19,12 @@ export async function createInvoiceCheckoutUrl({
   locale: string;
 }) {
   const client = getStripe();
-  if (!client || invoice.paymentUrl || invoice.status === "draft") {
+  if (
+    !client ||
+    invoice.paymentUrl ||
+    invoice.status === "draft" ||
+    invoice.amountCents <= 0
+  ) {
     return invoice.paymentUrl;
   }
 

@@ -21,6 +21,7 @@ import {
 } from "@/lib/portal/store";
 import { hashPassword, verifyPassword } from "@/lib/portal/password";
 import { checkRateLimit, clientIpFromHeaders } from "@/lib/portal/rate-limit";
+import { rejectUntrustedOrigin } from "@/lib/portal/security";
 import { createAuthToken, findConsumableAuthToken } from "@/lib/portal/tokens";
 
 function safeLocale(value: FormDataEntryValue | null): Locale {
@@ -40,6 +41,14 @@ function ensurePortalReady(locale: Locale) {
   }
 }
 
+async function trustedActionHeaders(locale: Locale) {
+  const requestHeaders = await headers();
+  if (rejectUntrustedOrigin(requestHeaders)) {
+    redirect(`/${locale}/login?error=origin`);
+  }
+  return requestHeaders;
+}
+
 function bumpSessionVersion(user: { sessionVersion?: number }) {
   user.sessionVersion = (user.sessionVersion ?? 0) + 1;
 }
@@ -49,7 +58,7 @@ export async function loginAction(formData: FormData) {
   ensurePortalReady(locale);
   const email = String(formData.get("email") || "").trim().toLowerCase();
   const password = String(formData.get("password") || "");
-  const requestHeaders = await headers();
+  const requestHeaders = await trustedActionHeaders(locale);
   const rateLimit = await checkRateLimit(
     `login:${clientIpFromHeaders(requestHeaders)}:${email}`,
     8,
@@ -87,7 +96,7 @@ export async function registerAction(formData: FormData) {
     redirect(`/${locale}/register?error=invalid`);
   }
 
-  const requestHeaders = await headers();
+  const requestHeaders = await trustedActionHeaders(locale);
   const rateLimit = await checkRateLimit(
     `register:${clientIpFromHeaders(requestHeaders)}:${email}`,
     4,
@@ -137,6 +146,7 @@ export async function registerAction(formData: FormData) {
 
 export async function logoutAction(formData: FormData) {
   const locale = safeLocale(formData.get("locale"));
+  await trustedActionHeaders(locale);
   const current = await getCurrentUser();
   if (current) await bumpUserSessionVersion(current.id);
   await clearSession();
@@ -147,7 +157,7 @@ export async function requestPasswordResetAction(formData: FormData) {
   const locale = safeLocale(formData.get("locale"));
   ensurePortalReady(locale);
   const email = String(formData.get("email") || "").trim().toLowerCase();
-  const requestHeaders = await headers();
+  const requestHeaders = await trustedActionHeaders(locale);
   const rateLimit = await checkRateLimit(
     `password-reset:${clientIpFromHeaders(requestHeaders)}:${email}`,
     4,
@@ -185,6 +195,7 @@ export async function requestPasswordResetAction(formData: FormData) {
 export async function resetPasswordAction(formData: FormData) {
   const locale = safeLocale(formData.get("locale"));
   ensurePortalReady(locale);
+  await trustedActionHeaders(locale);
   const rawToken = String(formData.get("token") || "");
   const password = String(formData.get("password") || "");
 
@@ -211,6 +222,7 @@ export async function resetPasswordAction(formData: FormData) {
 export async function verifyEmailAction(formData: FormData) {
   const locale = safeLocale(formData.get("locale"));
   ensurePortalReady(locale);
+  await trustedActionHeaders(locale);
   const rawToken = String(formData.get("token") || "");
 
   const ok = await mutateStore((store) => {
@@ -232,6 +244,7 @@ export async function verifyEmailAction(formData: FormData) {
 export async function changePasswordAction(formData: FormData) {
   const locale = safeLocale(formData.get("locale"));
   ensurePortalReady(locale);
+  await trustedActionHeaders(locale);
   const currentPassword = String(formData.get("currentPassword") || "");
   const password = String(formData.get("password") || "");
   const confirm = String(formData.get("confirm") || "");
@@ -262,6 +275,7 @@ export async function changePasswordAction(formData: FormData) {
 export async function acceptInviteAction(formData: FormData) {
   const locale = safeLocale(formData.get("locale"));
   ensurePortalReady(locale);
+  await trustedActionHeaders(locale);
   const rawToken = String(formData.get("token") || "");
   const password = String(formData.get("password") || "");
   const confirm = String(formData.get("confirm") || "");

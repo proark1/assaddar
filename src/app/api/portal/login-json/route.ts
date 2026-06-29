@@ -6,6 +6,7 @@ import {
   requireEmailVerification,
 } from "@/lib/portal/config";
 import { checkRateLimit, clientIpFromHeaders } from "@/lib/portal/rate-limit";
+import { rejectUntrustedOrigin } from "@/lib/portal/security";
 import { findUserByEmailForLogin } from "@/lib/portal/store";
 import { verifyPassword } from "@/lib/portal/password";
 import { getAuthCopy } from "@/lib/portal/auth-copy";
@@ -29,6 +30,10 @@ function jsonError(message: string, status = 400) {
 }
 
 export async function POST(request: NextRequest) {
+  if (rejectUntrustedOrigin(request.headers)) {
+    return jsonError("Die Anfrage stammt nicht von dieser Website.", 403);
+  }
+
   const configErrors = portalProductionConfigErrors();
   if (configErrors.length > 0) {
     return jsonError(

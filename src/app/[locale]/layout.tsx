@@ -1,9 +1,11 @@
 import type { Metadata } from "next";
 import { GeistSans } from "geist/font/sans";
 import { GeistMono } from "geist/font/mono";
+import { headers } from "next/headers";
 import { Source_Serif_4 } from "next/font/google";
 import { getDict, isLocale, locales, type Locale } from "@/content";
 import { AssaddarPlatformWidget } from "@/components/assaddar-platform-widget";
+import { THEME_BOOTSTRAP_SCRIPT } from "@/lib/theme-script";
 import "../globals.css";
 
 const serif = Source_Serif_4({
@@ -62,8 +64,7 @@ export default async function LocaleLayout({
 }) {
   const { locale } = await params;
   const safe: Locale = isLocale(locale) ? locale : "de";
-
-  const themeScript = `try{var t=localStorage.getItem('theme');if(t==='dark'||(!t&&window.matchMedia('(prefers-color-scheme: dark)').matches)){document.documentElement.classList.add('dark')}}catch(e){}`;
+  const nonce = (await headers()).get("x-csp-nonce") ?? undefined;
 
   return (
     <html
@@ -72,7 +73,10 @@ export default async function LocaleLayout({
       className={`${GeistSans.variable} ${GeistMono.variable} ${serif.variable}`}
     >
       <head>
-        <script dangerouslySetInnerHTML={{ __html: themeScript }} />
+        <script
+          nonce={nonce}
+          dangerouslySetInnerHTML={{ __html: THEME_BOOTSTRAP_SCRIPT }}
+        />
       </head>
       <body>
         {children}

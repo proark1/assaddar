@@ -103,9 +103,44 @@ body {
 }
 
 input[type="range"] {
-  accent-color: var(--color-copper);
+  -webkit-appearance: none;
+  appearance: none;
   width: 100%;
+  height: 28px; /* comfortable touch target around the 6px track */
+  background: transparent;
   cursor: pointer;
+  touch-action: pan-y; /* keep vertical page scroll working over a slider on touch */
+}
+
+input[type="range"]::-webkit-slider-runnable-track {
+  height: 6px;
+  border-radius: 9999px;
+  background: var(--color-strong);
+}
+input[type="range"]::-moz-range-track {
+  height: 6px;
+  border-radius: 9999px;
+  background: var(--color-strong);
+}
+
+input[type="range"]::-webkit-slider-thumb {
+  -webkit-appearance: none;
+  appearance: none;
+  margin-top: -8px; /* centre the 22px thumb on the 6px track */
+  height: 22px;
+  width: 22px;
+  border-radius: 9999px;
+  background: var(--color-copper);
+  border: 2px solid var(--color-surface);
+  box-shadow: 0 1px 4px rgba(22, 25, 30, 0.3);
+}
+input[type="range"]::-moz-range-thumb {
+  height: 22px;
+  width: 22px;
+  border: 2px solid var(--color-surface);
+  border-radius: 9999px;
+  background: var(--color-copper);
+  box-shadow: 0 1px 4px rgba(22, 25, 30, 0.3);
 }
 
 a {

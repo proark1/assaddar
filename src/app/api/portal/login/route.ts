@@ -6,6 +6,7 @@ import {
   requireEmailVerification,
 } from "@/lib/portal/config";
 import { checkRateLimit, clientIpFromHeaders } from "@/lib/portal/rate-limit";
+import { rejectUntrustedOrigin } from "@/lib/portal/security";
 import { findUserByEmailForLogin } from "@/lib/portal/store";
 import { verifyPassword } from "@/lib/portal/password";
 
@@ -28,6 +29,10 @@ function redirectTo(request: NextRequest, path: string) {
 }
 
 export async function POST(request: NextRequest) {
+  if (rejectUntrustedOrigin(request.headers)) {
+    return redirectTo(request, "/de/login?error=origin");
+  }
+
   const formData = await request.formData();
   const locale = safeLocale(formData.get("locale"));
   const configErrors = portalProductionConfigErrors();

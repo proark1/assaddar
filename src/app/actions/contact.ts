@@ -3,14 +3,14 @@
 import { headers } from "next/headers";
 import { Resend } from "resend";
 import { contactFromEmail } from "@/lib/portal/config";
+import { parseContactForm } from "@/lib/portal/contact-validation";
 import { checkRateLimit, clientIpFromHeaders } from "@/lib/portal/rate-limit";
+import { rejectUntrustedOrigin } from "@/lib/portal/security";
 import { id, mutateStore } from "@/lib/portal/store";
 
 export type ContactState = {
   status: "idle" | "ok" | "invalid" | "rate" | "noconfig" | "error";
 };
-
-const EMAIL_RE = /.+@.+\..+/;
 
 type WebsiteLeadInput = {
   name: string;
@@ -126,22 +126,24 @@ export async function submitContact(
   // Honeypot — bots fill hidden fields; drop silently.
   if (String(formData.get("company_url") || "")) return { status: "ok" };
 
-  const name = String(formData.get("name") || "").trim();
-  const email = String(formData.get("email") || "").trim();
-  const company = String(formData.get("company") || "").trim();
-  const message = String(formData.get("message") || "").trim();
-  const leadContext = String(formData.get("leadContext") || "").trim();
   const consent = formData.get("consent");
+  const parsed = parseContactForm(formData);
 
-  if (!name || !message || !EMAIL_RE.test(email) || !consent) {
+  if (!parsed.ok || !consent) {
+    return { status: "invalid" };
+  }
+  const { name, email, company, message, leadContext } = parsed.input;
+
+  const requestHeaders = await headers();
+  if (rejectUntrustedOrigin(requestHeaders)) {
     return { status: "invalid" };
   }
 
-  const requestHeaders = await headers();
   const rateLimit = await checkRateLimit(
     `contact:${clientIpFromHeaders(requestHeaders)}:${email}`,
     5,
     60 * 60 * 1000,
+    { failClosed: true },
   );
 
   if (!rateLimit.allowed) {

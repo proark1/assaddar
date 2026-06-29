@@ -19,6 +19,7 @@ import { aboutContent } from "@/about";
 import { getDict, isLocale, locales, SITE_URL, type Locale } from "@/content";
 import { Nav } from "@/components/nav";
 import { Footer } from "@/components/footer";
+import { JsonLd } from "@/components/json-ld";
 
 type ProductStory = {
   logoSrc: string;
@@ -367,10 +368,7 @@ export default async function MeineProduktePage({
 
   return (
     <>
-      <script
-        type="application/ld+json"
-        dangerouslySetInnerHTML={{ __html: JSON.stringify(productsLd) }}
-      />
+      <JsonLd data={productsLd} />
       <Nav t={t.nav} locale={safe} subpage />
 
       <main id="main" className="outline-none">

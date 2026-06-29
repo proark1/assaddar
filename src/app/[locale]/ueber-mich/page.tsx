@@ -5,6 +5,7 @@ import { getDict, isLocale, SITE_URL, type Locale } from "@/content";
 import { aboutContent } from "@/about";
 import { Nav } from "@/components/nav";
 import { Footer } from "@/components/footer";
+import { JsonLd } from "@/components/json-ld";
 
 export function generateStaticParams() {
   return [{ locale: "de" }, { locale: "en" }];
@@ -69,10 +70,7 @@ export default async function AboutPage({
 
   return (
     <>
-      <script
-        type="application/ld+json"
-        dangerouslySetInnerHTML={{ __html: JSON.stringify(personLd) }}
-      />
+      <JsonLd data={personLd} />
 
       <Nav t={t.nav} locale={safe} subpage />
 

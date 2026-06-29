@@ -20,6 +20,7 @@ import {
 } from "@/components/sections-server";
 import { AiExamples } from "@/components/examples";
 import { Faq } from "@/components/faq";
+import { JsonLd } from "@/components/json-ld";
 import { ReadinessAndRoiTools } from "@/components/landing-tools";
 
 export function generateStaticParams() {
@@ -83,14 +84,8 @@ export default async function Home({
 
   return (
     <>
-      <script
-        type="application/ld+json"
-        dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd) }}
-      />
-      <script
-        type="application/ld+json"
-        dangerouslySetInnerHTML={{ __html: JSON.stringify(faqLd) }}
-      />
+      <JsonLd data={jsonLd} />
+      <JsonLd data={faqLd} />
       <a
         href="#main"
         className="sr-only focus:not-sr-only focus:fixed focus:left-4 focus:top-4 focus:z-[60] focus:rounded-lg focus:bg-copper focus:px-4 focus:py-2 focus:text-sm focus:font-medium focus:text-oncopper"

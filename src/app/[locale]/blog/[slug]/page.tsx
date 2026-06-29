@@ -22,6 +22,7 @@ import { ArticleToc } from "@/components/article-toc";
 import { AuthorBio } from "@/components/author-bio";
 import { RelatedArticles } from "@/components/related-articles";
 import { BlogFigure, BlogHero, type FigureSpec } from "@/components/blog-figures";
+import { JsonLd } from "@/components/json-ld";
 
 export const dynamicParams = false;
 
@@ -172,20 +173,9 @@ export default async function BlogArticle({
 
   return (
     <>
-      <script
-        type="application/ld+json"
-        dangerouslySetInnerHTML={{ __html: JSON.stringify(articleLd) }}
-      />
-      <script
-        type="application/ld+json"
-        dangerouslySetInnerHTML={{ __html: JSON.stringify(breadcrumbLd) }}
-      />
-      {post.faq.length > 0 && (
-        <script
-          type="application/ld+json"
-          dangerouslySetInnerHTML={{ __html: JSON.stringify(faqLd) }}
-        />
-      )}
+      <JsonLd data={articleLd} />
+      <JsonLd data={breadcrumbLd} />
+      {post.faq.length > 0 && <JsonLd data={faqLd} />}
 
       <ReadingProgress />
       <Nav t={t.nav} locale="de" subpage />

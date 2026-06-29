@@ -32,7 +32,12 @@ if (process.env.AUTH_SECRET && process.env.AUTH_SECRET.length < 32) {
   failures.push("AUTH_SECRET should be at least 32 characters");
 }
 
-for (const name of ["PORTAL_MAX_UPLOAD_BYTES", "BLOG_HERO_MAX_UPLOAD_BYTES"]) {
+for (const name of [
+  "PORTAL_MAX_UPLOAD_BYTES",
+  "BLOG_HERO_MAX_UPLOAD_BYTES",
+  "BLOG_IMAGE_TIMEOUT_MS",
+  "BLOG_IMAGE_MAX_BYTES",
+]) {
   if (!process.env[name]) continue;
   const value = Number(process.env[name]);
   if (!Number.isFinite(value) || value <= 0) {

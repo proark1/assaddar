@@ -4,6 +4,7 @@ import { ArrowRight } from "lucide-react";
 import { getDict, isLocale, locales, SITE_URL, type Locale } from "@/content";
 import { Nav } from "@/components/nav";
 import { Footer } from "@/components/footer";
+import { JsonLd } from "@/components/json-ld";
 import { FinalCta } from "@/components/sections-server";
 
 const OFFER_DETAILS = {
@@ -129,10 +130,7 @@ export default async function AngebotePage({
 
   return (
     <>
-      <script
-        type="application/ld+json"
-        dangerouslySetInnerHTML={{ __html: JSON.stringify(serviceLd) }}
-      />
+      <JsonLd data={serviceLd} />
       <Nav t={t.nav} locale={safe} subpage />
 
       <main id="main" className="outline-none">

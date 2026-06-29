@@ -1,10 +1,11 @@
-import { promises as fs } from "fs";
+import { createReadStream, promises as fs } from "fs";
 import path from "path";
+import { Readable } from "stream";
 import { portalFileStorage, supabaseStorageConfig } from "./config";
-import { UPLOAD_DIR } from "./store";
 import type { ProjectFile } from "./types";
 
 const SUPABASE_PREFIX = "supabase://";
+const UPLOAD_DIR = path.join(process.cwd(), ".portal-data", "uploads");
 
 export type SavePortalFileInput = {
   projectId: string;
@@ -20,8 +21,24 @@ export type ReadPortalFileResult = {
   size: number;
 };
 
+export type StreamPortalFileResult = {
+  body: BodyInit;
+  contentType: string;
+  size?: number;
+};
+
+function safeStorageSegment(value: string, fallback: string) {
+  return (
+    value
+      .normalize("NFKD")
+      .replace(/[^\w.-]+/g, "-")
+      .replace(/^-+|-+$/g, "")
+      .slice(0, 120) || fallback
+  );
+}
+
 function supabaseObjectPath(projectId: string, fileId: string, filename: string) {
-  return `projects/${projectId}/${fileId}-${filename}`;
+  return `projects/${safeStorageSegment(projectId, "project")}/${safeStorageSegment(fileId, "file")}-${safeStorageSegment(filename, "upload")}`;
 }
 
 function parseSupabasePath(storagePath: string) {
@@ -50,8 +67,14 @@ function requireSupabaseStorage() {
 
 export async function savePortalFile(input: SavePortalFileInput) {
   if (portalFileStorage() !== "supabase") {
-    const projectDir = path.join(UPLOAD_DIR, input.projectId);
-    const storagePath = path.join(projectDir, `${input.fileId}-${input.filename}`);
+    const projectDir = path.join(
+      UPLOAD_DIR,
+      safeStorageSegment(input.projectId, "project"),
+    );
+    const storagePath = path.join(
+      projectDir,
+      `${safeStorageSegment(input.fileId, "file")}-${safeStorageSegment(input.filename, "upload")}`,
+    );
     await fs.mkdir(projectDir, { recursive: true });
     await fs.writeFile(storagePath, input.bytes);
     return storagePath;
@@ -111,5 +134,39 @@ export async function readPortalFile(file: ProjectFile): Promise<ReadPortalFileR
     bytes,
     contentType: response.headers.get("content-type") ?? file.mimeType,
     size: bytes.length,
+  };
+}
+
+export async function streamPortalFile(
+  file: Pick<ProjectFile, "storagePath" | "mimeType" | "size">,
+): Promise<StreamPortalFileResult> {
+  const supabasePath = parseSupabasePath(file.storagePath);
+  if (!supabasePath) {
+    const stats = await fs.stat(file.storagePath);
+    return {
+      body: Readable.toWeb(createReadStream(file.storagePath)) as BodyInit,
+      contentType: file.mimeType,
+      size: stats.size,
+    };
+  }
+
+  const config = requireSupabaseStorage();
+  const endpoint = `${config.url.replace(/\/$/, "")}/storage/v1/object/${supabasePath.bucket}/${supabasePath.objectPath}`;
+  const response = await fetch(endpoint, {
+    headers: {
+      apikey: config.serviceRoleKey,
+      authorization: `Bearer ${config.serviceRoleKey}`,
+    },
+  });
+
+  if (!response.ok || !response.body) {
+    throw new Error(`Supabase file stream failed: ${response.status}`);
+  }
+
+  const contentLength = Number(response.headers.get("content-length"));
+  return {
+    body: response.body,
+    contentType: response.headers.get("content-type") ?? file.mimeType,
+    size: Number.isFinite(contentLength) && contentLength > 0 ? contentLength : file.size,
   };
 }

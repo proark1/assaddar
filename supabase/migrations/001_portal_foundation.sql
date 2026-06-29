@@ -109,6 +109,19 @@ create table if not exists portal_invoices (
   issued_at date not null,
   due_date date,
   payment_url text,
+  stripe_session_id text,
+  stripe_payment_intent_id text,
+  paid_at timestamptz,
+  created_at timestamptz not null default now()
+);
+
+create table if not exists portal_payment_events (
+  id text primary key,
+  provider text not null check (provider in ('stripe')),
+  type text not null,
+  entity_id text,
+  status text not null check (status in ('processed', 'ignored')),
+  reason text not null default '',
   created_at timestamptz not null default now()
 );
 
@@ -137,6 +150,7 @@ create index if not exists portal_project_updates_project_id_idx on portal_proje
 create index if not exists portal_project_tasks_project_id_idx on portal_project_tasks(project_id);
 create index if not exists portal_project_files_project_id_idx on portal_project_files(project_id);
 create index if not exists portal_invoices_project_id_idx on portal_invoices(project_id);
+create index if not exists portal_payment_events_entity_id_idx on portal_payment_events(entity_id);
 create index if not exists portal_auth_tokens_user_id_idx on portal_auth_tokens(user_id);
 
 alter table portal_users

@@ -4,9 +4,12 @@ import { NextResponse, type NextRequest } from "next/server";
 import { getPost } from "@/blog/posts";
 import { getCurrentUser } from "@/lib/portal/auth";
 import { id } from "@/lib/portal/store";
-import { readPortalFile, savePortalFile } from "@/lib/portal/storage";
+import { savePortalFile, streamPortalFile } from "@/lib/portal/storage";
+import { rejectUntrustedOrigin } from "@/lib/portal/security";
 import { isFileLike, readBlogHeroUpload } from "@/lib/portal/uploads";
 import { getBlogHero, saveBlogHero } from "@/lib/blog-hero/store";
+
+export const runtime = "nodejs";
 
 // Public: blog hero images are served on public article pages.
 export async function GET(
@@ -20,15 +23,19 @@ export async function GET(
   }
 
   try {
-    const file = await readPortalFile({
+    const file = await streamPortalFile({
       storagePath: record.storagePath,
       mimeType: record.mimeType,
+      size: record.size,
     } as ProjectFile);
-    return new Response(new Uint8Array(file.bytes), {
-      headers: {
+    const headers = new Headers({
         "content-type": file.contentType,
         "cache-control": "public, max-age=3600, s-maxage=86400",
-      },
+    });
+    if (file.size) headers.set("content-length", String(file.size));
+
+    return new Response(file.body, {
+      headers,
     });
   } catch {
     return new Response("Image unavailable", { status: 502 });
@@ -39,6 +46,13 @@ export async function POST(
   request: NextRequest,
   { params }: { params: Promise<{ slug: string }> },
 ) {
+  if (rejectUntrustedOrigin(request.headers)) {
+    return NextResponse.json(
+      { ok: false, message: "Nicht autorisierte Herkunft." },
+      { status: 403 },
+    );
+  }
+
   const user = await getCurrentUser();
   if (!user || user.role !== "admin") {
     return NextResponse.json(

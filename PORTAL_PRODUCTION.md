@@ -23,6 +23,8 @@ SUPABASE_STORAGE_BUCKET=portal-files
 CRON_SECRET=
 PORTAL_MAX_UPLOAD_BYTES=12582912
 BLOG_HERO_MAX_UPLOAD_BYTES=5242880
+BLOG_IMAGE_TIMEOUT_MS=45000
+BLOG_IMAGE_MAX_BYTES=8388608
 ```
 
 Generate `AUTH_SECRET` with:
@@ -35,6 +37,7 @@ Validate the environment before launch:
 
 ```bash
 pnpm check:production
+pnpm check:migrations
 ```
 
 At runtime, production portal routes fail closed if the core portal
@@ -43,10 +46,12 @@ configuration is incomplete instead of falling back to local JSON data.
 ## Database
 
 Create a Supabase project, copy the pooled Postgres connection string into
-`DATABASE_URL`, then run:
+`DATABASE_URL`, then run every migration in order:
 
 ```bash
-psql "$DATABASE_URL" -f supabase/migrations/001_portal_foundation.sql
+for file in supabase/migrations/*.sql; do
+  psql "$DATABASE_URL" -f "$file"
+done
 ```
 
 The current app keeps the local demo backend as a fallback. Once
@@ -86,6 +91,9 @@ Uploads are validated before being read into memory. Keep
 for the deployment tier; raise them only when the serverless memory budget can
 handle the worst-case concurrent uploads.
 
+Private downloads are streamed through the authenticated API route, so large
+files no longer need to be fully buffered before the response starts.
+
 ## Stripe
 
 Set:
@@ -103,7 +111,27 @@ Stripe:
 https://assad-dar.de/api/stripe/webhook
 ```
 
-The webhook marks invoices as paid on `checkout.session.completed`.
+The webhook marks invoices as paid on `checkout.session.completed` only after
+the Stripe event signature is valid, the event ID has not already been
+processed, and the paid amount/currency match the invoice.
+
+## Railway
+
+The repository includes `railway.json`. Before the first deploy from this
+checkout, link the correct project/service:
+
+```bash
+railway link --project <project-id> --environment production --service <service-id-or-name>
+```
+
+Railway pre-deploy runs:
+
+```bash
+pnpm check:production && pnpm check:migrations
+```
+
+If those checks fail, fix the environment or database migration state before
+deploying.
 
 ## Audit And Backups
 
@@ -140,6 +168,8 @@ GROK_API_KEY=
 GROK_MODEL=
 GROK_API_BASE=https://api.x.ai/v1
 EXTERNAL_AI_SEND_IDENTIFIERS=false
+BLOG_IMAGE_TIMEOUT_MS=45000
+BLOG_IMAGE_MAX_BYTES=8388608
 ```
 
 Scan results are saved as internal `aiInsights` on the project and are not

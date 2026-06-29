@@ -8,9 +8,93 @@ export type GeneratedImage = {
 
 type Provider = "gemini" | "openai";
 
+const DEFAULT_TIMEOUT_MS = 45_000;
+const DEFAULT_MAX_IMAGE_BYTES = 8 * 1024 * 1024;
+
 /** Default provider is Gemini; set BLOG_IMAGE_PROVIDER=openai to switch. */
 function selectedProvider(): Provider {
   return process.env.BLOG_IMAGE_PROVIDER === "openai" ? "openai" : "gemini";
+}
+
+function timeoutMs() {
+  const value = Number(process.env.BLOG_IMAGE_TIMEOUT_MS);
+  return Number.isFinite(value) && value > 0 ? value : DEFAULT_TIMEOUT_MS;
+}
+
+function maxImageBytes() {
+  const value = Number(process.env.BLOG_IMAGE_MAX_BYTES);
+  return Number.isFinite(value) && value > 0 ? value : DEFAULT_MAX_IMAGE_BYTES;
+}
+
+async function fetchWithTimeout(input: RequestInfo | URL, init?: RequestInit) {
+  const controller = new AbortController();
+  const timer = setTimeout(() => controller.abort(), timeoutMs());
+  try {
+    return await fetch(input, { ...init, signal: controller.signal });
+  } finally {
+    clearTimeout(timer);
+  }
+}
+
+async function cappedResponseBuffer(response: Response, maxBytes = maxImageBytes()) {
+  if (!response.body) return Buffer.from(await response.arrayBuffer());
+
+  const reader = response.body.getReader();
+  const chunks: Uint8Array[] = [];
+  let total = 0;
+  while (true) {
+    const { done, value } = await reader.read();
+    if (done) break;
+    total += value.byteLength;
+    if (total > maxBytes) {
+      await reader.cancel();
+      throw new Error(`Generated image exceeded ${maxBytes} bytes.`);
+    }
+    chunks.push(value);
+  }
+  return Buffer.concat(chunks);
+}
+
+function detectImageMime(bytes: Buffer) {
+  if (bytes.length >= 24 && bytes[0] === 0x89 && bytes[1] === 0x50) {
+    return "image/png";
+  }
+  if (bytes.length > 4 && bytes[0] === 0xff && bytes[1] === 0xd8) {
+    return "image/jpeg";
+  }
+  if (
+    bytes.length >= 12 &&
+    bytes.toString("ascii", 0, 4) === "RIFF" &&
+    bytes.toString("ascii", 8, 12) === "WEBP"
+  ) {
+    return "image/webp";
+  }
+  return "";
+}
+
+function validatedImage(
+  bytes: Buffer,
+  contentType: string,
+  provider: Provider,
+): GeneratedImage {
+  if (bytes.length > maxImageBytes()) {
+    throw new Error(`Generated image exceeded ${maxImageBytes()} bytes.`);
+  }
+
+  const detectedMime = detectImageMime(bytes);
+  if (!detectedMime) throw new Error("Generated image was not PNG, JPEG, or WebP.");
+  if (contentType && !contentType.startsWith("image/")) {
+    throw new Error(`Generated image returned invalid content type: ${contentType}`);
+  }
+
+  const size = detectImageSize(bytes);
+  return {
+    bytes,
+    contentType: detectedMime,
+    width: size.width || 1536,
+    height: size.height || 1024,
+    provider,
+  };
 }
 
 /** Read width/height from raw PNG/JPEG bytes (best-effort; 0 if unknown). */
@@ -57,14 +141,11 @@ function extractGeminiImage(data: unknown): GeneratedImage | null {
     const inline = part.inlineData ?? part.inline_data;
     if (inline?.data) {
       const bytes = Buffer.from(inline.data, "base64");
-      const size = detectImageSize(bytes);
-      return {
+      return validatedImage(
         bytes,
-        contentType: part.inlineData?.mimeType ?? part.inline_data?.mime_type ?? "image/png",
-        width: size.width || 1536,
-        height: size.height || 1024,
-        provider: "gemini",
-      };
+        part.inlineData?.mimeType ?? part.inline_data?.mime_type ?? "image/png",
+        "gemini",
+      );
     }
   }
   return null;
@@ -98,7 +179,7 @@ async function generateWithGemini(prompt: string): Promise<GeneratedImage> {
 
   let lastError = "unknown error";
   for (const body of bodies) {
-    const response = await fetch(endpoint, {
+    const response = await fetchWithTimeout(endpoint, {
       method: "POST",
       headers: { "content-type": "application/json" },
       body: JSON.stringify(body),
@@ -119,7 +200,7 @@ async function generateWithOpenAI(prompt: string): Promise<GeneratedImage> {
   if (!key) throw new Error("OPENAI_API_KEY is not configured.");
   const model = process.env.OPENAI_IMAGE_MODEL || "gpt-image-1";
 
-  const response = await fetch("https://api.openai.com/v1/images/generations", {
+  const response = await fetchWithTimeout("https://api.openai.com/v1/images/generations", {
     method: "POST",
     headers: {
       authorization: `Bearer ${key}`,
@@ -144,23 +225,16 @@ async function generateWithOpenAI(prompt: string): Promise<GeneratedImage> {
   if (first?.b64_json) {
     bytes = Buffer.from(first.b64_json, "base64");
   } else if (first?.url) {
-    const download = await fetch(first.url);
+    const download = await fetchWithTimeout(first.url);
     if (!download.ok) {
       throw new Error(`OpenAI image URL fetch failed (${download.status}).`);
     }
-    bytes = Buffer.from(await download.arrayBuffer());
+    bytes = await cappedResponseBuffer(download);
   } else {
     throw new Error("OpenAI returned no image data.");
   }
 
-  const size = detectImageSize(bytes);
-  return {
-    bytes,
-    contentType: "image/png",
-    width: size.width || 1536,
-    height: size.height || 1024,
-    provider: "openai",
-  };
+  return validatedImage(bytes, "image/png", "openai");
 }
 
 /**

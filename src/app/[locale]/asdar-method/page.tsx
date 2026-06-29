@@ -18,6 +18,7 @@ import {
 import { getDict, isLocale, locales, SITE_URL, type Locale } from "@/content";
 import { Nav } from "@/components/nav";
 import { Footer } from "@/components/footer";
+import { JsonLd } from "@/components/json-ld";
 import { FinalCta } from "@/components/sections-server";
 
 export function generateStaticParams() {
@@ -439,10 +440,7 @@ export default async function AsdarMethodPage({
 
   return (
     <>
-      <script
-        type="application/ld+json"
-        dangerouslySetInnerHTML={{ __html: JSON.stringify(methodLd) }}
-      />
+      <JsonLd data={methodLd} />
       <Nav t={t.nav} locale={safe} subpage />
 
       <main id="main" className="outline-none">

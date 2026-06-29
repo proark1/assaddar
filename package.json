@@ -9,7 +9,9 @@
     "typecheck": "tsc --noEmit",
     "check:links": "node scripts/check-internal-links.mjs",
     "check:production": "node scripts/portal-production-check.mjs",
-    "check": "pnpm typecheck && pnpm check:links && pnpm test:security && pnpm build && pnpm test:portal",
+    "check:migrations": "node scripts/check-portal-migrations.mjs",
+    "check": "pnpm typecheck && pnpm check:links && pnpm check:migrations && pnpm test:security && pnpm build && pnpm test:portal",
+    "deploy:railway": "pnpm check:production && pnpm check:migrations && railway up",
     "start": "next start",
     "test:security": "tsx --test tests/portal-security.test.ts",
     "test:portal": "node scripts/portal-smoke.mjs"

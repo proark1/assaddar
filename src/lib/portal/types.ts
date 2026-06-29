@@ -137,6 +137,19 @@ export type Invoice = {
   issuedAt: string;
   dueDate?: string;
   paymentUrl?: string;
+  stripeSessionId?: string;
+  stripePaymentIntentId?: string;
+  paidAt?: string;
+  createdAt: string;
+};
+
+export type PaymentEvent = {
+  id: string;
+  provider: "stripe";
+  type: string;
+  entityId?: string;
+  status: "processed" | "ignored";
+  reason: string;
   createdAt: string;
 };
 
@@ -192,6 +205,7 @@ export type PortalStore = {
   milestones: ProjectMilestone[];
   files: ProjectFile[];
   invoices: Invoice[];
+  paymentEvents: PaymentEvent[];
   aiInsights: AiInsight[];
   authTokens: AuthToken[];
   templateOverrides: PortalTemplateOverride[];
