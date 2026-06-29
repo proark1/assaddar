@@ -15,5 +15,5 @@ next-env.d.ts
 .portal-data/
 
 # internal strategy doc — kept out of the public repo
-docs/
+docs/website-plan.md
 .vercel

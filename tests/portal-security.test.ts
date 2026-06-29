@@ -174,3 +174,24 @@ test("readPortalUpload rejects unsupported or oversized files", async () => {
   if (originalLimit === undefined) delete process.env.PORTAL_MAX_UPLOAD_BYTES;
   else process.env.PORTAL_MAX_UPLOAD_BYTES = originalLimit;
 });
+
+test("readPortalUpload rejects spoofed file signatures", async () => {
+  const originalLimit = process.env.PORTAL_MAX_UPLOAD_BYTES;
+  process.env.PORTAL_MAX_UPLOAD_BYTES = "100";
+
+  await assert.rejects(
+    () =>
+      readPortalUpload(
+        new File(["not a pdf"], "document.pdf", { type: "application/pdf" }),
+      ),
+    /UPLOAD_SIGNATURE/,
+  );
+
+  const validPdf = await readPortalUpload(
+    new File(["%PDF-1.7\n"], "document.pdf", { type: "application/pdf" }),
+  );
+  assert.equal(validPdf.contentType, "application/pdf");
+
+  if (originalLimit === undefined) delete process.env.PORTAL_MAX_UPLOAD_BYTES;
+  else process.env.PORTAL_MAX_UPLOAD_BYTES = originalLimit;
+});

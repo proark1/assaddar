@@ -38,9 +38,15 @@ import {
 import { getProjectBundleForUser } from "@/lib/portal/store";
 import {
   formatCurrency,
+  formatDecisionStatus,
   formatDate,
+  formatInvoiceStatus,
+  formatMilestoneStatus,
+  formatRequestStatus,
   formatStage,
   formatStatus,
+  formatTaskOwner,
+  formatTaskStatus,
 } from "@/lib/portal/format";
 import {
   buildChangeRequests,
@@ -236,14 +242,14 @@ export default async function CustomerProjectPage({
       date: task.createdAt,
       type: "Aufgabe",
       title: task.title,
-      body: `Owner: ${task.owner === "assad" ? "Assad" : "Kunde"} · ${task.status}`,
+      body: `Verantwortlich: ${formatTaskOwner(task.owner)} · ${formatTaskStatus(task.status)}`,
     })),
     ...milestones.map((milestone) => ({
       id: milestone.id,
       date: milestone.createdAt,
       type: "Meilenstein",
       title: milestone.title,
-      body: `${milestone.status} · ${formatDate(milestone.dueDate)}`,
+      body: `${formatMilestoneStatus(milestone.status)} · ${formatDate(milestone.dueDate)}`,
     })),
     ...files.map((file) => ({
       id: file.id,
@@ -257,7 +263,7 @@ export default async function CustomerProjectPage({
       date: invoice.createdAt,
       type: "Rechnung",
       title: invoice.number,
-      body: `${formatCurrency(invoice.amountCents, invoice.currency)} · ${invoice.status}`,
+      body: `${formatCurrency(invoice.amountCents, invoice.currency)} · ${formatInvoiceStatus(invoice.status)}`,
     })),
     ...comments.map((comment) => ({
       id: comment.id,
@@ -686,25 +692,32 @@ export default async function CustomerProjectPage({
                     sind hilfreicher als perfekte Formulierungen.
                   </p>
                   <div className="mt-4 space-y-4">
-                    {requiredIntakeQuestions.map((question, index) => (
-                      <div key={question.id}>
-                        <div className="mb-2 font-mono text-[10.5px] uppercase tracking-[0.14em] text-copper">
-                          Frage {index + 1}
+                    {requiredIntakeQuestions.map((question, index) => {
+                      const fieldId = `intake-${question.id}`;
+                      return (
+                        <div key={question.id}>
+                          <div className="mb-2 font-mono text-[10.5px] uppercase tracking-[0.14em] text-copper">
+                            Frage {index + 1}
+                          </div>
+                          <label
+                            htmlFor={fieldId}
+                            className="mb-1.5 block text-sm text-ink2"
+                          >
+                            {question.label}
+                          </label>
+                          <p className="mb-2 text-[12px] leading-relaxed text-muted">
+                            {question.prompt}
+                          </p>
+                          <textarea
+                            id={fieldId}
+                            name={question.id}
+                            placeholder={question.placeholder}
+                            defaultValue={intakeDefaults[question.id] ?? ""}
+                            className={textareaClass}
+                          />
                         </div>
-                        <label className="mb-1.5 block text-sm text-ink2">
-                          {question.label}
-                        </label>
-                        <p className="mb-2 text-[12px] leading-relaxed text-muted">
-                          {question.prompt}
-                        </p>
-                        <textarea
-                          name={question.id}
-                          placeholder={question.placeholder}
-                          defaultValue={intakeDefaults[question.id] ?? ""}
-                          className={textareaClass}
-                        />
-                      </div>
-                    ))}
+                      );
+                    })}
                   </div>
                 </div>
 
@@ -713,25 +726,32 @@ export default async function CustomerProjectPage({
                     Teil 2 · Tools, Daten und Rahmenbedingungen
                   </summary>
                   <div className="mt-4 space-y-4">
-                    {optionalIntakeQuestions.map((question, index) => (
-                      <div key={question.id}>
-                        <div className="mb-2 font-mono text-[10.5px] uppercase tracking-[0.14em] text-copper">
-                          Zusatzfrage {index + 1}
+                    {optionalIntakeQuestions.map((question, index) => {
+                      const fieldId = `intake-${question.id}`;
+                      return (
+                        <div key={question.id}>
+                          <div className="mb-2 font-mono text-[10.5px] uppercase tracking-[0.14em] text-copper">
+                            Zusatzfrage {index + 1}
+                          </div>
+                          <label
+                            htmlFor={fieldId}
+                            className="mb-1.5 block text-sm text-ink2"
+                          >
+                            {question.label}
+                          </label>
+                          <p className="mb-2 text-[12px] leading-relaxed text-muted">
+                            {question.prompt}
+                          </p>
+                          <textarea
+                            id={fieldId}
+                            name={question.id}
+                            placeholder={question.placeholder}
+                            defaultValue={intakeDefaults[question.id] ?? ""}
+                            className={textareaClass}
+                          />
                         </div>
-                        <label className="mb-1.5 block text-sm text-ink2">
-                          {question.label}
-                        </label>
-                        <p className="mb-2 text-[12px] leading-relaxed text-muted">
-                          {question.prompt}
-                        </p>
-                        <textarea
-                          name={question.id}
-                          placeholder={question.placeholder}
-                          defaultValue={intakeDefaults[question.id] ?? ""}
-                          className={textareaClass}
-                        />
-                      </div>
-                    ))}
+                      );
+                    })}
                   </div>
                 </details>
 
@@ -741,27 +761,34 @@ export default async function CustomerProjectPage({
                       Teil 3 · Branchenfragen
                     </summary>
                     <div className="mt-4 space-y-4">
-                      {templateIntakeQuestions.map((question, index) => (
-                        <div key={question.id}>
-                          <input
-                            type="hidden"
-                            name="questionLabel"
-                            value={question.prompt}
-                          />
-                          <div className="mb-2 font-mono text-[10.5px] uppercase tracking-[0.14em] text-copper">
-                            Branchenfrage {index + 1}
+                      {templateIntakeQuestions.map((question, index) => {
+                        const fieldId = `intake-${question.id}`;
+                        return (
+                          <div key={question.id}>
+                            <input
+                              type="hidden"
+                              name="questionLabel"
+                              value={question.prompt}
+                            />
+                            <div className="mb-2 font-mono text-[10.5px] uppercase tracking-[0.14em] text-copper">
+                              Branchenfrage {index + 1}
+                            </div>
+                            <label
+                              htmlFor={fieldId}
+                              className="mb-1.5 block text-sm text-ink2"
+                            >
+                              {question.prompt}
+                            </label>
+                            <textarea
+                              id={fieldId}
+                              name="questionAnswer"
+                              placeholder={question.placeholder}
+                              defaultValue={intakeDefaults[question.id] ?? ""}
+                              className={textareaClass}
+                            />
                           </div>
-                          <label className="mb-1.5 block text-sm text-ink2">
-                            {question.prompt}
-                          </label>
-                          <textarea
-                            name="questionAnswer"
-                            placeholder={question.placeholder}
-                            defaultValue={intakeDefaults[question.id] ?? ""}
-                            className={textareaClass}
-                          />
-                        </div>
-                      ))}
+                        );
+                      })}
                     </div>
                   </details>
                 )}
@@ -903,7 +930,7 @@ export default async function CustomerProjectPage({
                               : "amber"
                         }
                       >
-                        {decision.status}
+                        {formatDecisionStatus(decision.status)}
                       </Badge>
                       <span className="text-[12px] text-muted">
                         {formatDate(decision.updatedAt)}
@@ -990,7 +1017,7 @@ export default async function CustomerProjectPage({
                         <Badge
                           tone={request.status === "done" ? "green" : "amber"}
                         >
-                          {request.status}
+                          {formatRequestStatus(request.status)}
                         </Badge>
                         {request.dueDate && (
                           <span className="text-[12px] text-muted">
@@ -1029,7 +1056,8 @@ export default async function CustomerProjectPage({
                           {milestone.title}
                         </div>
                         <div className="mt-1 text-[12px] text-muted">
-                          {formatDate(milestone.dueDate)} · {milestone.status}
+                          {formatDate(milestone.dueDate)} ·{" "}
+                          {formatMilestoneStatus(milestone.status)}
                         </div>
                         {approvedMilestoneIds.has(milestone.id) ? (
                           <div className="mt-3">
@@ -1082,8 +1110,8 @@ export default async function CustomerProjectPage({
                       {task.title}
                     </div>
                     <div className="mt-1 text-[12px] text-muted">
-                      Owner: {task.owner === "assad" ? "Assad" : "Kunde"} ·{" "}
-                      {task.status} · {formatDate(task.dueDate)}
+                      Verantwortlich: {formatTaskOwner(task.owner)} ·{" "}
+                      {formatTaskStatus(task.status)} · {formatDate(task.dueDate)}
                     </div>
                     {task.owner === "customer" && task.status !== "done" && (
                       <div className="mt-3 space-y-3">
@@ -1243,7 +1271,7 @@ export default async function CustomerProjectPage({
                                 : "amber"
                           }
                         >
-                          {request.status}
+                          {formatRequestStatus(request.status)}
                         </Badge>
                         <span className="text-[12px] text-muted">
                           {formatDate(request.updatedAt)}
@@ -1614,7 +1642,7 @@ export default async function CustomerProjectPage({
                               : "amber"
                         }
                       >
-                        {invoice.status}
+                        {formatInvoiceStatus(invoice.status)}
                       </Badge>
                     </div>
                     <p className="mt-2 text-sm text-ink2">

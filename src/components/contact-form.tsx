@@ -114,6 +114,7 @@ export function ContactForm({
           </Link>
         </span>
       </label>
+      <p className="text-[12px] leading-relaxed text-muted">{t.privacyNote}</p>
 
       {state.status === "invalid" && (
         <p className="text-[13px] text-critical">{t.validation}</p>

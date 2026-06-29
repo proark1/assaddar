@@ -75,6 +75,7 @@ export default async function LocaleLayout({
       <head>
         <script
           nonce={nonce}
+          suppressHydrationWarning
           dangerouslySetInnerHTML={{ __html: THEME_BOOTSTRAP_SCRIPT }}
         />
       </head>

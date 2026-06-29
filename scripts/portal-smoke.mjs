@@ -1,14 +1,19 @@
 import { spawn } from "node:child_process";
 
 const port = process.env.PORTAL_SMOKE_PORT || "3100";
-const baseUrl = `http://127.0.0.1:${port}`;
+const configuredBaseUrl = process.env.PORTAL_SMOKE_BASE_URL?.replace(/\/$/, "");
+const defaultBaseUrl = `http://127.0.0.1:${port}`;
+const existingDevBaseUrl = "http://127.0.0.1:3000";
 const timeoutMs = 45_000;
+let baseUrl = configuredBaseUrl || defaultBaseUrl;
 
 function sleep(ms) {
   return new Promise((resolve) => setTimeout(resolve, ms));
 }
 
 function spawnServer() {
+  if (configuredBaseUrl) return null;
+
   const child = spawn("npm", ["run", "dev", "--", "--port", port], {
     stdio: ["ignore", "pipe", "pipe"],
     env: { ...process.env, PORT: port },
@@ -19,15 +24,19 @@ function spawnServer() {
   return child;
 }
 
+async function isReady(url) {
+  try {
+    const response = await fetch(`${url}/de/login`, { redirect: "manual" });
+    return response.status === 200;
+  } catch {
+    return false;
+  }
+}
+
 async function waitForServer() {
   const started = Date.now();
   while (Date.now() - started < timeoutMs) {
-    try {
-      const response = await fetch(`${baseUrl}/de/login`, { redirect: "manual" });
-      if (response.status === 200) return;
-    } catch {
-      // Server is still booting.
-    }
+    if (await isReady(baseUrl)) return;
     await sleep(750);
   }
   throw new Error(`Server did not become ready on ${baseUrl}`);
@@ -44,7 +53,11 @@ async function expectStatus(path, expected, options = {}) {
   return response;
 }
 
-const server = spawnServer();
+if (!configuredBaseUrl && baseUrl !== existingDevBaseUrl && await isReady(existingDevBaseUrl)) {
+  baseUrl = existingDevBaseUrl;
+}
+
+const server = await isReady(baseUrl) ? null : spawnServer();
 
 try {
   await waitForServer();
@@ -61,5 +74,5 @@ try {
 
   console.log("Portal smoke tests passed.");
 } finally {
-  server.kill("SIGTERM");
+  server?.kill("SIGTERM");
 }

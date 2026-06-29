@@ -130,6 +130,7 @@ export function Hero({ t }: { t: Dict["hero"] }) {
                 width={800}
                 height={1200}
                 sizes="(min-width: 1024px) 340px, (min-width: 640px) 265px, 155px"
+                priority
                 className="relative z-10 h-[230px] w-auto object-contain object-bottom sm:h-[390px] lg:h-[500px]"
               />
             </div>
@@ -160,7 +161,7 @@ export function Market({ t }: { t: Dict["market"] }) {
                 </div>
                 <p className="mt-2 text-sm leading-relaxed text-ink2">{s.label}</p>
                 <p className="mt-2 font-mono text-[11px] uppercase tracking-[0.12em] text-muted">
-                  {s.source}
+                  {t.sourcePrefix}: {s.source}
                 </p>
               </div>
             </Reveal>

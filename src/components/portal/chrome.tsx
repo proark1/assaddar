@@ -117,6 +117,39 @@ export function PortalShell({
   actions?: React.ReactNode;
   children: React.ReactNode;
 }) {
+  const nav = locale === "de"
+    ? {
+        website: "Webseite",
+        dashboard: "Übersicht",
+        cockpit: "Cockpit",
+        today: "Heute",
+        pipeline: "Pipeline",
+        drafts: "Entwürfe",
+        customers: "Kunden",
+        templates: "Vorlagen",
+        blog: "Blog",
+        settings: "Einstellungen",
+        settingsLabel: "Einstellungen",
+        logoutLabel: "Abmelden",
+        mobileLabel: "Mobile Portal-Navigation",
+        back: "Zurück",
+      }
+    : {
+        website: "Website",
+        dashboard: "Dashboard",
+        cockpit: "Cockpit",
+        today: "Today",
+        pipeline: "Pipeline",
+        drafts: "Drafts",
+        customers: "Customers",
+        templates: "Templates",
+        blog: "Blog",
+        settings: "Settings",
+        settingsLabel: "Settings",
+        logoutLabel: "Logout",
+        mobileLabel: "Mobile portal navigation",
+        back: "Back",
+      };
   const navClass = (key: NonNullable<typeof activeNav>) =>
     `inline-flex items-center gap-1.5 rounded-md px-2 py-1 transition-colors ${
       activeNav === key
@@ -143,10 +176,10 @@ export function PortalShell({
           </Link>
           <nav className="hidden items-center gap-5 text-sm text-ink2 md:flex">
             <Link href={`/${locale}`} className={navClass("website")}>
-              Website
+              {nav.website}
             </Link>
             <Link href={`/${locale}/portal`} className={navClass("dashboard")}>
-              Dashboard
+              {nav.dashboard}
             </Link>
             {user.role === "admin" && (
               <>
@@ -154,49 +187,49 @@ export function PortalShell({
                   href={`/${locale}/portal/admin`}
                   className={navClass("admin")}
                 >
-                  Cockpit
+                  {nav.cockpit}
                 </Link>
                 <Link
                   href={`/${locale}/portal/admin/today`}
                   className={navClass("today")}
                 >
                   <Clock3 className="h-3.5 w-3.5" />
-                  Heute
+                  {nav.today}
                 </Link>
                 <Link
                   href={`/${locale}/portal/admin/pipeline`}
                   className={navClass("pipeline")}
                 >
                   <FolderKanban className="h-3.5 w-3.5" />
-                  Pipeline
+                  {nav.pipeline}
                 </Link>
                 <Link
                   href={`/${locale}/portal/admin/drafts`}
                   className={navClass("drafts")}
                 >
                   <PencilLine className="h-3.5 w-3.5" />
-                  Drafts
+                  {nav.drafts}
                 </Link>
                 <Link
                   href={`/${locale}/portal/admin/customers`}
                   className={navClass("customers")}
                 >
                   <Users className="h-3.5 w-3.5" />
-                  Kunden
+                  {nav.customers}
                 </Link>
                 <Link
                   href={`/${locale}/portal/admin/templates`}
                   className={navClass("templates")}
                 >
                   <BookOpen className="h-3.5 w-3.5" />
-                  Templates
+                  {nav.templates}
                 </Link>
                 <Link
                   href={`/${locale}/portal/admin/blog`}
                   className={navClass("blog")}
                 >
                   <Images className="h-3.5 w-3.5" />
-                  Blog
+                  {nav.blog}
                 </Link>
               </>
             )}
@@ -204,7 +237,7 @@ export function PortalShell({
               href={`/${locale}/portal/settings`}
               className={navClass("settings")}
             >
-              Settings
+              {nav.settings}
             </Link>
           </nav>
           <div className="flex items-center gap-3">
@@ -216,14 +249,14 @@ export function PortalShell({
               <input type="hidden" name="locale" value={locale} />
               <Link
                 href={`/${locale}/portal/settings`}
-                aria-label="Settings"
+                aria-label={nav.settingsLabel}
                 className="mr-2 inline-flex h-9 w-9 items-center justify-center rounded-lg border border-hairline text-ink2 transition-colors hover:border-copper hover:text-copper md:hidden"
               >
                 <Settings className="h-4 w-4" />
               </Link>
               <button
                 type="submit"
-                aria-label="Logout"
+                aria-label={nav.logoutLabel}
                 className="inline-flex h-9 w-9 items-center justify-center rounded-lg border border-hairline text-ink2 transition-colors hover:border-copper hover:text-copper"
               >
                 <LogOut className="h-4 w-4" />
@@ -236,19 +269,19 @@ export function PortalShell({
       <div className="border-b border-hairline bg-surface md:hidden">
         <nav
           className="mx-auto flex w-full max-w-[1240px] gap-2 overflow-x-auto px-5 py-3 text-sm text-ink2"
-          aria-label="Mobile Portal Navigation"
+          aria-label={nav.mobileLabel}
         >
           <Link
             href={`/${locale}`}
             className={mobileNavClass("website")}
           >
-            Website
+            {nav.website}
           </Link>
           <Link
             href={`/${locale}/portal`}
             className={mobileNavClass("dashboard")}
           >
-            Dashboard
+            {nav.dashboard}
           </Link>
           {user.role === "admin" && (
             <>
@@ -256,31 +289,31 @@ export function PortalShell({
                 href={`/${locale}/portal/admin`}
                 className={mobileNavClass("admin")}
               >
-                Cockpit
+                {nav.cockpit}
               </Link>
               <Link
                 href={`/${locale}/portal/admin/today`}
                 className={mobileNavClass("today")}
               >
-                Heute
+                {nav.today}
               </Link>
               <Link
                 href={`/${locale}/portal/admin/pipeline`}
                 className={mobileNavClass("pipeline")}
               >
-                Pipeline
+                {nav.pipeline}
               </Link>
               <Link
                 href={`/${locale}/portal/admin/drafts`}
                 className={mobileNavClass("drafts")}
               >
-                Drafts
+                {nav.drafts}
               </Link>
               <Link
                 href={`/${locale}/portal/admin/customers`}
                 className={mobileNavClass("customers")}
               >
-                Kunden
+                {nav.customers}
               </Link>
             </>
           )}
@@ -288,7 +321,7 @@ export function PortalShell({
             href={`/${locale}/portal/settings`}
             className={mobileNavClass("settings")}
           >
-            Settings
+            {nav.settings}
           </Link>
         </nav>
       </div>
@@ -300,7 +333,7 @@ export function PortalShell({
             className="mb-6 inline-flex items-center gap-2 text-sm text-ink2 transition-colors hover:text-copper"
           >
             <ArrowLeft className="h-4 w-4" />
-            Zurück
+            {nav.back}
           </Link>
         )}
         <div className="mb-8 flex flex-col gap-5 md:flex-row md:items-end md:justify-between">

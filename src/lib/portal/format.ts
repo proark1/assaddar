@@ -1,4 +1,10 @@
-import type { AsdarStage, ProjectStatus } from "./types";
+import type {
+  AsdarStage,
+  Invoice,
+  ProjectMilestone,
+  ProjectStatus,
+  ProjectTask,
+} from "./types";
 
 export const asdarStages: { value: AsdarStage; label: string; letter: string }[] =
   [
@@ -23,6 +29,62 @@ export function formatStage(stage: AsdarStage) {
 
 export function formatStatus(status: ProjectStatus) {
   return projectStatuses.find((entry) => entry.value === status)?.label ?? status;
+}
+
+export function formatTaskStatus(status: ProjectTask["status"]) {
+  const labels: Record<ProjectTask["status"], string> = {
+    todo: "Offen",
+    doing: "In Arbeit",
+    done: "Erledigt",
+  };
+  return labels[status] ?? status;
+}
+
+export function formatTaskOwner(owner: ProjectTask["owner"]) {
+  return owner === "assad" ? "Assad" : "Kunde";
+}
+
+export function formatMilestoneStatus(status: ProjectMilestone["status"]) {
+  const labels: Record<ProjectMilestone["status"], string> = {
+    planned: "Geplant",
+    active: "Aktiv",
+    done: "Erledigt",
+  };
+  return labels[status] ?? status;
+}
+
+export function formatInvoiceStatus(status: Invoice["status"]) {
+  const labels: Record<Invoice["status"], string> = {
+    draft: "Entwurf",
+    sent: "Offen",
+    paid: "Bezahlt",
+    overdue: "Überfällig",
+  };
+  return labels[status] ?? status;
+}
+
+export function formatDecisionStatus(status: string) {
+  const labels: Record<string, string> = {
+    proposed: "Zur Entscheidung",
+    approved: "Freigegeben",
+    rejected: "Abgelehnt",
+    needs_changes: "Rückfrage",
+  };
+  return labels[status] ?? status;
+}
+
+export function formatRequestStatus(status: string) {
+  const labels: Record<string, string> = {
+    open: "Offen",
+    new: "Neu",
+    scoping: "In Klärung",
+    quoted: "Angeboten",
+    accepted: "Angenommen",
+    in_progress: "In Arbeit",
+    done: "Erledigt",
+    rejected: "Abgelehnt",
+  };
+  return labels[status] ?? status;
 }
 
 export function formatCurrency(amountCents: number, currency = "EUR") {

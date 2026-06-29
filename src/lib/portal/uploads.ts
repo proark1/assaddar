@@ -111,6 +111,58 @@ function uploadContentType(upload: File, allowedMimeTypes: Set<string>) {
   return "";
 }
 
+function startsWith(bytes: Buffer, signature: number[]) {
+  return signature.every((value, index) => bytes[index] === value);
+}
+
+function isLikelyText(bytes: Buffer) {
+  if (bytes.includes(0)) return false;
+  return bytes.toString("utf8").includes("\uFFFD") === false;
+}
+
+function isZip(bytes: Buffer) {
+  return (
+    startsWith(bytes, [0x50, 0x4b, 0x03, 0x04]) ||
+    startsWith(bytes, [0x50, 0x4b, 0x05, 0x06]) ||
+    startsWith(bytes, [0x50, 0x4b, 0x07, 0x08])
+  );
+}
+
+function isLegacyOffice(bytes: Buffer) {
+  return startsWith(bytes, [0xd0, 0xcf, 0x11, 0xe0, 0xa1, 0xb1, 0x1a, 0xe1]);
+}
+
+function hasValidBytesForMime(bytes: Buffer, contentType: string) {
+  switch (contentType) {
+    case "application/pdf":
+      return startsWith(bytes, [0x25, 0x50, 0x44, 0x46, 0x2d]);
+    case "image/jpeg":
+      return startsWith(bytes, [0xff, 0xd8, 0xff]);
+    case "image/png":
+      return startsWith(bytes, [0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a]);
+    case "image/webp":
+      return (
+        bytes.length >= 12 &&
+        bytes.subarray(0, 4).toString("ascii") === "RIFF" &&
+        bytes.subarray(8, 12).toString("ascii") === "WEBP"
+      );
+    case "application/zip":
+    case "application/vnd.openxmlformats-officedocument.presentationml.presentation":
+    case "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet":
+    case "application/vnd.openxmlformats-officedocument.wordprocessingml.document":
+      return isZip(bytes);
+    case "application/msword":
+    case "application/vnd.ms-excel":
+    case "application/vnd.ms-powerpoint":
+      return isLegacyOffice(bytes);
+    case "text/csv":
+    case "text/plain":
+      return isLikelyText(bytes);
+    default:
+      return false;
+  }
+}
+
 async function validateAndReadUpload(
   upload: File,
   options: UploadOptions,
@@ -120,9 +172,13 @@ async function validateAndReadUpload(
 
   const contentType = uploadContentType(upload, options.allowedMimeTypes);
   if (!contentType) throw new Error("UPLOAD_TYPE");
+  const bytes = Buffer.from(await upload.arrayBuffer());
+  if (!hasValidBytesForMime(bytes, contentType)) {
+    throw new Error("UPLOAD_SIGNATURE");
+  }
 
   return {
-    bytes: Buffer.from(await upload.arrayBuffer()),
+    bytes,
     contentType,
     safeName: safeUploadFilename(upload.name || options.fallbackName, options.fallbackName),
   };

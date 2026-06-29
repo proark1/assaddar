@@ -51,6 +51,7 @@ const de = {
     heading: "KI ist kein Zukunftsthema mehr.",
     intro:
       "Der Markt braucht nicht nur Inspiration, sondern Struktur und Umsetzung.",
+    sourcePrefix: "Quelle / Stand",
     stats: [
       {
         value: "54,5 %",
@@ -67,7 +68,7 @@ const de = {
         value: "30 %",
         label:
           "haben zuletzt Digitalisierungsprojekte umgesetzt — die digitale Kluft bleibt",
-        source: "KfW",
+        source: "KfW Digitalisierungsbericht",
       },
     ],
     note: "Genau hier setzt die ASDAR Method an: erst Prozesse verstehen, dann digitalisieren, dann automatisieren.",
@@ -559,6 +560,8 @@ const de = {
     consent:
       "Ich habe die Datenschutzerklärung gelesen und bin mit der Verarbeitung meiner Angaben zur Bearbeitung der Anfrage einverstanden.",
     privacyLink: "Datenschutzerklärung",
+    privacyNote:
+      "Ihre Angaben werden nur zur Bearbeitung dieser Anfrage und, wenn passend, als interner Lead im Portal verarbeitet. Kein Newsletter, kein Verkauf von Daten.",
     submit: "Nachricht senden",
     sending: "Wird gesendet …",
     success:
@@ -632,6 +635,7 @@ const en: Dict = {
     heading: "AI is no longer a topic for the future.",
     intro:
       "The market needs not just inspiration, but structure and execution.",
+    sourcePrefix: "Source / date",
     stats: [
       {
         value: "54.5%",
@@ -647,7 +651,7 @@ const en: Dict = {
         value: "30%",
         label:
           "recently ran digitalization projects — the digital divide persists",
-        source: "KfW",
+        source: "KfW digitalization report",
       },
     ],
     note: "This is exactly where the ASDAR Method starts: understand the processes first, then digitize, then automate.",
@@ -1133,6 +1137,8 @@ const en: Dict = {
     consent:
       "I have read the privacy policy and consent to the processing of my data to handle this request.",
     privacyLink: "privacy policy",
+    privacyNote:
+      "Your details are used only to handle this inquiry and, where useful, as an internal lead in the portal. No newsletter, no sale of data.",
     submit: "Send message",
     sending: "Sending …",
     success:

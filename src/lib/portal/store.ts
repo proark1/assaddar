@@ -50,6 +50,13 @@ function bootstrapAdminPassword() {
   return `${randomBytes(24).toString("base64url")}!7`;
 }
 
+function bootstrapDemoCustomerPassword() {
+  const configured = process.env.PORTAL_DEMO_CUSTOMER_PASSWORD?.trim();
+  if (configured && configured.length >= 8) return configured;
+  if (process.env.NODE_ENV !== "production") return "kunde1234";
+  return `${randomBytes(24).toString("base64url")}!7`;
+}
+
 export function id(prefix: string) {
   return `${prefix}_${randomUUID().replaceAll("-", "").slice(0, 16)}`;
 }
@@ -93,7 +100,7 @@ function buildSeedStore(): PortalStore {
         id: customerId,
         name: "Demo Kunde",
         email: "kunde@example.com",
-        passwordHash: hashPassword("kunde1234"),
+        passwordHash: hashPassword(bootstrapDemoCustomerPassword()),
         role: "customer",
         emailVerifiedAt: createdAt,
         sessionVersion: 0,
