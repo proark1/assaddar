@@ -42,7 +42,7 @@ export function AssaddarPlatformWidget() {
     <Script
       id="assaddar-platform-widget"
       src={WIDGET_URL}
-      strategy="afterInteractive"
+      strategy="lazyOnload"
       data-assistant-id={ASSISTANT_ID}
       data-api-url={API_URL}
     />

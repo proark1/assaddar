@@ -21,25 +21,14 @@ import {
   runPortalAutomationsAction,
 } from "@/app/actions/portal";
 import { isLocale, type Locale } from "@/content";
-import { buildAttentionItems } from "@/lib/portal/automation";
-import { buildAutomationOpportunities } from "@/lib/portal/automation-rules";
 import { requireAdmin } from "@/lib/portal/auth";
-import { listProjectBundlesForUser, readStore } from "@/lib/portal/store";
 import {
   formatDate,
   formatStage,
   formatStatus,
   projectStatuses,
 } from "@/lib/portal/format";
-import {
-  buildAdminCommandCenter,
-  buildAdminNotificationCenter,
-  buildAdminProjectActions,
-  buildLeadPipeline,
-  buildProjectHealthScore,
-  buildProjectTimeline,
-} from "@/lib/portal/operations";
-import { effectiveConsultingTemplates } from "@/lib/portal/templates";
+import { getAdminDashboardViewModel } from "@/lib/portal/view-models";
 import {
   Badge,
   fieldClass,
@@ -78,102 +67,22 @@ export default async function AdminPage({
   const safe: Locale = isLocale(locale) ? locale : "de";
   const user = await requireAdmin(safe);
   const query = await searchParams;
-  const projectQuery = query.q?.trim().toLowerCase() ?? "";
-  const statusFilter = query.status ?? "all";
-  const healthFilter = query.health ?? "all";
-  const allBundles = await listProjectBundlesForUser(user);
-  const portalStore = await readStore();
-  const consultingTemplates = effectiveConsultingTemplates(
-    portalStore.templateOverrides,
-  );
-  const attentionItems = allBundles.flatMap(buildAttentionItems);
-  const automationOpportunities = buildAutomationOpportunities(allBundles);
-  const commandCenter = buildAdminCommandCenter(allBundles);
-  const notifications = buildAdminNotificationCenter(allBundles);
-  const leadPipeline = buildLeadPipeline(allBundles);
-  const commands = [
-    {
-      label: "Automationen ausführen",
-      href: `/${safe}/portal/admin#automation`,
-      group: "Workflow",
-      keywords: "automation next best action task reminder draft",
-    },
-    {
-      label: "Heute öffnen",
-      href: `/${safe}/portal/admin/today`,
-      group: "Workflow",
-      keywords: "today inbox action queue notification",
-    },
-    {
-      label: "Pipeline öffnen",
-      href: `/${safe}/portal/admin/pipeline`,
-      group: "Workflow",
-      keywords: "kanban status projekt flow",
-    },
-    {
-      label: "Draft Review öffnen",
-      href: `/${safe}/portal/admin/drafts`,
-      group: "Workflow",
-      keywords: "updates kommunikation meeting proposal",
-    },
-    {
-      label: "Kunden verwalten",
-      href: `/${safe}/portal/admin/customers`,
-      group: "Admin",
-      keywords: "kunden account login zugriff",
-    },
-    {
-      label: "Templates bearbeiten",
-      href: `/${safe}/portal/admin/templates`,
-      group: "Admin",
-      keywords: "branchen playbook industry",
-    },
-    ...allBundles.map((bundle) => ({
-      label: `${bundle.organization.name} öffnen`,
-      href: `/${safe}/portal/admin/projects/${bundle.project.id}`,
-      group: "Projekt",
-      keywords: [
-        bundle.project.name,
-        bundle.organization.industry,
-        bundle.project.status,
-        bundle.project.asdarStage,
-      ].join(" "),
-    })),
-  ];
-  const latestActivity = allBundles
-    .flatMap((bundle) =>
-      buildProjectTimeline(bundle)
-        .slice(0, 4)
-        .map((item) => ({
-          ...item,
-          organizationName: bundle.organization.name,
-        })),
-    )
-    .sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime())
-    .slice(0, 8);
-  const selectedTemplateId =
-    consultingTemplates.some((template) => template.id === query.template)
-      ? query.template
-      : "";
-  const bundles = allBundles.filter((bundle) => {
-    const matchesQuery =
-      !projectQuery ||
-      [
-        bundle.project.name,
-        bundle.project.summary,
-        bundle.organization.name,
-        bundle.organization.industry,
-      ]
-        .join(" ")
-        .toLowerCase()
-        .includes(projectQuery);
-    const matchesStatus =
-      statusFilter === "all" || bundle.project.status === statusFilter;
-    const matchesHealth =
-      healthFilter === "all" || bundle.project.health === healthFilter;
-
-    return matchesQuery && matchesStatus && matchesHealth;
-  });
+  const {
+    allBundles,
+    attentionItems,
+    automationOpportunities,
+    commandCenter,
+    commands,
+    consultingTemplates,
+    healthFilter,
+    latestActivity,
+    leadPipeline,
+    notifications,
+    projectCards,
+    projectQuery,
+    selectedTemplateId,
+    statusFilter,
+  } = await getAdminDashboardViewModel(user, safe, query);
 
   return (
     <PortalShell
@@ -713,7 +622,7 @@ export default async function AdminPage({
             </form>
             <div className="mt-3 flex items-center justify-between gap-3 text-sm text-muted">
               <span>
-                {bundles.length} von {allBundles.length} Projekten
+                {projectCards.length} von {allBundles.length} Projekten
               </span>
               {(projectQuery || statusFilter !== "all" || healthFilter !== "all") && (
                 <Link
@@ -726,9 +635,7 @@ export default async function AdminPage({
             </div>
           </PortalCard>
 
-          {bundles.map((bundle) => {
-            const nextBestAction = buildAdminProjectActions(bundle)[0];
-            const healthScore = buildProjectHealthScore(bundle);
+          {projectCards.map(({ bundle, nextBestAction, healthScore }) => {
             return (
             <Link
               key={bundle.project.id}
@@ -831,7 +738,7 @@ export default async function AdminPage({
             </Link>
             );
           })}
-          {bundles.length === 0 && (
+          {projectCards.length === 0 && (
             <PortalCard>
               <p className="text-sm text-muted">
                 Keine Projekte passen zu diesen Filtern.

@@ -133,7 +133,7 @@ export function Hero({ t }: { t: Dict["hero"] }) {
                 />
               </svg>
               <Image
-                src="/people/assad-dar-portrait.png"
+                src="/people/assad-dar-portrait.avif"
                 alt="Assad Dar"
                 width={800}
                 height={1200}

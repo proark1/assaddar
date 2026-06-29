@@ -9,13 +9,14 @@ function originFrom(value?: string | null) {
   }
 }
 
-function contentSecurityPolicy(nonce: string) {
+function contentSecurityPolicy() {
   const isDev = process.env.NODE_ENV !== "production";
   const widgetOrigin = originFrom(process.env.NEXT_PUBLIC_ASSADDAR_WIDGET_URL);
   const apiOrigin = originFrom(process.env.NEXT_PUBLIC_ASSADDAR_API_URL);
   const scriptSrc = [
     "'self'",
-    `'nonce-${nonce}'`,
+    "'unsafe-inline'",
+    "'sha256-jtYfVmh343Lzlxyz12+K96v89zjSVCm5o4gc7fShn1s='",
     isDev ? "'unsafe-eval'" : "",
     widgetOrigin,
   ].filter(Boolean);
@@ -42,24 +43,18 @@ function contentSecurityPolicy(nonce: string) {
 }
 
 export function proxy(req: NextRequest) {
-  const nonce = crypto.randomUUID().replaceAll("-", "");
-  const requestHeaders = new Headers(req.headers);
-  requestHeaders.set("x-csp-nonce", nonce);
-
   let response: NextResponse;
   const accept = req.headers.get("accept-language")?.toLowerCase() ?? "";
   const locale = accept.startsWith("en") ? "en" : "de";
   // Rewrite (not redirect) so "/" returns 200 and serves the locale homepage.
   // Canonical/hreflang on the page point crawlers to the prefixed URLs.
   if (req.nextUrl.pathname === "/") {
-    response = NextResponse.rewrite(new URL(`/${locale}`, req.url), {
-      request: { headers: requestHeaders },
-    });
+    response = NextResponse.rewrite(new URL(`/${locale}`, req.url));
   } else {
-    response = NextResponse.next({ request: { headers: requestHeaders } });
+    response = NextResponse.next();
   }
 
-  response.headers.set("Content-Security-Policy", contentSecurityPolicy(nonce));
+  response.headers.set("Content-Security-Policy", contentSecurityPolicy());
   return response;
 }
 

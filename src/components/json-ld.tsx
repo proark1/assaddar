@@ -1,12 +1,7 @@
-import { headers } from "next/headers";
-
-export async function JsonLd({ data }: { data: unknown }) {
-  const nonce = (await headers()).get("x-csp-nonce") ?? undefined;
-
+export function JsonLd({ data }: { data: unknown }) {
   return (
     <script
       type="application/ld+json"
-      nonce={nonce}
       suppressHydrationWarning
       dangerouslySetInnerHTML={{ __html: JSON.stringify(data) }}
     />

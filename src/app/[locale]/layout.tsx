@@ -1,7 +1,6 @@
 import type { Metadata } from "next";
 import { GeistSans } from "geist/font/sans";
 import { GeistMono } from "geist/font/mono";
-import { headers } from "next/headers";
 import { Source_Serif_4 } from "next/font/google";
 import { getDict, isLocale, locales, type Locale } from "@/content";
 import { AssaddarPlatformWidget } from "@/components/assaddar-platform-widget";
@@ -65,7 +64,6 @@ export default async function LocaleLayout({
 }) {
   const { locale } = await params;
   const safe: Locale = isLocale(locale) ? locale : "de";
-  const nonce = (await headers()).get("x-csp-nonce") ?? undefined;
 
   return (
     <html
@@ -75,7 +73,6 @@ export default async function LocaleLayout({
     >
       <head>
         <script
-          nonce={nonce}
           suppressHydrationWarning
           dangerouslySetInnerHTML={{ __html: THEME_BOOTSTRAP_SCRIPT }}
         />

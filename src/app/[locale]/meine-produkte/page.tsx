@@ -36,7 +36,7 @@ type ProductStory = {
 const PRODUCT_STORIES: Record<Locale, Record<string, ProductStory>> = {
   de: {
     "unmutenow.ai": {
-      logoSrc: "/products/unmutenow-logo.png",
+      logoSrc: "/products/unmutenow-logo.avif",
       logoAlt: "unmutenow.ai Logo",
       eyebrow: "Voice-first AI Training",
       headline: "Ein sicherer Raum, um echte Gespräche zu üben.",
@@ -164,7 +164,7 @@ const PRODUCT_STORIES: Record<Locale, Record<string, ProductStory>> = {
   },
   en: {
     "unmutenow.ai": {
-      logoSrc: "/products/unmutenow-logo.png",
+      logoSrc: "/products/unmutenow-logo.avif",
       logoAlt: "unmutenow.ai logo",
       eyebrow: "Voice-first AI training",
       headline: "A safe space to practice real conversations.",
