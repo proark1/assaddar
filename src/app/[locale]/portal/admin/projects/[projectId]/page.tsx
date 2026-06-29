@@ -62,21 +62,12 @@ import {
 import { isLocale, type Locale } from "@/content";
 import { requireAdmin } from "@/lib/portal/auth";
 import {
-  buildConsultantGuidance,
-  findSimilarProjectBundles,
-} from "@/lib/portal/ai";
-import {
   isApproval,
   isCustomerComment,
   isCustomerIntake,
   isReminder,
   isStructuredUpdate,
 } from "@/lib/portal/automation";
-import { listProjectBundlesForUser, readStore } from "@/lib/portal/store";
-import {
-  effectiveConsultingTemplates,
-  matchConsultingTemplate,
-} from "@/lib/portal/templates";
 import {
   asdarStages,
   formatCurrency,
@@ -84,28 +75,7 @@ import {
   formatStage,
   projectStatuses,
 } from "@/lib/portal/format";
-import {
-  buildAiProviderComparison,
-  buildAdminProjectActions,
-  buildAutomationHistory,
-  buildChangeRequests,
-  buildClientAnalytics,
-  buildConsultingCopilotBrief,
-  buildConsultantCopyTemplates,
-  buildConsultantWorkflow,
-  buildCustomerUpdateDraft,
-  buildDecisionCenter,
-  buildFileVersionGroups,
-  buildFileRequests,
-  buildMeetingModePlan,
-  buildProjectDiagnosis,
-  buildProjectCopilotPanel,
-  buildProjectHealthScore,
-  buildProjectKpiSnapshot,
-  latestOrBuildOfferRecommendation,
-  buildProjectTimeline,
-  buildWorkflowSnapshots,
-} from "@/lib/portal/operations";
+import { getAdminProjectViewModel } from "@/lib/portal/view-models";
 import {
   Badge,
   fieldClass,
@@ -181,41 +151,37 @@ export default async function AdminProjectPage({
   const { locale, projectId } = await params;
   const safe: Locale = isLocale(locale) ? locale : "de";
   const user = await requireAdmin(safe);
-  const bundles = await listProjectBundlesForUser(user);
-  const portalStore = await readStore();
-  const consultingTemplates = effectiveConsultingTemplates(
-    portalStore.templateOverrides,
-  );
-  const bundle = bundles.find((entry) => entry.project.id === projectId);
-  if (!bundle) notFound();
+  const viewModel = await getAdminProjectViewModel(user, projectId);
+  if (!viewModel) notFound();
+  const {
+    bundle,
+    consultingTemplates,
+    guidance,
+    diagnosis,
+    healthScore,
+    kpiSnapshot,
+    adminActions,
+    copilotBrief,
+    meetingMode,
+    consultantWorkflow,
+    consultantCopyTemplates,
+    customerUpdateDraft,
+    aiComparison,
+    projectTimeline,
+    automationHistory,
+    fileGroups,
+    decisions,
+    changeRequests,
+    fileRequests,
+    workflowSnapshots,
+    clientAnalytics,
+    projectCopilot,
+    offerRecommendation,
+    similar,
+    template,
+  } = viewModel;
 
   const query = await searchParams;
-  const guidance = buildConsultantGuidance(bundle);
-  const diagnosis = buildProjectDiagnosis(bundle);
-  const healthScore = buildProjectHealthScore(bundle);
-  const kpiSnapshot = buildProjectKpiSnapshot(bundle);
-  const adminActions = buildAdminProjectActions(bundle);
-  const copilotBrief = buildConsultingCopilotBrief(bundle);
-  const meetingMode = buildMeetingModePlan(bundle);
-  const consultantWorkflow = buildConsultantWorkflow(bundle);
-  const consultantCopyTemplates = buildConsultantCopyTemplates(bundle);
-  const customerUpdateDraft = buildCustomerUpdateDraft(bundle);
-  const aiComparison = buildAiProviderComparison(bundle);
-  const projectTimeline = buildProjectTimeline(bundle);
-  const automationHistory = buildAutomationHistory(bundle);
-  const fileGroups = buildFileVersionGroups(bundle);
-  const decisions = buildDecisionCenter(bundle);
-  const changeRequests = buildChangeRequests(bundle);
-  const fileRequests = buildFileRequests(bundle);
-  const workflowSnapshots = buildWorkflowSnapshots(bundle);
-  const clientAnalytics = buildClientAnalytics(bundle);
-  const projectCopilot = buildProjectCopilotPanel(bundle);
-  const offerRecommendation = latestOrBuildOfferRecommendation(bundle);
-  const similar = findSimilarProjectBundles(bundles, bundle);
-  const matchedTemplate = matchConsultingTemplate(bundle.organization.industry);
-  const template =
-    consultingTemplates.find((entry) => entry.id === matchedTemplate.id) ??
-    matchedTemplate;
   const auditUpdates = bundle.updates.filter((update) =>
     update.title.startsWith("Audit:"),
   );

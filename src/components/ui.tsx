@@ -45,12 +45,16 @@ export function Button({
   variant = "primary",
   className = "",
   withArrow = false,
+  analyticsEvent,
+  analyticsLabel,
 }: {
   href: string;
   children: React.ReactNode;
   variant?: "primary" | "secondary";
   className?: string;
   withArrow?: boolean;
+  analyticsEvent?: string;
+  analyticsLabel?: string;
 }) {
   const base =
     "group inline-flex items-center justify-center gap-2 rounded-lg text-sm font-medium transition-all duration-150 hover:-translate-y-0.5";
@@ -59,7 +63,12 @@ export function Button({
       ? "bg-copper px-5 py-3 text-oncopper shadow-[0_2px_8px_rgba(166,110,47,0.25)] hover:bg-copper-hi hover:shadow-[0_6px_18px_rgba(166,110,47,0.32)]"
       : "border border-strong px-5 py-3 text-ink hover:border-copper";
   return (
-    <Link href={href} className={`${base} ${styles} ${className}`}>
+    <Link
+      href={href}
+      className={`${base} ${styles} ${className}`}
+      data-analytics-event={analyticsEvent}
+      data-analytics-label={analyticsLabel}
+    >
       {children}
       {withArrow && (
         <ArrowRight className="h-4 w-4 transition-transform duration-150 group-hover:translate-x-0.5" />

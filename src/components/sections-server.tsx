@@ -79,10 +79,18 @@ export function Hero({ t }: { t: Dict["hero"] }) {
             </p>
             <Reveal delay={0.1}>
               <div className="mt-7 flex flex-col items-start gap-5 sm:flex-row sm:items-center">
-                <Button href={t.ctaPrimaryHref}>{t.ctaPrimary}</Button>
+                <Button
+                  href={t.ctaPrimaryHref}
+                  analyticsEvent="hero_cta_click"
+                  analyticsLabel={t.ctaPrimary}
+                >
+                  {t.ctaPrimary}
+                </Button>
                 <div>
                   <a
                     href={t.ctaSecondaryHref}
+                    data-analytics-event="readiness_start"
+                    data-analytics-label={t.ctaSecondary}
                     className="inline-flex items-center gap-1.5 border-b border-copper pb-0.5 text-sm text-ink transition-colors hover:text-copper"
                   >
                     {t.ctaSecondary}
@@ -657,6 +665,8 @@ export function Angebote({ t }: { t: Dict["angebote"] }) {
                 </p>
                 <Link
                   href={t.ctaHref}
+                  data-analytics-event="offer_cta_click"
+                  data-analytics-label={s.product}
                   className="group mt-6 inline-flex w-fit items-center gap-1.5 text-sm font-medium text-copper"
                 >
                   {s.cta}
@@ -1262,7 +1272,13 @@ export function FinalCta({ t }: { t: Dict["finalCta"] }) {
               {t.sub}
             </p>
             <div className="mt-9 flex flex-col items-center justify-center gap-4 sm:flex-row">
-              <Button href={t.ctaHref}>{t.cta}</Button>
+          <Button
+            href={t.ctaHref}
+            analyticsEvent="final_cta_click"
+            analyticsLabel={t.cta}
+          >
+            {t.cta}
+          </Button>
               <span className="text-sm text-muted">
                 {t.or}{" "}
                 <a

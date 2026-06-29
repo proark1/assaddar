@@ -6,7 +6,7 @@ import { Moon, Sun } from "lucide-react";
 export function ThemeToggle({
   toDark,
   toLight,
-  className = "",
+  className = "inline-flex",
 }: {
   toDark: string;
   toLight: string;
@@ -43,7 +43,7 @@ export function ThemeToggle({
       onClick={toggle}
       aria-label={label}
       title={label}
-      className={`inline-flex h-10 w-10 items-center justify-center rounded-lg border border-hairline text-ink2 transition-colors hover:text-ink ${className}`}
+      className={`h-10 w-10 items-center justify-center rounded-lg border border-hairline text-ink2 transition-colors hover:text-ink ${className}`}
     >
       <Sun className="hidden h-4 w-4 dark:block" />
       <Moon className="h-4 w-4 dark:hidden" />

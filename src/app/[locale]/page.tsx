@@ -2,23 +2,13 @@ import { getDict, isLocale, locales, SITE_URL, type Locale } from "@/content";
 import { Nav } from "@/components/nav";
 import { Footer } from "@/components/footer";
 import {
-  About,
   Angebote,
-  BeforeAfterWorkflow,
   Blog,
-  Branchen,
-  EvidenceNumbers,
   FinalCta,
   Hero,
-  Market,
-  MethodSection,
   MiniCaseStudies,
-  NextStepsTimeline,
-  ProductsPreview,
   TrustSignals,
-  WhyAssad,
 } from "@/components/sections-server";
-import { AiExamples } from "@/components/examples";
 import { Faq } from "@/components/faq";
 import { JsonLd } from "@/components/json-ld";
 import { ReadinessAndRoiTools } from "@/components/landing-tools";
@@ -95,20 +85,10 @@ export default async function Home({
       <Nav t={t.nav} locale={safe} />
       <main id="main" tabIndex={-1} className="outline-none">
         <Hero t={t.hero} />
-        <Market t={t.market} />
-        <EvidenceNumbers locale={safe} />
         <ReadinessAndRoiTools locale={safe} />
         <TrustSignals locale={safe} />
         <MiniCaseStudies locale={safe} />
-        <NextStepsTimeline locale={safe} />
-        <MethodSection t={t.method} />
-        <BeforeAfterWorkflow locale={safe} />
-        <AiExamples t={t.examples} />
-        <WhyAssad locale={safe} />
         <Angebote t={t.angebote} />
-        <Branchen t={t.branchen} />
-        <About t={t.about} locale={safe} />
-        <ProductsPreview locale={safe} />
         <Blog t={t.blog} />
         <Faq t={t.faq} />
         <FinalCta t={t.finalCta} />

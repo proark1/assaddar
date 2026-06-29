@@ -17,7 +17,8 @@ const de = {
       invalid: "Login nicht möglich. Bitte prüfen Sie E-Mail und Passwort.",
       verify: "Bitte bestätigen Sie zuerst Ihre E-Mail-Adresse.",
       rate: "Zu viele Login-Versuche. Bitte versuchen Sie es in einigen Minuten erneut.",
-      config: "Das Portal ist noch nicht vollständig für die Produktion konfiguriert.",
+      config:
+        "Das Portal läuft im Produktionsmodus, aber Datenbank, Storage oder E-Mail sind nicht vollständig konfiguriert. Für lokale QA bitte `pnpm dev:portal` nutzen.",
       verifySent: "Bitte prüfen Sie Ihr Postfach und bestätigen Sie Ihre E-Mail.",
       verified: "E-Mail bestätigt. Sie können sich jetzt anmelden.",
       reset: "Passwort geändert. Sie können sich jetzt anmelden.",
@@ -93,7 +94,8 @@ const de = {
       "Bitte geben Sie ein gültiges Passwort ein und bestätigen Sie es identisch.",
   },
   loginApi: {
-    config: "Das Portal ist noch nicht vollständig für die Produktion konfiguriert.",
+    config:
+      "Das Portal läuft im Produktionsmodus, aber Datenbank, Storage oder E-Mail sind nicht vollständig konfiguriert. Für lokale QA bitte `pnpm dev:portal` nutzen.",
     parse: "Die Login-Anfrage konnte nicht gelesen werden.",
     rate: "Zu viele Login-Versuche. Bitte versuchen Sie es in einigen Minuten erneut.",
     invalid: "Login nicht möglich. Bitte prüfen Sie E-Mail und Passwort.",
@@ -155,7 +157,8 @@ const en: typeof de = {
       invalid: "Login failed. Please check your email and password.",
       verify: "Please confirm your email address first.",
       rate: "Too many login attempts. Please try again in a few minutes.",
-      config: "The portal is not yet fully configured for production.",
+      config:
+        "The portal is running in production mode, but database, storage, or email is incomplete. For local QA, use `pnpm dev:portal`.",
       verifySent: "Please check your inbox and confirm your email.",
       verified: "Email confirmed. You can sign in now.",
       reset: "Password changed. You can sign in now.",
@@ -229,7 +232,8 @@ const en: typeof de = {
     invalid: "Please enter a valid password and confirm it identically.",
   },
   loginApi: {
-    config: "The portal is not yet fully configured for production.",
+    config:
+      "The portal is running in production mode, but database, storage, or email is incomplete. For local QA, use `pnpm dev:portal`.",
     parse: "The login request could not be read.",
     rate: "Too many login attempts. Please try again in a few minutes.",
     invalid: "Login failed. Please check your email and password.",

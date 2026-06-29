@@ -1,6 +1,3 @@
-"use client";
-
-import { useState } from "react";
 import Link from "next/link";
 import { Menu, UserRound, X } from "lucide-react";
 import type { Dict, Locale } from "@/content";
@@ -16,7 +13,6 @@ export function Nav({
   /** On subpages, in-page hash anchors must route back to the home page first. */
   subpage?: boolean;
 }) {
-  const [open, setOpen] = useState(false);
   const other: Locale = locale === "de" ? "en" : "de";
 
   // Home: keep "#section" as a same-page anchor for smooth scroll.
@@ -28,19 +24,13 @@ export function Nav({
   const renderLink = (
     l: { label: string; href: string },
     className: string,
-    onClick?: () => void,
   ) =>
     isAnchor(l.href) ? (
-      <a key={l.href} href={l.href} onClick={onClick} className={className}>
+      <a key={l.href} href={l.href} className={className}>
         {l.label}
       </a>
     ) : (
-      <Link
-        key={l.href}
-        href={resolve(l.href)}
-        onClick={onClick}
-        className={className}
-      >
+      <Link key={l.href} href={resolve(l.href)} className={className}>
         {l.label}
       </Link>
     );
@@ -95,55 +85,50 @@ export function Nav({
           >
             {t.cta}
           </Link>
-          <button
-            type="button"
-            aria-label={open ? t.close : t.menu}
-            aria-expanded={open}
-            onClick={() => setOpen((v) => !v)}
-            className="inline-flex h-9 w-9 items-center justify-center rounded-lg border border-hairline text-ink xl:hidden"
-          >
-            {open ? <X className="h-5 w-5" /> : <Menu className="h-5 w-5" />}
-          </button>
+          <details className="group xl:hidden">
+            <summary
+              aria-label={t.menu}
+              className="flex h-9 w-9 cursor-pointer list-none items-center justify-center rounded-lg border border-hairline text-ink transition-colors hover:border-copper [&::-webkit-details-marker]:hidden"
+            >
+              <Menu className="h-5 w-5 group-open:hidden" />
+              <X className="hidden h-5 w-5 group-open:block" />
+            </summary>
+
+            <div className="fixed inset-x-0 top-16 max-h-[calc(100dvh-4rem)] overflow-y-auto border-y border-hairline bg-bg shadow-card xl:hidden">
+              <div className="mx-auto flex w-full max-w-[1280px] flex-col gap-1 px-6 py-4">
+                {t.links.map((l) =>
+                  renderLink(
+                    l,
+                    "rounded-md px-2 py-2.5 text-sm text-ink2 transition-colors hover:bg-surface hover:text-ink",
+                  ),
+                )}
+                <Link
+                  href={`/${locale}/login`}
+                  className="mt-2 inline-flex items-center justify-center gap-2 rounded-lg border border-hairline px-4 py-3 text-sm font-medium text-ink"
+                >
+                  <UserRound className="h-4 w-4" />
+                  {t.portal}
+                </Link>
+                <Link
+                  href={`/${locale}/termin`}
+                  className="inline-flex items-center justify-center rounded-lg bg-copper px-4 py-3 text-sm font-medium text-oncopper"
+                >
+                  {t.cta}
+                </Link>
+                <div className="mt-2 flex items-center justify-between px-2">
+                  <Link
+                    href={`/${other}`}
+                    className="py-2 font-mono text-[11px] text-muted transition-colors hover:text-ink"
+                  >
+                    {locale.toUpperCase()} / {other.toUpperCase()}
+                  </Link>
+                  <ThemeToggle toDark={t.themeToDark} toLight={t.themeToLight} />
+                </div>
+              </div>
+            </div>
+          </details>
         </div>
       </div>
-
-      {open && (
-        <div className="border-t border-hairline bg-bg xl:hidden">
-          <div className="mx-auto flex w-full max-w-[1280px] flex-col gap-1 px-6 py-4">
-            {t.links.map((l) =>
-              renderLink(
-                l,
-                "rounded-md px-2 py-2.5 text-sm text-ink2 transition-colors hover:bg-surface hover:text-ink",
-                () => setOpen(false),
-              ),
-            )}
-            <Link
-              href={`/${locale}/login`}
-              onClick={() => setOpen(false)}
-              className="mt-2 inline-flex items-center justify-center gap-2 rounded-lg border border-hairline px-4 py-3 text-sm font-medium text-ink"
-            >
-              <UserRound className="h-4 w-4" />
-              {t.portal}
-            </Link>
-            <Link
-              href={`/${locale}/termin`}
-              onClick={() => setOpen(false)}
-              className="inline-flex items-center justify-center rounded-lg bg-copper px-4 py-3 text-sm font-medium text-oncopper"
-            >
-              {t.cta}
-            </Link>
-            <div className="mt-2 flex items-center justify-between px-2">
-              <Link
-                href={`/${other}`}
-                className="py-2 font-mono text-[11px] text-muted transition-colors hover:text-ink"
-              >
-                {locale.toUpperCase()} / {other.toUpperCase()}
-              </Link>
-              <ThemeToggle toDark={t.themeToDark} toLight={t.themeToLight} />
-            </div>
-          </div>
-        </div>
-      )}
     </header>
   );
 }

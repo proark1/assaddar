@@ -5,6 +5,7 @@ import { headers } from "next/headers";
 import { Source_Serif_4 } from "next/font/google";
 import { getDict, isLocale, locales, type Locale } from "@/content";
 import { AssaddarPlatformWidget } from "@/components/assaddar-platform-widget";
+import { AnalyticsEvents } from "@/components/analytics-events";
 import { THEME_BOOTSTRAP_SCRIPT } from "@/lib/theme-script";
 import "../globals.css";
 
@@ -81,6 +82,7 @@ export default async function LocaleLayout({
       </head>
       <body>
         {children}
+        <AnalyticsEvents />
         <AssaddarPlatformWidget />
       </body>
     </html>

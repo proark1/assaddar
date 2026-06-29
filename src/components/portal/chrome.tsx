@@ -59,7 +59,7 @@ export function PortalCard({
   return (
     <section
       id={id}
-      className={`rounded-lg border border-hairline bg-surface p-5 shadow-card ${className}`}
+      className={`min-w-0 rounded-lg border border-hairline bg-surface p-5 shadow-card ${className}`}
     >
       {children}
     </section>
@@ -166,7 +166,7 @@ export function PortalShell({
   return (
     <div className="min-h-screen bg-bg">
       <header className="border-b border-hairline bg-surface/85 backdrop-blur">
-        <div className="mx-auto flex min-h-16 w-full max-w-[1240px] items-center justify-between gap-4 px-5 py-3 md:px-8">
+        <div className="mx-auto flex min-h-14 w-full max-w-[1240px] items-center justify-between gap-3 px-5 py-2 md:min-h-16 md:px-8 md:py-3">
           <Link
             href={`/${locale}/portal`}
             className="inline-flex items-center gap-2 text-sm font-medium text-ink"
@@ -268,7 +268,7 @@ export function PortalShell({
 
       <div className="border-b border-hairline bg-surface md:hidden">
         <nav
-          className="mx-auto flex w-full max-w-[1240px] gap-2 overflow-x-auto px-5 py-3 text-sm text-ink2"
+          className="mx-auto flex w-full max-w-[1240px] gap-2 overflow-x-auto px-5 py-2 text-sm text-ink2"
           aria-label={nav.mobileLabel}
         >
           <Link
@@ -326,7 +326,7 @@ export function PortalShell({
         </nav>
       </div>
 
-      <main className="mx-auto w-full max-w-[1240px] px-5 py-8 md:px-8 md:py-10">
+      <main className="mx-auto w-full max-w-[1240px] px-5 py-6 md:px-8 md:py-10">
         {backHref && (
           <Link
             href={backHref}
@@ -336,7 +336,7 @@ export function PortalShell({
             {nav.back}
           </Link>
         )}
-        <div className="mb-8 flex flex-col gap-5 md:flex-row md:items-end md:justify-between">
+        <div className="mb-6 flex flex-col gap-4 md:mb-8 md:flex-row md:items-end md:justify-between md:gap-5">
           <div>
             <div className="inline-flex items-center gap-2 font-mono text-[11px] uppercase tracking-[0.14em] text-copper">
               {user.role === "admin" ? (

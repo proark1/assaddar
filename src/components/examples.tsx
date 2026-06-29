@@ -1,7 +1,6 @@
 "use client";
 
 import { useState } from "react";
-import { AnimatePresence, motion, useReducedMotion } from "framer-motion";
 import {
   ArrowRight,
   BarChart3,
@@ -31,7 +30,6 @@ const ICONS: Record<string, LucideIcon> = {
 
 export function AiExamples({ t }: { t: Dict["examples"] }) {
   const [active, setActive] = useState(0);
-  const reduce = useReducedMotion();
   const ex = t.items[active];
 
   return (
@@ -79,13 +77,8 @@ export function AiExamples({ t }: { t: Dict["examples"] }) {
           </div>
 
           <div aria-live="polite">
-            <AnimatePresence mode="wait">
-            <motion.div
+            <div
               key={active}
-              initial={reduce ? false : { opacity: 0, y: 8 }}
-              animate={{ opacity: 1, y: 0 }}
-              exit={reduce ? undefined : { opacity: 0, y: -8 }}
-              transition={{ duration: 0.25, ease: [0.22, 1, 0.36, 1] }}
               className="rounded-xl border border-hairline bg-surface p-6 shadow-card md:p-8"
             >
               <div className="grid gap-5 sm:grid-cols-2">
@@ -142,8 +135,7 @@ export function AiExamples({ t }: { t: Dict["examples"] }) {
                   </div>
                 </div>
               </div>
-            </motion.div>
-          </AnimatePresence>
+            </div>
           </div>
         </div>
       </Container>

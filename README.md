@@ -22,6 +22,12 @@ The app normally runs on `http://localhost:3000`. If another Next dev server is
 already running for this checkout, reuse that server instead of starting a
 second one.
 
+For authenticated portal QA with local JSON data and local file storage:
+
+```bash
+pnpm dev:portal
+```
+
 Useful checks:
 
 ```bash

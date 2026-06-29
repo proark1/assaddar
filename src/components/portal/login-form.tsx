@@ -4,6 +4,7 @@ import { useState } from "react";
 import { LogIn } from "lucide-react";
 import type { Locale } from "@/content";
 import type { AuthCopy } from "@/lib/portal/auth-copy";
+import { trackAnalyticsEvent } from "@/lib/analytics";
 
 const fieldClass =
   "w-full rounded-lg border border-hairline bg-bg px-3 py-2 text-sm text-ink outline-none transition-colors placeholder:text-muted focus:border-copper";
@@ -55,15 +56,27 @@ export function PortalLoginForm({
 
       if (!response.ok || !result.ok || !result.redirectTo) {
         setError(result.message || copy.genericError);
+        trackAnalyticsEvent("login_error", {
+          status: response.status,
+          locale,
+        });
         setPending(false);
         return;
       }
 
       const redirectTarget = result.redirectTo;
       setRedirectTo(redirectTarget);
+      trackAnalyticsEvent("login_success", { locale });
       window.setTimeout(() => window.location.assign(redirectTarget), 0);
       window.setTimeout(() => setPending(false), 5000);
     } catch (cause) {
+      trackAnalyticsEvent("login_error", {
+        status:
+          cause instanceof DOMException && cause.name === "AbortError"
+            ? "timeout"
+            : "network",
+        locale,
+      });
       setError(
         cause instanceof DOMException && cause.name === "AbortError"
           ? copy.timeoutError

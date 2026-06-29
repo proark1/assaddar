@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useMemo, useRef, useState } from "react";
 import {
   ArrowRight,
   BarChart3,
@@ -10,6 +10,7 @@ import {
   Target,
 } from "lucide-react";
 import type { Locale } from "@/content";
+import { trackAnalyticsEvent } from "@/lib/analytics";
 import { Container, Kicker, Section } from "./ui";
 
 type SliderRowProps = {
@@ -226,6 +227,9 @@ export function ReadinessAndRoiTools({ locale }: { locale: Locale }) {
   const [manualHours, setManualHours] = useState(4);
   const [hourlyRate, setHourlyRate] = useState(45);
   const [automationRate, setAutomationRate] = useState(25);
+  const touchedReadiness = useRef(new Set<number>());
+  const didTrackFirstInteraction = useRef(false);
+  const didTrackCompletion = useRef(false);
 
   // Each dimension is rated 1–5; normalise to a 0–100 readiness score so the
   // result still reads as "/100" (the booking funnel displays it that way).
@@ -272,6 +276,38 @@ export function ReadinessAndRoiTools({ locale }: { locale: Locale }) {
     { label: t.monthlyValue, value: currencyFormatter.format(monthlyValue) },
     { label: t.annualValue, value: currencyFormatter.format(annualValue) },
   ];
+  const scoreReadiness = (values: number[]) =>
+    Math.round(values.reduce((sum, value) => sum + ((value - 1) / 4) * 20, 0));
+  const updateReadiness = (index: number, value: number) => {
+    setReadiness((current) => {
+      const next = current.map((item, itemIndex) =>
+        itemIndex === index ? value : item,
+      );
+      const nextScore = scoreReadiness(next);
+      touchedReadiness.current.add(index);
+
+      if (!didTrackFirstInteraction.current) {
+        didTrackFirstInteraction.current = true;
+        trackAnalyticsEvent("readiness_interaction", {
+          score: nextScore,
+          locale,
+        });
+      }
+
+      if (
+        !didTrackCompletion.current &&
+        touchedReadiness.current.size === t.sliders.length
+      ) {
+        didTrackCompletion.current = true;
+        trackAnalyticsEvent("readiness_complete", {
+          score: nextScore,
+          locale,
+        });
+      }
+
+      return next;
+    });
+  };
 
   return (
     <Section id="readiness-check" className="border-t border-hairline bg-surface2">
@@ -337,13 +373,7 @@ export function ReadinessAndRoiTools({ locale }: { locale: Locale }) {
                     ariaValueText={`${t.scale[readiness[index] - 1]} (${readiness[index]}/5)`}
                     minLabel={t.scale[0]}
                     maxLabel={t.scale[4]}
-                    onChange={(value) =>
-                      setReadiness((current) =>
-                        current.map((item, itemIndex) =>
-                          itemIndex === index ? value : item,
-                        ),
-                      )
-                    }
+                    onChange={(value) => updateReadiness(index, value)}
                   />
                 ))}
               </div>
@@ -482,6 +512,8 @@ export function ReadinessAndRoiTools({ locale }: { locale: Locale }) {
 
               <a
                 href={ctaHref}
+                data-analytics-event="readiness_cta_click"
+                data-analytics-label={readinessBand.label}
                 className="inline-flex w-full items-center justify-center gap-2 rounded-lg bg-copper px-5 py-3 text-sm font-medium text-oncopper shadow-[0_2px_8px_rgba(166,110,47,0.25)] transition-all hover:-translate-y-0.5 hover:bg-copper-hi"
               >
                 {t.cta}
