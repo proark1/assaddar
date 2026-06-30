@@ -21,6 +21,30 @@ export function contactFromEmail() {
   return process.env.CONTACT_FROM_EMAIL || "";
 }
 
+export function crmFromEmail() {
+  return process.env.CRM_FROM_EMAIL || contactFromEmail();
+}
+
+export function resendWebhookSecret() {
+  return process.env.RESEND_WEBHOOK_SECRET || "";
+}
+
+export function telegramBotConfig() {
+  return {
+    token: process.env.TELEGRAM_BOT_TOKEN || "",
+    adminChatId: process.env.TELEGRAM_ADMIN_CHAT_ID || "",
+    webhookSecret: process.env.TELEGRAM_WEBHOOK_SECRET || "",
+  };
+}
+
+export function whatsappBusinessConfig() {
+  return {
+    token: process.env.WHATSAPP_BUSINESS_TOKEN || "",
+    phoneNumberId: process.env.WHATSAPP_PHONE_NUMBER_ID || "",
+    adminPhone: process.env.WHATSAPP_ADMIN_PHONE || "",
+  };
+}
+
 export function portalFileStorage(): PortalFileStorage {
   return process.env.PORTAL_FILE_STORAGE === "supabase" ? "supabase" : "local";
 }

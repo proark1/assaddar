@@ -4,6 +4,7 @@ import { headers } from "next/headers";
 import { Resend } from "resend";
 import { contactFromEmail } from "@/lib/portal/config";
 import { parseContactForm } from "@/lib/portal/contact-validation";
+import { ingestInboundEmail } from "@/lib/portal/crm";
 import { checkRateLimit, clientIpFromHeaders } from "@/lib/portal/rate-limit";
 import { rejectUntrustedOrigin } from "@/lib/portal/security";
 import { id, mutateStore } from "@/lib/portal/store";
@@ -21,7 +22,7 @@ type WebsiteLeadInput = {
 };
 
 async function createWebsiteLead(input: WebsiteLeadInput) {
-  await mutateStore((store) => {
+  await mutateStore(async (store) => {
     const now = new Date().toISOString();
     const admin = store.users.find((user) => user.role === "admin");
     if (!admin) {
@@ -107,6 +108,17 @@ async function createWebsiteLead(input: WebsiteLeadInput) {
       asdarStage: "analyse",
       createdBy: admin.id,
       createdAt: now,
+    });
+
+    await ingestInboundEmail(store, {
+      providerMessageId: leadId,
+      from: `${input.name} <${input.email}>`,
+      fromName: input.name,
+      to: ["assad.dar@gmail.com"],
+      subject: `Website Anfrage: ${companyName}`,
+      text: [input.leadContext, input.message].filter(Boolean).join("\n\n"),
+      createdAt: now,
+      source: "Website Kontaktformular",
     });
   });
 }

@@ -8,6 +8,10 @@ import {
 } from "@/lib/portal/automation";
 import { applyPortalAutomationRules } from "@/lib/portal/automation-rules";
 import { appUrl } from "@/lib/portal/config";
+import {
+  createManualCrmInteraction,
+  sendCrmEmailDraft,
+} from "@/lib/portal/crm";
 import { sendPortalEmail } from "@/lib/portal/email";
 import { getAuthCopy } from "@/lib/portal/auth-copy";
 import {
@@ -47,6 +51,7 @@ import {
   mergeTemplateIntake,
 } from "@/lib/portal/templates";
 import type {
+  CrmOpportunityStage,
   Invoice,
 } from "@/lib/portal/types";
 import { createAuthToken } from "@/lib/portal/tokens";
@@ -3162,6 +3167,129 @@ export async function runAiScanAction(formData: FormData) {
   redirect(
     `${adminProjectPath(locale, projectId)}?${
       savedCount > 0 ? "saved=ai" : "error=ai"
+    }`,
+  );
+}
+
+function crmStage(value: string): CrmOpportunityStage {
+  if (
+    value === "qualified" ||
+    value === "discovery_scheduled" ||
+    value === "discovery_done" ||
+    value === "proposal_needed" ||
+    value === "proposal_sent" ||
+    value === "negotiation" ||
+    value === "won" ||
+    value === "lost" ||
+    value === "nurture"
+  ) {
+    return value;
+  }
+  return "new_lead";
+}
+
+function crmAdminPath(locale: string) {
+  return `/${locale}/portal/admin/communications`;
+}
+
+export async function markCrmInteractionHandledAction(formData: FormData) {
+  const locale = safeLocale(formData.get("locale"));
+  const user = await requireAdminAction(locale);
+  const interactionId = text(formData, "interactionId");
+  const returnTo = text(formData, "returnTo") || crmAdminPath(locale);
+
+  await mutateStore((store) => {
+    const interaction = store.crmInteractions.find(
+      (entry) => entry.id === interactionId,
+    );
+    if (!interaction) return;
+    interaction.handledAt = interaction.handledAt || new Date().toISOString();
+    createManualCrmInteraction({
+      store,
+      channel: "note",
+      contactId: interaction.contactId,
+      subject: "CRM: Nachricht erledigt",
+      body: `${user.name} hat die Nachricht als erledigt markiert.`,
+    });
+  });
+
+  revalidatePath(crmAdminPath(locale));
+  redirect(`${returnTo}${returnTo.includes("?") ? "&" : "?"}saved=handled`);
+}
+
+export async function completeCrmTaskAction(formData: FormData) {
+  const locale = safeLocale(formData.get("locale"));
+  await requireAdminAction(locale);
+  const taskId = text(formData, "taskId");
+  const returnTo = text(formData, "returnTo") || crmAdminPath(locale);
+
+  await mutateStore((store) => {
+    const task = store.crmTasks.find((entry) => entry.id === taskId);
+    if (!task) return;
+    task.status = "done";
+    task.completedAt = new Date().toISOString();
+  });
+
+  revalidatePath(crmAdminPath(locale));
+  redirect(`${returnTo}${returnTo.includes("?") ? "&" : "?"}saved=task`);
+}
+
+export async function createCrmNoteAction(formData: FormData) {
+  const locale = safeLocale(formData.get("locale"));
+  await requireAdminAction(locale);
+  const contactId = text(formData, "contactId") || undefined;
+  const subject = text(formData, "subject") || "CRM Notiz";
+  const body = text(formData, "body");
+  const returnTo = text(formData, "returnTo") || crmAdminPath(locale);
+
+  if (body) {
+    await mutateStore((store) => {
+      createManualCrmInteraction({
+        store,
+        channel: "note",
+        contactId,
+        subject,
+        body,
+      });
+    });
+  }
+
+  revalidatePath(crmAdminPath(locale));
+  redirect(`${returnTo}${returnTo.includes("?") ? "&" : "?"}saved=note`);
+}
+
+export async function updateCrmOpportunityStageAction(formData: FormData) {
+  const locale = safeLocale(formData.get("locale"));
+  await requireAdminAction(locale);
+  const opportunityId = text(formData, "opportunityId");
+  const nextStage = crmStage(text(formData, "stage"));
+  const returnTo = text(formData, "returnTo") || crmAdminPath(locale);
+
+  await mutateStore((store) => {
+    const opportunity = store.crmOpportunities.find(
+      (entry) => entry.id === opportunityId,
+    );
+    if (!opportunity) return;
+    opportunity.stage = nextStage;
+    opportunity.updatedAt = new Date().toISOString();
+  });
+
+  revalidatePath(crmAdminPath(locale));
+  redirect(`${returnTo}${returnTo.includes("?") ? "&" : "?"}saved=stage`);
+}
+
+export async function sendCrmDraftAction(formData: FormData) {
+  const locale = safeLocale(formData.get("locale"));
+  await requireAdminAction(locale);
+  const draftId = text(formData, "draftId");
+  const returnTo = text(formData, "returnTo") || crmAdminPath(locale);
+
+  const result = await mutateStore((store) => sendCrmEmailDraft(store, draftId));
+
+  revalidatePath(crmAdminPath(locale));
+  redirect(
+    `${returnTo}${returnTo.includes("?") ? "&" : "?"}${
+      result.ok ? "saved=sent" : `error=${encodeURIComponent(result.reason)}`
     }`,
   );
 }

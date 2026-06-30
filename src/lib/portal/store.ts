@@ -251,6 +251,12 @@ function buildSeedStore(): PortalStore {
     authTokens: [],
     templateOverrides: [],
     rateLimitBuckets: [],
+    crmContacts: [],
+    crmOpportunities: [],
+    crmInteractions: [],
+    crmTasks: [],
+    crmEmailDrafts: [],
+    crmNotificationEvents: [],
   };
 }
 
@@ -275,6 +281,12 @@ function normalizeStore(store: PortalStore): PortalStore {
     authTokens: store.authTokens ?? [],
     templateOverrides: store.templateOverrides ?? [],
     rateLimitBuckets: store.rateLimitBuckets ?? [],
+    crmContacts: store.crmContacts ?? [],
+    crmOpportunities: store.crmOpportunities ?? [],
+    crmInteractions: store.crmInteractions ?? [],
+    crmTasks: store.crmTasks ?? [],
+    crmEmailDrafts: store.crmEmailDrafts ?? [],
+    crmNotificationEvents: store.crmNotificationEvents ?? [],
   };
 }
 

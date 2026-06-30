@@ -194,6 +194,132 @@ export type RateLimitBucket = {
   updatedAt: string;
 };
 
+export type CrmLifecycle =
+  | "lead"
+  | "prospect"
+  | "customer"
+  | "partner"
+  | "archived";
+
+export type CrmConsent = "unknown" | "transactional" | "marketing" | "unsubscribed";
+
+export type CrmOpportunityStage =
+  | "new_lead"
+  | "qualified"
+  | "discovery_scheduled"
+  | "discovery_done"
+  | "proposal_needed"
+  | "proposal_sent"
+  | "negotiation"
+  | "won"
+  | "lost"
+  | "nurture";
+
+export type CrmChannel =
+  | "email"
+  | "whatsapp"
+  | "telegram"
+  | "website"
+  | "portal"
+  | "phone"
+  | "meeting"
+  | "note";
+
+export type CrmContact = {
+  id: string;
+  organizationId?: string;
+  name: string;
+  email?: string;
+  phone?: string;
+  telegramChatId?: string;
+  whatsappPhone?: string;
+  source: string;
+  lifecycle: CrmLifecycle;
+  consent: CrmConsent;
+  tags: string[];
+  lastContactedAt?: string;
+  createdAt: string;
+  updatedAt: string;
+};
+
+export type CrmOpportunity = {
+  id: string;
+  organizationId?: string;
+  contactId?: string;
+  title: string;
+  stage: CrmOpportunityStage;
+  valueCents?: number;
+  currency: "EUR" | "USD";
+  probability: number;
+  expectedCloseDate?: string;
+  source: string;
+  nextStep: string;
+  createdAt: string;
+  updatedAt: string;
+};
+
+export type CrmInteraction = {
+  id: string;
+  contactId?: string;
+  organizationId?: string;
+  opportunityId?: string;
+  projectId?: string;
+  channel: CrmChannel;
+  direction: "inbound" | "outbound" | "internal";
+  subject: string;
+  bodyPreview: string;
+  body?: string;
+  from: string;
+  to: string[];
+  provider: "resend" | "gmail" | "telegram" | "whatsapp" | "manual" | "website";
+  providerMessageId?: string;
+  urgency: "low" | "normal" | "high";
+  classification: "lead" | "customer" | "support" | "billing" | "sales" | "other";
+  sentiment?: "positive" | "neutral" | "negative";
+  aiSummary?: string;
+  createdAt: string;
+  handledAt?: string;
+};
+
+export type CrmTask = {
+  id: string;
+  contactId?: string;
+  opportunityId?: string;
+  projectId?: string;
+  title: string;
+  status: "todo" | "doing" | "done";
+  dueDate?: string;
+  priority: "low" | "normal" | "high";
+  source: string;
+  createdAt: string;
+  completedAt?: string;
+};
+
+export type CrmEmailDraft = {
+  id: string;
+  interactionId: string;
+  contactId?: string;
+  channel: "email" | "whatsapp" | "telegram";
+  subject: string;
+  body: string;
+  tone: "direct" | "warm" | "follow_up";
+  status: "draft" | "approved" | "sent" | "discarded";
+  providerMessageId?: string;
+  createdAt: string;
+  sentAt?: string;
+};
+
+export type CrmNotificationEvent = {
+  id: string;
+  interactionId?: string;
+  channel: "telegram" | "whatsapp";
+  recipient: string;
+  status: "sent" | "skipped" | "failed";
+  summary: string;
+  error?: string;
+  createdAt: string;
+};
+
 export type PortalStore = {
   users: User[];
   organizations: Organization[];
@@ -210,6 +336,12 @@ export type PortalStore = {
   authTokens: AuthToken[];
   templateOverrides: PortalTemplateOverride[];
   rateLimitBuckets: RateLimitBucket[];
+  crmContacts: CrmContact[];
+  crmOpportunities: CrmOpportunity[];
+  crmInteractions: CrmInteraction[];
+  crmTasks: CrmTask[];
+  crmEmailDrafts: CrmEmailDraft[];
+  crmNotificationEvents: CrmNotificationEvent[];
 };
 
 export type ProjectBundle = {

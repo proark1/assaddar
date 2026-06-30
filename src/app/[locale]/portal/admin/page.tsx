@@ -12,6 +12,7 @@ import {
   FolderKanban,
   Gauge,
   History,
+  MessageSquareText,
   PencilLine,
   Search,
   Users,
@@ -122,6 +123,13 @@ export default async function AdminPage({
           >
             <BookOpen className="h-4 w-4" />
             Templates
+          </Link>
+          <Link
+            href={`/${safe}/portal/admin/communications`}
+            className="inline-flex items-center gap-2 rounded-lg border border-hairline px-4 py-2.5 text-sm font-medium text-ink transition-colors hover:border-copper hover:text-copper"
+          >
+            <MessageSquareText className="h-4 w-4" />
+            Kommunikation
           </Link>
           <Link
             href={`/${safe}/portal/admin/customers`}

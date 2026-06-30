@@ -9,6 +9,7 @@ import {
   Images,
   LayoutDashboard,
   LogOut,
+  MessageSquareText,
   PencilLine,
   Settings,
   ShieldCheck,
@@ -226,6 +227,7 @@ export function PortalShell({
     | "today"
     | "pipeline"
     | "drafts"
+    | "communications"
     | "customers"
     | "templates"
     | "blog"
@@ -242,6 +244,7 @@ export function PortalShell({
         pipeline: "Pipeline",
         drafts: "Entwürfe",
         customers: "Kunden",
+        communications: "Kommunikation",
         templates: "Vorlagen",
         blog: "Blog",
         settings: "Einstellungen",
@@ -258,6 +261,7 @@ export function PortalShell({
         pipeline: "Pipeline",
         drafts: "Drafts",
         customers: "Customers",
+        communications: "Comms",
         templates: "Templates",
         blog: "Blog",
         settings: "Settings",
@@ -325,6 +329,13 @@ export function PortalShell({
                 >
                   <PencilLine className="h-3.5 w-3.5" />
                   {nav.drafts}
+                </Link>
+                <Link
+                  href={`/${locale}/portal/admin/communications`}
+                  className={navClass("communications")}
+                >
+                  <MessageSquareText className="h-3.5 w-3.5" />
+                  {nav.communications}
                 </Link>
                 <Link
                   href={`/${locale}/portal/admin/customers`}
@@ -424,6 +435,12 @@ export function PortalShell({
                 className={mobileNavClass("drafts")}
               >
                 {nav.drafts}
+              </Link>
+              <Link
+                href={`/${locale}/portal/admin/communications`}
+                className={mobileNavClass("communications")}
+              >
+                {nav.communications}
               </Link>
               <Link
                 href={`/${locale}/portal/admin/customers`}

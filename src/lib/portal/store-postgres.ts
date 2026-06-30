@@ -5,6 +5,12 @@ import type { ConsultingTemplate } from "./templates";
 import type {
   AiInsight,
   AuthToken,
+  CrmContact,
+  CrmEmailDraft,
+  CrmInteraction,
+  CrmNotificationEvent,
+  CrmOpportunity,
+  CrmTask,
   Invoice,
   Organization,
   PaymentEvent,
@@ -384,6 +390,224 @@ function toRateLimitBucket(row: Row): RateLimitBucket {
     count: number(row.count),
     resetAt: iso(row.reset_at),
     updatedAt: iso(row.updated_at),
+  };
+}
+
+function crmLifecycle(value_: unknown): CrmContact["lifecycle"] {
+  const raw = value(value_);
+  if (
+    raw === "prospect" ||
+    raw === "customer" ||
+    raw === "partner" ||
+    raw === "archived"
+  ) {
+    return raw;
+  }
+  return "lead";
+}
+
+function crmConsent(value_: unknown): CrmContact["consent"] {
+  const raw = value(value_);
+  if (raw === "transactional" || raw === "marketing" || raw === "unsubscribed") {
+    return raw;
+  }
+  return "unknown";
+}
+
+function crmOpportunityStage(value_: unknown): CrmOpportunity["stage"] {
+  const raw = value(value_);
+  if (
+    raw === "qualified" ||
+    raw === "discovery_scheduled" ||
+    raw === "discovery_done" ||
+    raw === "proposal_needed" ||
+    raw === "proposal_sent" ||
+    raw === "negotiation" ||
+    raw === "won" ||
+    raw === "lost" ||
+    raw === "nurture"
+  ) {
+    return raw;
+  }
+  return "new_lead";
+}
+
+function crmChannel(value_: unknown): CrmInteraction["channel"] {
+  const raw = value(value_);
+  if (
+    raw === "whatsapp" ||
+    raw === "telegram" ||
+    raw === "website" ||
+    raw === "portal" ||
+    raw === "phone" ||
+    raw === "meeting" ||
+    raw === "note"
+  ) {
+    return raw;
+  }
+  return "email";
+}
+
+function crmUrgency(value_: unknown): CrmInteraction["urgency"] {
+  const raw = value(value_);
+  return raw === "low" || raw === "high" ? raw : "normal";
+}
+
+function crmClassification(value_: unknown): CrmInteraction["classification"] {
+  const raw = value(value_);
+  if (
+    raw === "lead" ||
+    raw === "customer" ||
+    raw === "support" ||
+    raw === "billing" ||
+    raw === "sales"
+  ) {
+    return raw;
+  }
+  return "other";
+}
+
+function crmSentiment(value_: unknown): CrmInteraction["sentiment"] {
+  const raw = value(value_);
+  if (raw === "positive" || raw === "negative" || raw === "neutral") return raw;
+  return undefined;
+}
+
+function crmPriority(value_: unknown): CrmTask["priority"] {
+  const raw = value(value_);
+  return raw === "low" || raw === "high" ? raw : "normal";
+}
+
+function toCrmContact(row: Row): CrmContact {
+  return {
+    id: value(row.id),
+    organizationId: value(row.organization_id) || undefined,
+    name: value(row.name),
+    email: value(row.email) || undefined,
+    phone: value(row.phone) || undefined,
+    telegramChatId: value(row.telegram_chat_id) || undefined,
+    whatsappPhone: value(row.whatsapp_phone) || undefined,
+    source: value(row.source),
+    lifecycle: crmLifecycle(row.lifecycle),
+    consent: crmConsent(row.consent),
+    tags: stringList(row.tags),
+    lastContactedAt: optionalIso(row.last_contacted_at),
+    createdAt: iso(row.created_at),
+    updatedAt: iso(row.updated_at),
+  };
+}
+
+function toCrmOpportunity(row: Row): CrmOpportunity {
+  return {
+    id: value(row.id),
+    organizationId: value(row.organization_id) || undefined,
+    contactId: value(row.contact_id) || undefined,
+    title: value(row.title),
+    stage: crmOpportunityStage(row.stage),
+    valueCents: row.value_cents == null ? undefined : number(row.value_cents),
+    currency: value(row.currency) === "USD" ? "USD" : "EUR",
+    probability: number(row.probability),
+    expectedCloseDate: dateOnly(row.expected_close_date),
+    source: value(row.source),
+    nextStep: value(row.next_step),
+    createdAt: iso(row.created_at),
+    updatedAt: iso(row.updated_at),
+  };
+}
+
+function toCrmInteraction(row: Row): CrmInteraction {
+  const direction = value(row.direction);
+  const provider = value(row.provider);
+  return {
+    id: value(row.id),
+    contactId: value(row.contact_id) || undefined,
+    organizationId: value(row.organization_id) || undefined,
+    opportunityId: value(row.opportunity_id) || undefined,
+    projectId: value(row.project_id) || undefined,
+    channel: crmChannel(row.channel),
+    direction:
+      direction === "outbound" || direction === "internal" ? direction : "inbound",
+    subject: value(row.subject),
+    bodyPreview: value(row.body_preview),
+    body: value(row.body) || undefined,
+    from: value(row.from_value),
+    to: stringList(row.to_values),
+    provider:
+      provider === "gmail" ||
+      provider === "telegram" ||
+      provider === "whatsapp" ||
+      provider === "manual" ||
+      provider === "website"
+        ? provider
+        : "resend",
+    providerMessageId: value(row.provider_message_id) || undefined,
+    urgency: crmUrgency(row.urgency),
+    classification: crmClassification(row.classification),
+    sentiment: crmSentiment(row.sentiment),
+    aiSummary: value(row.ai_summary) || undefined,
+    createdAt: iso(row.created_at),
+    handledAt: optionalIso(row.handled_at),
+  };
+}
+
+function toCrmTask(row: Row): CrmTask {
+  return {
+    id: value(row.id),
+    contactId: value(row.contact_id) || undefined,
+    opportunityId: value(row.opportunity_id) || undefined,
+    projectId: value(row.project_id) || undefined,
+    title: value(row.title),
+    status:
+      value(row.status) === "done"
+        ? "done"
+        : value(row.status) === "doing"
+          ? "doing"
+          : "todo",
+    dueDate: dateOnly(row.due_date),
+    priority: crmPriority(row.priority),
+    source: value(row.source),
+    createdAt: iso(row.created_at),
+    completedAt: optionalIso(row.completed_at),
+  };
+}
+
+function toCrmEmailDraft(row: Row): CrmEmailDraft {
+  const channel = value(row.channel);
+  const tone = value(row.tone);
+  const status = value(row.status);
+  return {
+    id: value(row.id),
+    interactionId: value(row.interaction_id),
+    contactId: value(row.contact_id) || undefined,
+    channel:
+      channel === "whatsapp" || channel === "telegram" ? channel : "email",
+    subject: value(row.subject),
+    body: value(row.body),
+    tone: tone === "direct" || tone === "follow_up" ? tone : "warm",
+    status:
+      status === "approved" ||
+      status === "sent" ||
+      status === "discarded"
+        ? status
+        : "draft",
+    providerMessageId: value(row.provider_message_id) || undefined,
+    createdAt: iso(row.created_at),
+    sentAt: optionalIso(row.sent_at),
+  };
+}
+
+function toCrmNotificationEvent(row: Row): CrmNotificationEvent {
+  const channel = value(row.channel);
+  const status = value(row.status);
+  return {
+    id: value(row.id),
+    interactionId: value(row.interaction_id) || undefined,
+    channel: channel === "whatsapp" ? "whatsapp" : "telegram",
+    recipient: value(row.recipient),
+    status: status === "sent" || status === "failed" ? status : "skipped",
+    summary: value(row.summary),
+    error: value(row.error) || undefined,
+    createdAt: iso(row.created_at),
   };
 }
 
@@ -824,6 +1048,12 @@ export async function readPostgresStore(
     authTokens,
     templateOverrides,
     rateLimitBuckets,
+    crmContacts,
+    crmOpportunities,
+    crmInteractions,
+    crmTasks,
+    crmEmailDrafts,
+    crmNotificationEvents,
   ] = await Promise.all([
     sql`select * from portal_users order by created_at asc`,
     sql`select * from portal_organizations order by created_at asc`,
@@ -840,6 +1070,12 @@ export async function readPostgresStore(
     sql`select * from portal_auth_tokens order by created_at desc`,
     sql`select * from portal_template_overrides order by updated_at desc`,
     sql`select * from portal_rate_limits order by updated_at desc`,
+    sql`select * from crm_contacts order by updated_at desc`,
+    sql`select * from crm_opportunities order by updated_at desc`,
+    sql`select * from crm_interactions order by created_at desc`,
+    sql`select * from crm_tasks order by created_at desc`,
+    sql`select * from crm_email_drafts order by created_at desc`,
+    sql`select * from crm_notification_events order by created_at desc`,
   ]);
 
   return {
@@ -1069,6 +1305,14 @@ export async function readPostgresStore(
     ),
     templateOverrides: (templateOverrides as Row[]).map(toTemplateOverride),
     rateLimitBuckets: (rateLimitBuckets as Row[]).map(toRateLimitBucket),
+    crmContacts: (crmContacts as Row[]).map(toCrmContact),
+    crmOpportunities: (crmOpportunities as Row[]).map(toCrmOpportunity),
+    crmInteractions: (crmInteractions as Row[]).map(toCrmInteraction),
+    crmTasks: (crmTasks as Row[]).map(toCrmTask),
+    crmEmailDrafts: (crmEmailDrafts as Row[]).map(toCrmEmailDraft),
+    crmNotificationEvents: (crmNotificationEvents as Row[]).map(
+      toCrmNotificationEvent,
+    ),
   };
 }
 
@@ -1319,6 +1563,179 @@ async function writeStoreRows(tx: SqlLike, store: PortalStore) {
           count = excluded.count,
           reset_at = excluded.reset_at,
           updated_at = excluded.updated_at
+      `;
+    }
+
+    for (const contact of store.crmContacts ?? []) {
+      await tx`
+        insert into crm_contacts (
+          id, organization_id, name, email, phone, telegram_chat_id,
+          whatsapp_phone, source, lifecycle, consent, tags,
+          last_contacted_at, created_at, updated_at
+        )
+        values (
+          ${contact.id}, ${contact.organizationId ?? null}, ${contact.name},
+          ${contact.email ?? null}, ${contact.phone ?? null},
+          ${contact.telegramChatId ?? null}, ${contact.whatsappPhone ?? null},
+          ${contact.source}, ${contact.lifecycle}, ${contact.consent},
+          ${JSON.stringify(contact.tags ?? [])},
+          ${contact.lastContactedAt ?? null}, ${contact.createdAt},
+          ${contact.updatedAt}
+        )
+        on conflict (id) do update set
+          organization_id = excluded.organization_id,
+          name = excluded.name,
+          email = excluded.email,
+          phone = excluded.phone,
+          telegram_chat_id = excluded.telegram_chat_id,
+          whatsapp_phone = excluded.whatsapp_phone,
+          source = excluded.source,
+          lifecycle = excluded.lifecycle,
+          consent = excluded.consent,
+          tags = excluded.tags,
+          last_contacted_at = excluded.last_contacted_at,
+          updated_at = excluded.updated_at
+      `;
+    }
+
+    for (const opportunity of store.crmOpportunities ?? []) {
+      await tx`
+        insert into crm_opportunities (
+          id, organization_id, contact_id, title, stage, value_cents,
+          currency, probability, expected_close_date, source, next_step,
+          created_at, updated_at
+        )
+        values (
+          ${opportunity.id}, ${opportunity.organizationId ?? null},
+          ${opportunity.contactId ?? null}, ${opportunity.title},
+          ${opportunity.stage}, ${opportunity.valueCents ?? null},
+          ${opportunity.currency}, ${opportunity.probability},
+          ${opportunity.expectedCloseDate ?? null}, ${opportunity.source},
+          ${opportunity.nextStep}, ${opportunity.createdAt},
+          ${opportunity.updatedAt}
+        )
+        on conflict (id) do update set
+          organization_id = excluded.organization_id,
+          contact_id = excluded.contact_id,
+          title = excluded.title,
+          stage = excluded.stage,
+          value_cents = excluded.value_cents,
+          currency = excluded.currency,
+          probability = excluded.probability,
+          expected_close_date = excluded.expected_close_date,
+          source = excluded.source,
+          next_step = excluded.next_step,
+          updated_at = excluded.updated_at
+      `;
+    }
+
+    for (const interaction of store.crmInteractions ?? []) {
+      await tx`
+        insert into crm_interactions (
+          id, contact_id, organization_id, opportunity_id, project_id,
+          channel, direction, subject, body_preview, body, from_value,
+          to_values, provider, provider_message_id, urgency, classification,
+          sentiment, ai_summary, created_at, handled_at
+        )
+        values (
+          ${interaction.id}, ${interaction.contactId ?? null},
+          ${interaction.organizationId ?? null},
+          ${interaction.opportunityId ?? null}, ${interaction.projectId ?? null},
+          ${interaction.channel}, ${interaction.direction}, ${interaction.subject},
+          ${interaction.bodyPreview}, ${interaction.body ?? null},
+          ${interaction.from}, ${JSON.stringify(interaction.to ?? [])},
+          ${interaction.provider}, ${interaction.providerMessageId ?? null},
+          ${interaction.urgency}, ${interaction.classification},
+          ${interaction.sentiment ?? null}, ${interaction.aiSummary ?? null},
+          ${interaction.createdAt}, ${interaction.handledAt ?? null}
+        )
+        on conflict (id) do update set
+          contact_id = excluded.contact_id,
+          organization_id = excluded.organization_id,
+          opportunity_id = excluded.opportunity_id,
+          project_id = excluded.project_id,
+          channel = excluded.channel,
+          direction = excluded.direction,
+          subject = excluded.subject,
+          body_preview = excluded.body_preview,
+          body = excluded.body,
+          from_value = excluded.from_value,
+          to_values = excluded.to_values,
+          provider = excluded.provider,
+          provider_message_id = excluded.provider_message_id,
+          urgency = excluded.urgency,
+          classification = excluded.classification,
+          sentiment = excluded.sentiment,
+          ai_summary = excluded.ai_summary,
+          handled_at = excluded.handled_at
+      `;
+    }
+
+    for (const task of store.crmTasks ?? []) {
+      await tx`
+        insert into crm_tasks (
+          id, contact_id, opportunity_id, project_id, title, status,
+          due_date, priority, source, created_at, completed_at
+        )
+        values (
+          ${task.id}, ${task.contactId ?? null}, ${task.opportunityId ?? null},
+          ${task.projectId ?? null}, ${task.title}, ${task.status},
+          ${task.dueDate ?? null}, ${task.priority}, ${task.source},
+          ${task.createdAt}, ${task.completedAt ?? null}
+        )
+        on conflict (id) do update set
+          contact_id = excluded.contact_id,
+          opportunity_id = excluded.opportunity_id,
+          project_id = excluded.project_id,
+          title = excluded.title,
+          status = excluded.status,
+          due_date = excluded.due_date,
+          priority = excluded.priority,
+          source = excluded.source,
+          completed_at = excluded.completed_at
+      `;
+    }
+
+    for (const draft of store.crmEmailDrafts ?? []) {
+      await tx`
+        insert into crm_email_drafts (
+          id, interaction_id, contact_id, channel, subject, body, tone,
+          status, provider_message_id, created_at, sent_at
+        )
+        values (
+          ${draft.id}, ${draft.interactionId}, ${draft.contactId ?? null},
+          ${draft.channel}, ${draft.subject}, ${draft.body}, ${draft.tone},
+          ${draft.status}, ${draft.providerMessageId ?? null},
+          ${draft.createdAt}, ${draft.sentAt ?? null}
+        )
+        on conflict (id) do update set
+          interaction_id = excluded.interaction_id,
+          contact_id = excluded.contact_id,
+          channel = excluded.channel,
+          subject = excluded.subject,
+          body = excluded.body,
+          tone = excluded.tone,
+          status = excluded.status,
+          provider_message_id = excluded.provider_message_id,
+          sent_at = excluded.sent_at
+      `;
+    }
+
+    for (const event of store.crmNotificationEvents ?? []) {
+      await tx`
+        insert into crm_notification_events (
+          id, interaction_id, channel, recipient, status, summary, error,
+          created_at
+        )
+        values (
+          ${event.id}, ${event.interactionId ?? null}, ${event.channel},
+          ${event.recipient}, ${event.status}, ${event.summary},
+          ${event.error ?? null}, ${event.createdAt}
+        )
+        on conflict (id) do update set
+          status = excluded.status,
+          summary = excluded.summary,
+          error = excluded.error
       `;
     }
   }
