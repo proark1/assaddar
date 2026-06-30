@@ -66,6 +66,122 @@ export function PortalCard({
   );
 }
 
+export function PortalActionLink({
+  href,
+  children,
+  variant = "primary",
+  className = "",
+}: {
+  href: string;
+  children: React.ReactNode;
+  variant?: "primary" | "secondary";
+  className?: string;
+}) {
+  const styles =
+    variant === "primary"
+      ? "bg-copper text-oncopper hover:bg-copper-hi"
+      : "border border-hairline bg-surface text-ink hover:border-copper hover:text-copper";
+
+  return (
+    <Link
+      href={href}
+      className={`inline-flex min-h-11 items-center justify-center gap-2 rounded-lg px-4 py-2.5 text-sm font-medium transition-colors ${styles} ${className}`}
+    >
+      {children}
+    </Link>
+  );
+}
+
+export function PortalMetricCard({
+  icon,
+  label,
+  value,
+  href,
+  children,
+}: {
+  icon?: React.ReactNode;
+  label: string;
+  value: React.ReactNode;
+  href?: string;
+  children?: React.ReactNode;
+}) {
+  const content = (
+    <>
+      {icon}
+      <div className="mt-3 text-sm font-medium text-ink">{label}</div>
+      <div className="mt-1 text-[12px] leading-relaxed text-muted">{value}</div>
+      {children}
+    </>
+  );
+
+  if (href) {
+    return (
+      <Link
+        href={href}
+        className="min-w-0 rounded-lg border border-hairline bg-surface p-4 transition-colors hover:border-copper"
+      >
+        {content}
+      </Link>
+    );
+  }
+
+  return (
+    <div className="min-w-0 rounded-lg border border-hairline bg-surface p-4">
+      {content}
+    </div>
+  );
+}
+
+export function PortalStepNav<T extends string>({
+  steps,
+  ariaLabel = "Projekt-Schritte",
+  className = "grid gap-3 md:grid-cols-3",
+}: {
+  steps: Array<{
+    id: T;
+    href: string;
+    eyebrow: string;
+    title: string;
+    body: string;
+    count?: number;
+    active: boolean;
+  }>;
+  ariaLabel?: string;
+  className?: string;
+}) {
+  return (
+    <nav className={className} aria-label={ariaLabel}>
+      {steps.map((step) => (
+        <Link
+          key={step.id}
+          href={step.href}
+          aria-current={step.active ? "page" : undefined}
+          className={`min-w-[240px] rounded-lg border p-4 transition-colors md:min-w-0 ${
+            step.active
+              ? "border-copper bg-copper/10 text-ink"
+              : "border-hairline bg-surface text-ink2 hover:border-copper hover:text-ink"
+          }`}
+        >
+          <div className="flex items-center justify-between gap-2">
+            <span className="font-mono text-[10.5px] uppercase tracking-[0.14em] text-copper">
+              {step.eyebrow}
+            </span>
+            {typeof step.count === "number" && step.count > 0 && (
+              <Badge tone={step.active ? "copper" : "neutral"}>
+                {step.count}
+              </Badge>
+            )}
+          </div>
+          <div className="mt-2 text-sm font-medium text-ink">{step.title}</div>
+          <p className="mt-1 text-[12px] leading-relaxed text-muted">
+            {step.body}
+          </p>
+        </Link>
+      ))}
+    </nav>
+  );
+}
+
 export function PortalSectionTitle({
   eyebrow,
   title,
@@ -157,7 +273,7 @@ export function PortalShell({
         : "text-ink2 hover:text-ink"
     }`;
   const mobileNavClass = (key: NonNullable<typeof activeNav>) =>
-    `shrink-0 rounded-lg border px-3 py-2 ${
+    `inline-flex min-h-11 shrink-0 items-center rounded-lg border px-3 py-2 ${
       activeNav === key
         ? "border-copper bg-copper/10 text-copper"
         : "border-hairline text-ink2"
@@ -165,7 +281,7 @@ export function PortalShell({
 
   return (
     <div className="min-h-screen bg-bg">
-      <header className="border-b border-hairline bg-surface/85 backdrop-blur">
+      <header className="sticky top-0 z-50 border-b border-hairline bg-surface/90 backdrop-blur">
         <div className="mx-auto flex min-h-14 w-full max-w-[1240px] items-center justify-between gap-3 px-5 py-2 md:min-h-16 md:px-8 md:py-3">
           <Link
             href={`/${locale}/portal`}
@@ -250,14 +366,14 @@ export function PortalShell({
               <Link
                 href={`/${locale}/portal/settings`}
                 aria-label={nav.settingsLabel}
-                className="mr-2 inline-flex h-9 w-9 items-center justify-center rounded-lg border border-hairline text-ink2 transition-colors hover:border-copper hover:text-copper md:hidden"
+                className="mr-2 inline-flex h-11 w-11 items-center justify-center rounded-lg border border-hairline text-ink2 transition-colors hover:border-copper hover:text-copper md:hidden"
               >
                 <Settings className="h-4 w-4" />
               </Link>
               <button
                 type="submit"
                 aria-label={nav.logoutLabel}
-                className="inline-flex h-9 w-9 items-center justify-center rounded-lg border border-hairline text-ink2 transition-colors hover:border-copper hover:text-copper"
+                className="inline-flex h-11 w-11 items-center justify-center rounded-lg border border-hairline text-ink2 transition-colors hover:border-copper hover:text-copper md:h-9 md:w-9"
               >
                 <LogOut className="h-4 w-4" />
               </button>
@@ -266,7 +382,7 @@ export function PortalShell({
         </div>
       </header>
 
-      <div className="border-b border-hairline bg-surface md:hidden">
+      <div className="sticky top-[57px] z-40 border-b border-hairline bg-surface md:hidden">
         <nav
           className="mx-auto flex w-full max-w-[1240px] gap-2 overflow-x-auto px-5 py-2 text-sm text-ink2"
           aria-label={nav.mobileLabel}

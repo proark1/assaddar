@@ -27,14 +27,6 @@ import {
 } from "@/app/actions/portal";
 import { isLocale, type Locale } from "@/content";
 import { requireUser } from "@/lib/portal/auth";
-import {
-  buildIntakeQuestions,
-  isApproval,
-  isCustomerComment,
-  isCustomerIntake,
-  isReminder,
-  isStructuredUpdate,
-} from "@/lib/portal/automation";
 import { getProjectBundleForUser } from "@/lib/portal/store";
 import {
   formatCurrency,
@@ -49,13 +41,9 @@ import {
   formatTaskStatus,
 } from "@/lib/portal/format";
 import {
-  buildChangeRequests,
-  buildDecisionCenter,
-  buildFileRequests,
-  buildFileVersionGroups,
-  buildCustomerNextActions,
-  buildProjectKpiSnapshot,
-} from "@/lib/portal/operations";
+  buildCustomerProjectViewModel,
+  type CustomerProjectView,
+} from "@/lib/portal/view-models";
 import {
   Badge,
   EmptyState,
@@ -63,6 +51,7 @@ import {
   PortalCard,
   PortalSectionTitle,
   PortalShell,
+  PortalStepNav,
   textareaClass,
 } from "@/components/portal/chrome";
 
@@ -72,96 +61,6 @@ export const metadata: Metadata = {
   title: "Projekt | Assad Dar Portal",
   robots: { index: false, follow: false },
 };
-
-type CustomerView = "overview" | "actions" | "files";
-
-const intakeAnswerAliases: Record<string, string[]> = {
-  companyContext: ["Unternehmenskontext"],
-  issues: ["Probleme und Engpaesse", "Probleme", "Engpaesse"],
-  goals: ["Ziele"],
-  teamSize: ["Team und Nutzer", "Team", "Nutzer", "Teamgroesse"],
-  processVolume: ["Prozessvolumen", "Volumen", "Anfragen", "Vorgaenge"],
-  manualHours: ["Manueller Aufwand", "Zeitaufwand", "Zeitverlust", "Stunden"],
-  budgetTiming: ["Budget und Timing", "Budget", "Timing", "Deadline"],
-  currentTools: ["Aktuelle Tools", "Tools", "Systeme"],
-  dataSituation: ["Daten und Dokumente", "Daten", "Dokumente"],
-  constraints: ["Rahmenbedingungen", "Einschraenkungen", "Constraints"],
-};
-
-function customerView(value?: string): CustomerView | null {
-  if (value === "files") return "files";
-  if (value === "input" || value === "actions") return "actions";
-  if (value === "overview" || value === "messages") return "overview";
-  return null;
-}
-
-function normalizeIntakeLabel(value: string) {
-  return value
-    .toLowerCase()
-    .replace(/ä/g, "ae")
-    .replace(/ö/g, "oe")
-    .replace(/ü/g, "ue")
-    .replace(/ß/g, "ss")
-    .normalize("NFKD")
-    .replace(/[\u0300-\u036f]/g, "")
-    .replace(/[^a-z0-9]+/g, " ")
-    .trim();
-}
-
-function latestIntakeDefaults(
-  updates: Array<{ title: string; body: string; createdAt: string }>,
-  questions: Array<{ id: string; prompt: string }>,
-) {
-  const lookup = new Map<string, string>();
-  for (const [field, aliases] of Object.entries(intakeAnswerAliases)) {
-    for (const alias of aliases) lookup.set(normalizeIntakeLabel(alias), field);
-  }
-  for (const question of questions) {
-    if (question.id.startsWith("template_")) {
-      lookup.set(normalizeIntakeLabel(question.prompt), question.id);
-    }
-  }
-
-  const intake = updates
-    .filter((update) => isCustomerIntake(update.title))
-    .sort(
-      (a, b) =>
-        new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime(),
-    )[0];
-  if (!intake) return {};
-
-  const answers: Record<string, string> = {};
-  let activeField = "";
-  let buffer: string[] = [];
-  const flush = () => {
-    if (!activeField) return;
-    const value = buffer.join("\n").trim();
-    if (value) answers[activeField] = value;
-    buffer = [];
-  };
-
-  for (const line of intake.body.split(/\r?\n/)) {
-    const trimmed = line.trim();
-    const separator = trimmed.indexOf(":");
-    const key =
-      separator >= 0
-        ? lookup.get(normalizeIntakeLabel(trimmed.slice(0, separator)))
-        : undefined;
-
-    if (key) {
-      flush();
-      activeField = key;
-      buffer = trimmed.slice(separator + 1).trim()
-        ? [trimmed.slice(separator + 1).trim()]
-        : [];
-    } else if (activeField) {
-      buffer.push(line);
-    }
-  }
-  flush();
-
-  return answers;
-}
 
 export default async function CustomerProjectPage({
   params,
@@ -181,183 +80,40 @@ export default async function CustomerProjectPage({
   if (!bundle) redirect(`/${safe}/portal`);
 
   const query = await searchParams;
-  const allCustomerUpdates = bundle.updates.filter(
-    (update) => update.visibility === "customer",
-  );
-  const comments = allCustomerUpdates.filter((update) =>
-    isCustomerComment(update.title),
-  );
-  const approvals = allCustomerUpdates.filter((update) =>
-    isApproval(update.title),
-  );
-  const reminders = allCustomerUpdates.filter((update) =>
-    isReminder(update.title),
-  );
-  const tickets = allCustomerUpdates.filter((update) =>
-    update.title.startsWith("Ticket:"),
-  );
-  const appointments = allCustomerUpdates
-    .filter((update) => update.title.startsWith("Termin:"))
-    .sort((a, b) => b.createdAt.localeCompare(a.createdAt));
-  const updates = allCustomerUpdates.filter(
-    (update) => !isStructuredUpdate(update.title),
-  );
-  const intakeSubmitted = allCustomerUpdates.some((update) =>
-    isCustomerIntake(update.title),
-  );
-  const intakeQuestions = buildIntakeQuestions(bundle);
-  const intakeDefaults = latestIntakeDefaults(
-    allCustomerUpdates,
-    intakeQuestions,
-  );
-  const tasks = bundle.tasks.filter((task) => task.visibleToCustomer);
-  const milestones = bundle.milestones.filter(
-    (milestone) => milestone.visibleToCustomer,
-  );
-  const files = bundle.files.filter((file) => file.visibility === "customer");
-  const fileGroups = buildFileVersionGroups(bundle, "customer");
-  const invoices = bundle.invoices.filter(
-    (invoice) => invoice.status !== "draft",
-  );
-  const approvedFileIds = new Set(
-    approvals
-      .map((update) => update.body.match(/APPROVAL_FILE:([^\n]+)/)?.[1])
-      .filter((value): value is string => Boolean(value)),
-  );
-  const approvedMilestoneIds = new Set(
-    approvals
-      .map((update) => update.body.match(/APPROVAL_MILESTONE:([^\n]+)/)?.[1])
-      .filter((value): value is string => Boolean(value)),
-  );
-  const timeline = [
-    ...updates.map((update) => ({
-      id: update.id,
-      date: update.createdAt,
-      type: "Update",
-      title: update.title,
-      body: update.body,
-    })),
-    ...tasks.map((task) => ({
-      id: task.id,
-      date: task.createdAt,
-      type: "Aufgabe",
-      title: task.title,
-      body: `Verantwortlich: ${formatTaskOwner(task.owner)} · ${formatTaskStatus(task.status)}`,
-    })),
-    ...milestones.map((milestone) => ({
-      id: milestone.id,
-      date: milestone.createdAt,
-      type: "Meilenstein",
-      title: milestone.title,
-      body: `${formatMilestoneStatus(milestone.status)} · ${formatDate(milestone.dueDate)}`,
-    })),
-    ...files.map((file) => ({
-      id: file.id,
-      date: file.uploadedAt,
-      type: "Datei",
-      title: file.name,
-      body: file.description || "Neue Datei im Portal",
-    })),
-    ...invoices.map((invoice) => ({
-      id: invoice.id,
-      date: invoice.createdAt,
-      type: "Rechnung",
-      title: invoice.number,
-      body: `${formatCurrency(invoice.amountCents, invoice.currency)} · ${formatInvoiceStatus(invoice.status)}`,
-    })),
-    ...comments.map((comment) => ({
-      id: comment.id,
-      date: comment.createdAt,
-      type: "Kommentar",
-      title: comment.title.replace(/^Kommentar:\s*/, ""),
-      body: comment.body,
-    })),
-    ...approvals.map((approval) => ({
-      id: approval.id,
-      date: approval.createdAt,
-      type: "Freigabe",
-      title: approval.title.replace(/^Freigabe:\s*/, ""),
-      body: approval.body.replace(/^APPROVAL_[A-Z]+:[^\n]+\n/, ""),
-    })),
-    ...reminders.map((reminder) => ({
-      id: reminder.id,
-      date: reminder.createdAt,
-      type: "Reminder",
-      title: reminder.title.replace(/^Erinnerung:\s*/, ""),
-      body: reminder.body,
-    })),
-  ].sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
-  const pendingCustomerTasks = tasks.filter(
-    (task) => task.owner === "customer" && task.status !== "done",
-  );
-  const pendingMilestoneApprovals = milestones.filter(
-    (milestone) => !approvedMilestoneIds.has(milestone.id),
-  );
-  const pendingFileApprovals = files.filter(
-    (file) =>
-      file.approvalStatus !== "not_required" &&
-      file.approvalStatus !== "approved" &&
-      !approvedFileIds.has(file.id),
-  );
-  const nextActions = buildCustomerNextActions(bundle);
-  const kpiSnapshot = buildProjectKpiSnapshot(bundle);
-  const decisions = buildDecisionCenter(bundle).filter(
-    (decision) => decision.visibility === "customer",
-  );
-  const pendingDecisions = decisions.filter(
-    (decision) => decision.status === "proposed",
-  );
-  const changeRequests = buildChangeRequests(bundle);
-  const fileRequests = buildFileRequests(bundle);
-  const primaryAction = nextActions[0];
-  const assadWorkItems = [
-    ...tasks
-      .filter((task) => task.owner === "assad" && task.status !== "done")
-      .map((task) => ({
-        id: task.id,
-        title: task.title,
-        body: task.dueDate ? `Geplant bis ${formatDate(task.dueDate)}` : "In Arbeit",
-      })),
-    ...milestones
-      .filter((milestone) => milestone.status === "active")
-      .map((milestone) => ({
-        id: milestone.id,
-        title: milestone.title,
-        body: milestone.dueDate
-          ? `Meilenstein bis ${formatDate(milestone.dueDate)}`
-          : "Aktiver Meilenstein",
-      })),
-  ].slice(0, 3);
-  const requiredIntakeQuestions = intakeQuestions.filter((question) =>
-    ["companyContext", "issues", "goals"].includes(question.id),
-  );
-  const requiredIntakeProgress = requiredIntakeQuestions.map((question) => ({
-    id: question.id,
-    label: question.label,
-    done: intakeSubmitted || Boolean(intakeDefaults[question.id]?.trim()),
-  }));
-  const requiredIntakeDone = requiredIntakeProgress.filter(
-    (item) => item.done,
-  ).length;
-  const optionalIntakeQuestions = intakeQuestions.filter(
-    (question) =>
-      !question.id.startsWith("template_") &&
-      !["companyContext", "issues", "goals"].includes(question.id),
-  );
-  const templateIntakeQuestions = intakeQuestions.filter((question) =>
-    question.id.startsWith("template_"),
-  );
-  const defaultView: CustomerView = !intakeSubmitted
-    ? "actions"
-    : pendingCustomerTasks.length ||
-        pendingMilestoneApprovals.length ||
-        pendingFileApprovals.length ||
-        pendingDecisions.length ||
-        fileRequests.some((request) => request.status === "open")
-      ? "actions"
-      : "overview";
-  const activeView = customerView(query.view) ?? defaultView;
-  const stepHref = (view: CustomerView | "input" | "messages") => {
+  const {
+    activeView,
+    appointments,
+    approvedFileIds,
+    approvedMilestoneIds,
+    assadWorkItems,
+    changeRequests,
+    comments,
+    decisions,
+    files,
+    fileGroups,
+    fileRequests,
+    intakeDefaults,
+    intakeSubmitted,
+    invoices,
+    kpiSnapshot,
+    milestones,
+    optionalIntakeQuestions,
+    pendingCustomerTasks,
+    pendingDecisions,
+    pendingFileApprovals,
+    pendingMilestoneApprovals,
+    primaryAction,
+    reminders,
+    requiredIntakeDone,
+    requiredIntakeProgress,
+    requiredIntakeQuestions,
+    tasks,
+    templateIntakeQuestions,
+    tickets,
+    timeline,
+    updates,
+  } = buildCustomerProjectViewModel(bundle, query.view);
+  const stepHref = (view: CustomerProjectView | "input" | "messages") => {
     const mapped =
       view === "input" || view === "actions"
         ? "actions"
@@ -367,7 +123,7 @@ export default async function CustomerProjectPage({
     return `/${safe}/portal/projects/${projectId}?view=${mapped}`;
   };
   const steps: Array<{
-    id: CustomerView;
+    id: CustomerProjectView;
     eyebrow: string;
     title: string;
     body: string;
@@ -564,42 +320,15 @@ export default async function CustomerProjectPage({
           </details>
         </PortalCard>
 
-        <nav
-          className="grid gap-3 md:grid-cols-3"
-          aria-label="Projekt-Schritte"
-        >
-          {steps.map((step) => {
-            const active = step.id === activeView;
-            return (
-              <Link
-                key={step.id}
-                href={stepHref(step.id)}
-                className={`rounded-lg border p-4 transition-colors ${
-                  active
-                    ? "border-copper bg-copper/10 text-ink"
-                    : "border-hairline bg-surface text-ink2 hover:border-copper hover:text-ink"
-                }`}
-              >
-                <div className="flex items-center justify-between gap-2">
-                  <span className="font-mono text-[10.5px] uppercase tracking-[0.14em] text-copper">
-                    Schritt {step.eyebrow}
-                  </span>
-                  {typeof step.count === "number" && step.count > 0 && (
-                    <Badge tone={active ? "copper" : "neutral"}>
-                      {step.count}
-                    </Badge>
-                  )}
-                </div>
-                <div className="mt-2 text-sm font-medium text-ink">
-                  {step.title}
-                </div>
-                <p className="mt-1 text-[12px] leading-relaxed text-muted">
-                  {step.body}
-                </p>
-              </Link>
-            );
-          })}
-        </nav>
+        <PortalStepNav
+          className="flex gap-3 overflow-x-auto pb-1 md:grid md:grid-cols-3 md:overflow-visible md:pb-0"
+          steps={steps.map((step) => ({
+            ...step,
+            eyebrow: `Schritt ${step.eyebrow}`,
+            href: stepHref(step.id),
+            active: step.id === activeView,
+          }))}
+        />
 
         {activeView === "actions" && (
           <PortalCard>
@@ -665,7 +394,7 @@ export default async function CustomerProjectPage({
                 ))}
               </div>
             </div>
-            <details open={!intakeSubmitted} className="mt-5">
+            <details className="mt-5 rounded-lg border border-hairline bg-bg p-4">
               <summary className="cursor-pointer text-sm font-medium text-copper">
                 Fragebogen öffnen
               </summary>

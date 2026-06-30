@@ -88,7 +88,7 @@ export function Nav({
           <details className="group xl:hidden">
             <summary
               aria-label={t.menu}
-              className="flex h-9 w-9 cursor-pointer list-none items-center justify-center rounded-lg border border-hairline text-ink transition-colors hover:border-copper [&::-webkit-details-marker]:hidden"
+              className="flex h-11 w-11 cursor-pointer list-none items-center justify-center rounded-lg border border-hairline text-ink transition-colors hover:border-copper [&::-webkit-details-marker]:hidden"
             >
               <Menu className="h-5 w-5 group-open:hidden" />
               <X className="hidden h-5 w-5 group-open:block" />
