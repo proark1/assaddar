@@ -9,8 +9,12 @@ import {
 import { applyPortalAutomationRules } from "@/lib/portal/automation-rules";
 import { appUrl } from "@/lib/portal/config";
 import {
+  createCrmTaskFromInteraction,
   createManualCrmInteraction,
+  processCrmAutomationQueue,
   sendCrmEmailDraft,
+  snoozeCrmInteraction,
+  updateCrmDraft,
 } from "@/lib/portal/crm";
 import { sendPortalEmail } from "@/lib/portal/email";
 import { getAuthCopy } from "@/lib/portal/auth-copy";
@@ -3282,14 +3286,112 @@ export async function sendCrmDraftAction(formData: FormData) {
   const locale = safeLocale(formData.get("locale"));
   await requireAdminAction(locale);
   const draftId = text(formData, "draftId");
+  const subject = text(formData, "subject");
+  const body = text(formData, "body");
+  const toneValue = text(formData, "tone");
   const returnTo = text(formData, "returnTo") || crmAdminPath(locale);
 
-  const result = await mutateStore((store) => sendCrmEmailDraft(store, draftId));
+  const result = await mutateStore((store) => {
+    if (subject || body) {
+      updateCrmDraft({
+        store,
+        draftId,
+        subject,
+        body,
+        tone:
+          toneValue === "direct" || toneValue === "follow_up"
+            ? toneValue
+            : "warm",
+      });
+    }
+    return sendCrmEmailDraft(store, draftId);
+  });
 
   revalidatePath(crmAdminPath(locale));
   redirect(
     `${returnTo}${returnTo.includes("?") ? "&" : "?"}${
       result.ok ? "saved=sent" : `error=${encodeURIComponent(result.reason)}`
     }`,
+  );
+}
+
+export async function saveCrmDraftAction(formData: FormData) {
+  const locale = safeLocale(formData.get("locale"));
+  await requireAdminAction(locale);
+  const draftId = text(formData, "draftId");
+  const subject = text(formData, "subject");
+  const body = text(formData, "body");
+  const toneValue = text(formData, "tone");
+  const returnTo = text(formData, "returnTo") || crmAdminPath(locale);
+
+  await mutateStore((store) => {
+    updateCrmDraft({
+      store,
+      draftId,
+      subject,
+      body,
+      tone:
+        toneValue === "direct" || toneValue === "follow_up"
+          ? toneValue
+          : "warm",
+    });
+  });
+
+  revalidatePath(crmAdminPath(locale));
+  redirect(`${returnTo}${returnTo.includes("?") ? "&" : "?"}saved=draft`);
+}
+
+export async function snoozeCrmInteractionAction(formData: FormData) {
+  const locale = safeLocale(formData.get("locale"));
+  await requireAdminAction(locale);
+  const interactionId = text(formData, "interactionId");
+  const days = Number(text(formData, "days") || "1");
+  const returnTo = text(formData, "returnTo") || crmAdminPath(locale);
+
+  await mutateStore((store) => {
+    snoozeCrmInteraction({
+      store,
+      interactionId,
+      days: Number.isFinite(days) ? days : 1,
+    });
+  });
+
+  revalidatePath(crmAdminPath(locale));
+  redirect(`${returnTo}${returnTo.includes("?") ? "&" : "?"}saved=snooze`);
+}
+
+export async function createCrmTaskFromInteractionAction(formData: FormData) {
+  const locale = safeLocale(formData.get("locale"));
+  await requireAdminAction(locale);
+  const interactionId = text(formData, "interactionId");
+  const title = text(formData, "title");
+  const dueDate = text(formData, "dueDate");
+  const returnTo = text(formData, "returnTo") || crmAdminPath(locale);
+
+  await mutateStore((store) => {
+    createCrmTaskFromInteraction({
+      store,
+      interactionId,
+      title,
+      dueDate,
+    });
+  });
+
+  revalidatePath(crmAdminPath(locale));
+  redirect(`${returnTo}${returnTo.includes("?") ? "&" : "?"}saved=crm-task`);
+}
+
+export async function processCrmAutomationQueueAction(formData: FormData) {
+  const locale = safeLocale(formData.get("locale"));
+  await requireAdminAction(locale);
+  const returnTo = text(formData, "returnTo") || crmAdminPath(locale);
+
+  const result = await mutateStore((store) =>
+    processCrmAutomationQueue({ store, locale }),
+  );
+
+  revalidatePath(crmAdminPath(locale));
+  redirect(
+    `${returnTo}${returnTo.includes("?") ? "&" : "?"}saved=queue&triaged=${result.triaged}&notified=${result.notified}`,
   );
 }

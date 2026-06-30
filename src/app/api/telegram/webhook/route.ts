@@ -1,6 +1,11 @@
 import { NextResponse } from "next/server";
 import { telegramBotConfig } from "@/lib/portal/config";
-import { createManualCrmInteraction, sendCrmEmailDraft } from "@/lib/portal/crm";
+import {
+  createCrmTaskFromInteraction,
+  createManualCrmInteraction,
+  sendCrmEmailDraft,
+  snoozeCrmInteraction,
+} from "@/lib/portal/crm";
 import { mutateStore } from "@/lib/portal/store";
 
 export const dynamic = "force-dynamic";
@@ -85,6 +90,29 @@ export async function POST(request: Request) {
     });
     await answerCallback(callbackId, "Marked done");
     return NextResponse.json({ ok: true, action: "done" });
+  }
+
+  if (callbackData.startsWith("crm_snooze:")) {
+    const [, daysValue, interactionId] = callbackData.split(":");
+    const days = Number(daysValue || "1");
+    await mutateStore((store) => {
+      snoozeCrmInteraction({
+        store,
+        interactionId,
+        days: Number.isFinite(days) ? days : 1,
+      });
+    });
+    await answerCallback(callbackId, `Snoozed ${Number.isFinite(days) ? days : 1}d`);
+    return NextResponse.json({ ok: true, action: "snooze" });
+  }
+
+  if (callbackData.startsWith("crm_task:")) {
+    const interactionId = callbackData.slice("crm_task:".length);
+    await mutateStore((store) => {
+      createCrmTaskFromInteraction({ store, interactionId });
+    });
+    await answerCallback(callbackId, "Task created");
+    return NextResponse.json({ ok: true, action: "task" });
   }
 
   return NextResponse.json({ ok: true, ignored: "unsupported" });

@@ -1,6 +1,6 @@
 import { createHmac, timingSafeEqual } from "crypto";
 import { NextResponse } from "next/server";
-import { ingestInboundEmail, notifyAdminAboutInteraction } from "@/lib/portal/crm";
+import { ingestInboundEmail } from "@/lib/portal/crm";
 import { resendWebhookSecret } from "@/lib/portal/config";
 import { mutateStore } from "@/lib/portal/store";
 
@@ -149,21 +149,24 @@ export async function POST(request: Request) {
   }
 
   const saved = await mutateStore(async (store) => {
-    const interaction = await ingestInboundEmail(store, {
-      providerMessageId: event.providerMessageId,
-      from: event.from,
-      fromName: event.fromName,
-      to: event.to,
-      subject: event.subject || "(ohne Betreff)",
-      text: event.text,
-      html: event.html,
-      createdAt: event.createdAt || undefined,
-      source: "Resend inbound",
-    });
+    const interaction = await ingestInboundEmail(
+      store,
+      {
+        providerMessageId: event.providerMessageId,
+        from: event.from,
+        fromName: event.fromName,
+        to: event.to,
+        subject: event.subject || "(ohne Betreff)",
+        text: event.text,
+        html: event.html,
+        createdAt: event.createdAt || undefined,
+        source: "Resend inbound",
+      },
+      { deferAi: true },
+    );
     if (!interaction) return false;
-    await notifyAdminAboutInteraction(store, interaction);
     return true;
   });
 
-  return NextResponse.json({ received: true, saved });
+  return NextResponse.json({ received: true, saved, queued: saved });
 }
