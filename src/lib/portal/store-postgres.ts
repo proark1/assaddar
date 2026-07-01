@@ -99,6 +99,24 @@ function boolean(value: unknown) {
   return value === true || value === "true";
 }
 
+function postgresErrorCode(error: unknown) {
+  return error &&
+    typeof error === "object" &&
+    "code" in error &&
+    typeof error.code === "string"
+    ? error.code
+    : "";
+}
+
+async function optionalPortalRows(query: PromiseLike<unknown>): Promise<Row[]> {
+  try {
+    return (await query) as Row[];
+  } catch (error) {
+    if (postgresErrorCode(error) === "42P01") return [];
+    throw error;
+  }
+}
+
 function toUser(row: Row): User {
   return {
     id: value(row.id),
@@ -856,8 +874,12 @@ async function readPostgresProjectBundles(
     sql`select * from portal_project_files where project_id in ${sql(projectIds)} order by uploaded_at desc`,
     sql`select * from portal_invoices where project_id in ${sql(projectIds)} order by created_at desc`,
     sql`select * from portal_ai_insights where project_id in ${sql(projectIds)} order by created_at desc`,
-    sql`select * from portal_website_crawl_runs where project_id in ${sql(projectIds)} order by created_at desc`,
-    sql`select * from portal_website_crawl_pages where project_id in ${sql(projectIds)} order by crawled_at desc`,
+    optionalPortalRows(
+      sql`select * from portal_website_crawl_runs where project_id in ${sql(projectIds)} order by created_at desc`,
+    ),
+    optionalPortalRows(
+      sql`select * from portal_website_crawl_pages where project_id in ${sql(projectIds)} order by crawled_at desc`,
+    ),
   ]);
 
   const organizations = new Map(
@@ -1184,8 +1206,12 @@ export async function readPostgresStore(
     sql`select * from portal_invoices order by created_at desc`,
     sql`select * from portal_payment_events order by created_at desc`,
     sql`select * from portal_ai_insights order by created_at desc`,
-    sql`select * from portal_website_crawl_runs order by created_at desc`,
-    sql`select * from portal_website_crawl_pages order by crawled_at desc`,
+    optionalPortalRows(
+      sql`select * from portal_website_crawl_runs order by created_at desc`,
+    ),
+    optionalPortalRows(
+      sql`select * from portal_website_crawl_pages order by crawled_at desc`,
+    ),
     sql`select * from portal_auth_tokens order by created_at desc`,
     sql`select * from portal_template_overrides order by updated_at desc`,
     sql`select * from portal_rate_limits order by updated_at desc`,
