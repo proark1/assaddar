@@ -188,8 +188,8 @@ export default async function TerminPage({
   const initialMessage =
     query.source === "asdar-check"
       ? isDe
-        ? "Ich möchte das ASDAR Check Ergebnis besprechen und klären, welcher Prozess zuerst vereinfacht werden sollte."
-        : "I would like to discuss the ASDAR check result and clarify which process should be simplified first."
+        ? "Ich möchte den ASDAR Check besprechen und klären, welcher Prozess zuerst vereinfacht werden sollte."
+        : "I would like to discuss the ASDAR check and clarify which process should be simplified first."
       : "";
 
   return (
