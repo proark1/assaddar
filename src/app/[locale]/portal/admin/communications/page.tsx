@@ -566,6 +566,49 @@ export default async function AdminCommunicationsPage({
 
         <aside className="space-y-4">
           <PortalCard>
+            <PortalSectionTitle eyebrow="Admin Alerts" title="Benachrichtigungen" />
+            <div className="mt-5 space-y-3">
+              {dashboard.notifications.slice(0, 8).map((event) => (
+                <div
+                  key={event.id}
+                  className="rounded-lg border border-hairline bg-bg p-3"
+                >
+                  <div className="flex flex-wrap items-center gap-2">
+                    <Badge>{event.channel}</Badge>
+                    <Badge
+                      tone={
+                        event.status === "sent"
+                          ? "green"
+                          : event.status === "failed"
+                            ? "red"
+                            : "neutral"
+                      }
+                    >
+                      {event.status}
+                    </Badge>
+                    <span className="text-[12px] text-muted">
+                      {formatDate(event.createdAt)}
+                    </span>
+                  </div>
+                  <p className="mt-2 line-clamp-5 whitespace-pre-line text-[12px] leading-relaxed text-ink2">
+                    {event.summary}
+                  </p>
+                  {event.error && (
+                    <p className="mt-2 text-[12px] text-critical">
+                      {event.error}
+                    </p>
+                  )}
+                </div>
+              ))}
+              {dashboard.notifications.length === 0 && (
+                <p className="text-sm text-muted">
+                  Noch keine Admin-Benachrichtigungen.
+                </p>
+              )}
+            </div>
+          </PortalCard>
+
+          <PortalCard>
             <PortalSectionTitle eyebrow="Provider" title="Diagnostik" />
             <div className="mt-5 space-y-3 text-sm">
               {[

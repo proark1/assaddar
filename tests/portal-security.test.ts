@@ -3,11 +3,12 @@ import test from "node:test";
 import { sanitizeRenderedHtml } from "../src/lib/markdown";
 import { buildExternalAiScanPrompt } from "../src/lib/portal/ai-scan";
 import { parseContactForm } from "../src/lib/portal/contact-validation";
+import { notifyAdminAboutInteraction } from "../src/lib/portal/crm";
 import { loginFailureRateLimitKey } from "../src/lib/portal/login-attempts";
 import { clientIpFromHeaders } from "../src/lib/portal/rate-limit";
 import { externalAiIdentifier, redactForExternalAi } from "../src/lib/portal/privacy";
 import { trustedRequestOrigin } from "../src/lib/portal/security";
-import type { ProjectBundle } from "../src/lib/portal/types";
+import type { PortalStore, ProjectBundle } from "../src/lib/portal/types";
 import { readPortalUpload } from "../src/lib/portal/uploads";
 
 function headers(values: Record<string, string>) {
@@ -149,6 +150,7 @@ test("parseContactForm rejects invalid and overlong contact input", () => {
   valid.set("name", "Assad");
   valid.set("email", "assad@example.com");
   valid.set("message", "Hello");
+  valid.set("leadContext", "x".repeat(5500));
   assert.equal(parseContactForm(valid).ok, true);
 
   const invalid = new FormData();
@@ -162,6 +164,214 @@ test("parseContactForm rejects invalid and overlong contact input", () => {
   overlong.set("email", "assad@example.com");
   overlong.set("message", "x".repeat(4001));
   assert.equal(parseContactForm(overlong).ok, false);
+});
+
+test("CRM admin alerts include full ASDAR check details", async () => {
+  const originalTelegramToken = process.env.TELEGRAM_BOT_TOKEN;
+  const originalTelegramChat = process.env.TELEGRAM_ADMIN_CHAT_ID;
+  const originalWhatsAppToken = process.env.WHATSAPP_BUSINESS_TOKEN;
+  const originalWhatsAppPhoneId = process.env.WHATSAPP_PHONE_NUMBER_ID;
+  const originalWhatsAppAdminPhone = process.env.WHATSAPP_ADMIN_PHONE;
+  delete process.env.TELEGRAM_BOT_TOKEN;
+  delete process.env.TELEGRAM_ADMIN_CHAT_ID;
+  delete process.env.WHATSAPP_BUSINESS_TOKEN;
+  delete process.env.WHATSAPP_PHONE_NUMBER_ID;
+  delete process.env.WHATSAPP_ADMIN_PHONE;
+
+  try {
+    const createdAt = new Date().toISOString();
+    const store: PortalStore = {
+      users: [],
+      organizations: [],
+      projects: [],
+      projectMembers: [],
+      projectIntelligence: [],
+      updates: [],
+      tasks: [],
+      milestones: [],
+      files: [],
+      invoices: [],
+      paymentEvents: [],
+      aiInsights: [],
+      authTokens: [],
+      templateOverrides: [],
+      rateLimitBuckets: [],
+      crmContacts: [
+        {
+          id: "contact_asdar",
+          name: "ASDAR Lead",
+          email: "lead@example.com",
+          source: "Website",
+          lifecycle: "lead",
+          consent: "transactional",
+          tags: [],
+          createdAt,
+          updatedAt: createdAt,
+        },
+      ],
+      crmOpportunities: [],
+      crmInteractions: [],
+      crmTasks: [],
+      crmEmailDrafts: [],
+      crmNotificationEvents: [],
+    };
+    const interaction = {
+      id: "interaction_asdar",
+      contactId: "contact_asdar",
+      channel: "website",
+      direction: "inbound",
+      subject: "Website Anfrage: ASDAR Check",
+      bodyPreview: "ASDAR Potenzial-Check Score 60/100",
+      body: [
+        "ASDAR Potenzial-Check",
+        "Score: 60/100",
+        "Alle Antworten:",
+        "1. Prozessklarheit: 2/5 (Kaum)",
+        "2. Daten & Dokumente: 4/5 (Ueberwiegend)",
+        "Zeitwert-Annahmen",
+        "Manuelle Stunden pro Person/Woche: 5",
+      ].join("\n"),
+      from: "Lead <lead@example.com>",
+      to: ["kontakt@assad-dar.de"],
+      provider: "website",
+      urgency: "normal",
+      classification: "lead",
+      sentiment: "positive",
+      aiSummary: "ASDAR Check Lead.",
+      createdAt,
+    } satisfies PortalStore["crmInteractions"][number];
+    store.crmInteractions.push(interaction);
+
+    const events = await notifyAdminAboutInteraction(store, interaction);
+
+    assert.equal(events.length, 2);
+    assert.match(events[0].summary, /Check-Details:/);
+    assert.match(events[0].summary, /Prozessklarheit: 2\/5/);
+    assert.match(events[0].summary, /Manuelle Stunden pro Person\/Woche: 5/);
+  } finally {
+    if (originalTelegramToken === undefined) delete process.env.TELEGRAM_BOT_TOKEN;
+    else process.env.TELEGRAM_BOT_TOKEN = originalTelegramToken;
+    if (originalTelegramChat === undefined) delete process.env.TELEGRAM_ADMIN_CHAT_ID;
+    else process.env.TELEGRAM_ADMIN_CHAT_ID = originalTelegramChat;
+    if (originalWhatsAppToken === undefined) delete process.env.WHATSAPP_BUSINESS_TOKEN;
+    else process.env.WHATSAPP_BUSINESS_TOKEN = originalWhatsAppToken;
+    if (originalWhatsAppPhoneId === undefined) delete process.env.WHATSAPP_PHONE_NUMBER_ID;
+    else process.env.WHATSAPP_PHONE_NUMBER_ID = originalWhatsAppPhoneId;
+    if (originalWhatsAppAdminPhone === undefined) delete process.env.WHATSAPP_ADMIN_PHONE;
+    else process.env.WHATSAPP_ADMIN_PHONE = originalWhatsAppAdminPhone;
+  }
+});
+
+test("CRM admin alerts include next task and draft context", async () => {
+  const originalTelegramToken = process.env.TELEGRAM_BOT_TOKEN;
+  const originalTelegramChat = process.env.TELEGRAM_ADMIN_CHAT_ID;
+  const originalWhatsAppToken = process.env.WHATSAPP_BUSINESS_TOKEN;
+  const originalWhatsAppPhoneId = process.env.WHATSAPP_PHONE_NUMBER_ID;
+  const originalWhatsAppAdminPhone = process.env.WHATSAPP_ADMIN_PHONE;
+  delete process.env.TELEGRAM_BOT_TOKEN;
+  delete process.env.TELEGRAM_ADMIN_CHAT_ID;
+  delete process.env.WHATSAPP_BUSINESS_TOKEN;
+  delete process.env.WHATSAPP_PHONE_NUMBER_ID;
+  delete process.env.WHATSAPP_ADMIN_PHONE;
+
+  try {
+    const createdAt = new Date().toISOString();
+    const store: PortalStore = {
+      users: [],
+      organizations: [],
+      projects: [],
+      projectMembers: [],
+      projectIntelligence: [],
+      updates: [],
+      tasks: [],
+      milestones: [],
+      files: [],
+      invoices: [],
+      paymentEvents: [],
+      aiInsights: [],
+      authTokens: [],
+      templateOverrides: [],
+      rateLimitBuckets: [],
+      crmContacts: [
+        {
+          id: "contact_1",
+          name: "Max Anfrage",
+          email: "max@example.com",
+          source: "Website",
+          lifecycle: "lead",
+          consent: "transactional",
+          tags: [],
+          createdAt,
+          updatedAt: createdAt,
+        },
+      ],
+      crmOpportunities: [],
+      crmInteractions: [],
+      crmTasks: [
+        {
+          id: "task_1",
+          contactId: "contact_1",
+          title: "Erstgespraech vorbereiten",
+          status: "todo",
+          priority: "high",
+          source: "CRM automation",
+          createdAt,
+        },
+      ],
+      crmEmailDrafts: [
+        {
+          id: "draft_1",
+          interactionId: "interaction_1",
+          contactId: "contact_1",
+          channel: "email",
+          subject: "Re: Anfrage",
+          body: "Danke fuer die Anfrage.",
+          tone: "warm",
+          status: "draft",
+          createdAt,
+        },
+      ],
+      crmNotificationEvents: [],
+    };
+    const interaction = {
+      id: "interaction_1",
+      contactId: "contact_1",
+      channel: "email",
+      direction: "inbound",
+      subject: "Anfrage",
+      bodyPreview: "Ich brauche Hilfe mit Automatisierung.",
+      body: "Ich brauche Hilfe mit Automatisierung.",
+      from: "Max <max@example.com>",
+      to: ["kontakt@assad-dar.de"],
+      provider: "resend",
+      urgency: "high",
+      classification: "sales",
+      sentiment: "positive",
+      aiSummary: "Interessierter Lead mit konkretem Automatisierungsbedarf.",
+      createdAt,
+    } satisfies PortalStore["crmInteractions"][number];
+    store.crmInteractions.push(interaction);
+
+    const events = await notifyAdminAboutInteraction(store, interaction);
+
+    assert.equal(events.length, 2);
+    assert.equal(store.crmNotificationEvents.length, 2);
+    assert.equal(events[0].status, "skipped");
+    assert.match(events[0].summary, /Idee: Erstgespraech vorbereiten/);
+    assert.match(events[0].summary, /Gemini: 1 Antwortentwurf bereit/);
+    assert.match(events[0].summary, /Prioritaet: high \/ sales/);
+  } finally {
+    if (originalTelegramToken === undefined) delete process.env.TELEGRAM_BOT_TOKEN;
+    else process.env.TELEGRAM_BOT_TOKEN = originalTelegramToken;
+    if (originalTelegramChat === undefined) delete process.env.TELEGRAM_ADMIN_CHAT_ID;
+    else process.env.TELEGRAM_ADMIN_CHAT_ID = originalTelegramChat;
+    if (originalWhatsAppToken === undefined) delete process.env.WHATSAPP_BUSINESS_TOKEN;
+    else process.env.WHATSAPP_BUSINESS_TOKEN = originalWhatsAppToken;
+    if (originalWhatsAppPhoneId === undefined) delete process.env.WHATSAPP_PHONE_NUMBER_ID;
+    else process.env.WHATSAPP_PHONE_NUMBER_ID = originalWhatsAppPhoneId;
+    if (originalWhatsAppAdminPhone === undefined) delete process.env.WHATSAPP_ADMIN_PHONE;
+    else process.env.WHATSAPP_ADMIN_PHONE = originalWhatsAppAdminPhone;
+  }
 });
 
 test("readPortalUpload rejects unsupported or oversized files", async () => {

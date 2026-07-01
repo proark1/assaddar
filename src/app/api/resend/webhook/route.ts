@@ -1,7 +1,11 @@
 import { createHmac, timingSafeEqual } from "crypto";
 import { NextResponse } from "next/server";
-import { ingestInboundEmail } from "@/lib/portal/crm";
-import { resendWebhookSecret } from "@/lib/portal/config";
+import {
+  ingestInboundEmail,
+  normalizeEmail,
+  notifyAdminAboutInteraction,
+} from "@/lib/portal/crm";
+import { inboundEmailDomain, resendWebhookSecret } from "@/lib/portal/config";
 import { mutateStore } from "@/lib/portal/store";
 
 export const dynamic = "force-dynamic";
@@ -125,6 +129,13 @@ function parseResendEmailEvent(payload: unknown) {
   };
 }
 
+function hasInboundRecipient(recipients: string[]) {
+  const domain = inboundEmailDomain();
+  return recipients.some((recipient) =>
+    normalizeEmail(recipient).endsWith(`@${domain}`),
+  );
+}
+
 export async function POST(request: Request) {
   const body = await request.text();
   const secret = resendWebhookSecret();
@@ -147,8 +158,15 @@ export async function POST(request: Request) {
   if (!event.from) {
     return new NextResponse("Missing sender", { status: 400 });
   }
+  if (!hasInboundRecipient(event.to)) {
+    return NextResponse.json({
+      received: true,
+      ignored: "recipient",
+      domain: inboundEmailDomain(),
+    });
+  }
 
-  const saved = await mutateStore(async (store) => {
+  const result = await mutateStore(async (store) => {
     const interaction = await ingestInboundEmail(
       store,
       {
@@ -162,11 +180,24 @@ export async function POST(request: Request) {
         createdAt: event.createdAt || undefined,
         source: "Resend inbound",
       },
-      { deferAi: true },
     );
-    if (!interaction) return false;
-    return true;
+    if (!interaction) {
+      return { saved: false, duplicate: true };
+    }
+    const notifications = await notifyAdminAboutInteraction(
+      store,
+      interaction,
+      "de",
+    );
+    return {
+      saved: true,
+      interactionId: interaction.id,
+      notifications: notifications.map((event) => ({
+        channel: event.channel,
+        status: event.status,
+      })),
+    };
   });
 
-  return NextResponse.json({ received: true, saved, queued: saved });
+  return NextResponse.json({ received: true, ...result });
 }

@@ -37,7 +37,6 @@ export async function sendTelegramAdminAlert({
     await postJson(`https://api.telegram.org/bot${token}/sendMessage`, {
       chat_id: adminChatId,
       text,
-      parse_mode: "HTML",
       disable_web_page_preview: true,
       reply_markup: replyMarkup,
     });

@@ -21,12 +21,22 @@ export function contactFromEmail() {
   return process.env.CONTACT_FROM_EMAIL || "";
 }
 
+export function contactToEmail() {
+  return process.env.CONTACT_TO_EMAIL || "assad.dar@gmail.com";
+}
+
 export function crmFromEmail() {
   return process.env.CRM_FROM_EMAIL || contactFromEmail();
 }
 
 export function resendWebhookSecret() {
   return process.env.RESEND_WEBHOOK_SECRET || "";
+}
+
+export function inboundEmailDomain() {
+  return (process.env.INBOUND_EMAIL_DOMAIN || "assad-dar.de")
+    .replace(/^@/, "")
+    .toLowerCase();
 }
 
 export function telegramBotConfig() {
@@ -90,6 +100,20 @@ export function portalProductionConfigErrors() {
   if (!storage.bucket) errors.push("SUPABASE_STORAGE_BUCKET must be configured.");
   if (!process.env.RESEND_API_KEY) errors.push("RESEND_API_KEY must be configured.");
   if (!contactFromEmail()) errors.push("CONTACT_FROM_EMAIL must be configured.");
+  if (!resendWebhookSecret()) errors.push("RESEND_WEBHOOK_SECRET must be configured.");
+  if (!process.env.GEMINI_API_KEY) errors.push("GEMINI_API_KEY must be configured.");
+  if (!process.env.GEMINI_MODEL) errors.push("GEMINI_MODEL must be configured.");
+
+  const telegram = telegramBotConfig();
+  const whatsapp = whatsappBusinessConfig();
+  const hasRealtimeAdminAlert =
+    Boolean(telegram.token && telegram.adminChatId) ||
+    Boolean(whatsapp.token && whatsapp.phoneNumberId && whatsapp.adminPhone);
+  if (!hasRealtimeAdminAlert) {
+    errors.push(
+      "Telegram admin alerts or WhatsApp admin alerts must be configured.",
+    );
+  }
 
   return errors;
 }

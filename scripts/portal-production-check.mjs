@@ -9,6 +9,9 @@ const required = [
   ["SUPABASE_STORAGE_BUCKET", process.env.SUPABASE_STORAGE_BUCKET],
   ["RESEND_API_KEY", process.env.RESEND_API_KEY],
   ["CONTACT_FROM_EMAIL", process.env.CONTACT_FROM_EMAIL],
+  ["RESEND_WEBHOOK_SECRET", process.env.RESEND_WEBHOOK_SECRET],
+  ["GEMINI_API_KEY", process.env.GEMINI_API_KEY],
+  ["GEMINI_MODEL", process.env.GEMINI_MODEL],
   ["CRON_SECRET", process.env.CRON_SECRET],
 ];
 
@@ -30,6 +33,19 @@ if (process.env.APP_URL && !process.env.APP_URL.startsWith("https://")) {
 
 if (process.env.AUTH_SECRET && process.env.AUTH_SECRET.length < 32) {
   failures.push("AUTH_SECRET should be at least 32 characters");
+}
+
+const telegramConfigured =
+  Boolean(process.env.TELEGRAM_BOT_TOKEN) &&
+  Boolean(process.env.TELEGRAM_ADMIN_CHAT_ID);
+const whatsappConfigured =
+  Boolean(process.env.WHATSAPP_BUSINESS_TOKEN) &&
+  Boolean(process.env.WHATSAPP_PHONE_NUMBER_ID) &&
+  Boolean(process.env.WHATSAPP_ADMIN_PHONE);
+if (!telegramConfigured && !whatsappConfigured) {
+  failures.push(
+    "TELEGRAM_BOT_TOKEN/TELEGRAM_ADMIN_CHAT_ID or WHATSAPP_BUSINESS_TOKEN/WHATSAPP_PHONE_NUMBER_ID/WHATSAPP_ADMIN_PHONE must be configured",
+  );
 }
 
 for (const name of [
