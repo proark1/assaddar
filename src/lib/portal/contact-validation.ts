@@ -5,7 +5,7 @@ const LIMITS = {
   email: 254,
   company: 160,
   message: 4000,
-  leadContext: 2000,
+  leadContext: 6000,
 } as const;
 
 type ContactInput = {

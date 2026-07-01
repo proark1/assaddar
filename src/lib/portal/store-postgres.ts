@@ -739,6 +739,14 @@ export async function checkPostgresRateLimit(
   };
 }
 
+export async function clearPostgresRateLimit(key: string) {
+  const sql = getSql();
+  await sql`
+    delete from portal_rate_limits
+    where key = ${key}
+  `;
+}
+
 async function readPostgresProjectBundles(
   projects: Project[],
 ): Promise<ProjectBundle[]> {

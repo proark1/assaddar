@@ -28,6 +28,8 @@ type InboundEmailInput = {
   html?: string;
   createdAt?: string;
   source?: string;
+  channel?: CrmChannel;
+  provider?: CrmInteraction["provider"];
 };
 
 type IngestOptions = {
@@ -90,6 +92,17 @@ function emailDomain(email: string) {
 function preview(value: string, length = 260) {
   const compact = value.replace(/\s+/g, " ").trim();
   return compact.length > length ? `${compact.slice(0, length - 3)}...` : compact;
+}
+
+function notificationDetail(value: string, length = 3200) {
+  const trimmed = value.trim();
+  if (trimmed.length <= length) return trimmed;
+  return `${trimmed.slice(0, length - 44).trimEnd()}\n...[gekuerzt, vollstaendig im CRM]`;
+}
+
+function isAsdarCheckInteraction(interaction: CrmInteraction) {
+  const text = `${interaction.subject}\n${interaction.body || interaction.bodyPreview}`.toLowerCase();
+  return text.includes("asdar potenzial-check") || text.includes("asdar potential check");
 }
 
 function stripHtml(value: string) {
@@ -511,14 +524,14 @@ export async function ingestInboundEmail(
     contactId: contact.id,
     organizationId: organization?.id,
     opportunityId: opportunity?.id,
-    channel: "email",
+    channel: input.channel ?? "email",
     direction: "inbound",
     subject: input.subject || "(ohne Betreff)",
     bodyPreview: preview(body || input.subject),
     body,
     from: input.from,
     to: input.to,
-    provider: "resend",
+    provider: input.provider ?? "resend",
     providerMessageId: input.providerMessageId,
     urgency: triage?.urgency ?? "normal",
     classification: triage?.classification ?? "other",
@@ -563,11 +576,32 @@ export async function notifyAdminAboutInteraction(
   const url = `${appUrl()}/${locale}/portal/admin/communications?interaction=${encodeURIComponent(
     interaction.id,
   )}`;
+  const drafts = store.crmEmailDrafts.filter(
+    (draft) =>
+      draft.interactionId === interaction.id && draft.status === "draft",
+  );
+  const nextTask = store.crmTasks
+    .filter(
+      (task) =>
+        task.contactId === interaction.contactId &&
+        task.createdAt >= interaction.createdAt &&
+        task.status !== "done",
+    )
+    .sort((a, b) => b.createdAt.localeCompare(a.createdAt))[0];
+  const checkDetails = isAsdarCheckInteraction(interaction)
+    ? notificationDetail(interaction.body || interaction.bodyPreview)
+    : "";
   const summary = [
     `Neue CRM-Nachricht (${interaction.channel})`,
     `Von: ${contact?.name || interaction.from}`,
     `Betreff: ${interaction.subject}`,
+    `Prioritaet: ${interaction.urgency} / ${interaction.classification}`,
     interaction.aiSummary ? `Kurz: ${interaction.aiSummary}` : "",
+    checkDetails ? `Check-Details:\n${checkDetails}` : "",
+    nextTask ? `Idee: ${nextTask.title}` : "",
+    drafts.length
+      ? `Gemini: ${drafts.length} Antwortentwurf${drafts.length === 1 ? "" : "e"} bereit.`
+      : "",
     `Oeffnen: ${url}`,
   ]
     .filter(Boolean)
@@ -577,11 +611,7 @@ export async function notifyAdminAboutInteraction(
     text: summary,
     replyMarkup: {
       inline_keyboard: [
-        ...store.crmEmailDrafts
-          .filter(
-            (draft) =>
-              draft.interactionId === interaction.id && draft.status === "draft",
-          )
+        ...drafts
           .slice(0, 3)
           .map((draft, index) => [
             {

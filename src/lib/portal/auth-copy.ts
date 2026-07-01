@@ -16,7 +16,6 @@ const de = {
     notices: {
       invalid: "Login nicht möglich. Bitte prüfen Sie E-Mail und Passwort.",
       verify: "Bitte bestätigen Sie zuerst Ihre E-Mail-Adresse.",
-      rate: "Zu viele Login-Versuche. Bitte versuchen Sie es in einigen Minuten erneut.",
       config:
         "Das Portal läuft im Produktionsmodus, aber Datenbank, Storage oder E-Mail sind nicht vollständig konfiguriert. Für lokale QA bitte `pnpm dev:portal` nutzen.",
       verifySent: "Bitte prüfen Sie Ihr Postfach und bestätigen Sie Ihre E-Mail.",
@@ -97,7 +96,6 @@ const de = {
     config:
       "Das Portal läuft im Produktionsmodus, aber Datenbank, Storage oder E-Mail sind nicht vollständig konfiguriert. Für lokale QA bitte `pnpm dev:portal` nutzen.",
     parse: "Die Login-Anfrage konnte nicht gelesen werden.",
-    rate: "Zu viele Login-Versuche. Bitte versuchen Sie es in einigen Minuten erneut.",
     invalid: "Login nicht möglich. Bitte prüfen Sie E-Mail und Passwort.",
     verify: "Bitte bestätigen Sie zuerst Ihre E-Mail-Adresse.",
   },
@@ -156,7 +154,6 @@ const en: typeof de = {
     notices: {
       invalid: "Login failed. Please check your email and password.",
       verify: "Please confirm your email address first.",
-      rate: "Too many login attempts. Please try again in a few minutes.",
       config:
         "The portal is running in production mode, but database, storage, or email is incomplete. For local QA, use `pnpm dev:portal`.",
       verifySent: "Please check your inbox and confirm your email.",
@@ -235,7 +232,6 @@ const en: typeof de = {
     config:
       "The portal is running in production mode, but database, storage, or email is incomplete. For local QA, use `pnpm dev:portal`.",
     parse: "The login request could not be read.",
-    rate: "Too many login attempts. Please try again in a few minutes.",
     invalid: "Login failed. Please check your email and password.",
     verify: "Please confirm your email address first.",
   },

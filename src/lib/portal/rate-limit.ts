@@ -1,7 +1,7 @@
 import { isIP } from "net";
 import { mutateStore } from "./store";
 import { isPostgresBackendEnabled } from "./config";
-import { checkPostgresRateLimit } from "./store-postgres";
+import { checkPostgresRateLimit, clearPostgresRateLimit } from "./store-postgres";
 
 type HeaderReader = {
   get(name: string): string | null;
@@ -151,5 +151,25 @@ export async function checkRateLimit(
       };
     }
     return memoryRateLimit(key, limit, windowMs);
+  }
+}
+
+export async function clearRateLimit(key: string) {
+  buckets.delete(key);
+
+  try {
+    if (isPostgresBackendEnabled()) {
+      await clearPostgresRateLimit(key);
+      return;
+    }
+
+    await mutateStore((store) => {
+      store.rateLimitBuckets = store.rateLimitBuckets.filter(
+        (bucket) => bucket.key !== key,
+      );
+    });
+  } catch {
+    // Clearing a limiter bucket is a best-effort recovery path; never block
+    // an otherwise valid login because cleanup failed.
   }
 }

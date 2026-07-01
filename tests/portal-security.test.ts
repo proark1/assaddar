@@ -3,6 +3,7 @@ import test from "node:test";
 import { sanitizeRenderedHtml } from "../src/lib/markdown";
 import { buildExternalAiScanPrompt } from "../src/lib/portal/ai-scan";
 import { parseContactForm } from "../src/lib/portal/contact-validation";
+import { loginFailureRateLimitKey } from "../src/lib/portal/login-attempts";
 import { clientIpFromHeaders } from "../src/lib/portal/rate-limit";
 import { externalAiIdentifier, redactForExternalAi } from "../src/lib/portal/privacy";
 import { trustedRequestOrigin } from "../src/lib/portal/security";
@@ -36,6 +37,16 @@ test("clientIpFromHeaders ignores malformed forwarded values", () => {
   assert.equal(
     clientIpFromHeaders(headers({ "x-forwarded-for": "not-an-ip" })),
     "unknown",
+  );
+});
+
+test("login failure limiter uses isolated normalized keys", () => {
+  assert.equal(
+    loginFailureRateLimitKey(
+      headers({ "x-forwarded-for": "203.0.113.7" }),
+      " Assad.Dar@Gmail.Com ",
+    ),
+    "login-failed:203.0.113.7:assad.dar@gmail.com",
   );
 });
 

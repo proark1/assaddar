@@ -21,6 +21,10 @@ import {
 } from "@/lib/portal/store";
 import { hashPassword, verifyPassword } from "@/lib/portal/password";
 import { checkRateLimit, clientIpFromHeaders } from "@/lib/portal/rate-limit";
+import {
+  clearFailedLoginAttempts,
+  recordFailedLoginAttempt,
+} from "@/lib/portal/login-attempts";
 import { rejectUntrustedOrigin } from "@/lib/portal/security";
 import { createAuthToken, findConsumableAuthToken } from "@/lib/portal/tokens";
 
@@ -59,21 +63,11 @@ export async function loginAction(formData: FormData) {
   const email = String(formData.get("email") || "").trim().toLowerCase();
   const password = String(formData.get("password") || "");
   const requestHeaders = await trustedActionHeaders(locale);
-  const rateLimit = await checkRateLimit(
-    `login:${clientIpFromHeaders(requestHeaders)}:${email}`,
-    8,
-    15 * 60 * 1000,
-    { failClosed: true },
-  );
-
-  if (!rateLimit.allowed) {
-    redirect(`/${locale}/login?error=rate`);
-  }
-
   const store = await readStore();
   const user = findUserByEmail(store, email);
 
   if (!user || !verifyPassword(password, user.passwordHash)) {
+    await recordFailedLoginAttempt(requestHeaders, email);
     redirect(`/${locale}/login?error=invalid`);
   }
 
@@ -81,6 +75,7 @@ export async function loginAction(formData: FormData) {
     redirect(`/${locale}/login?error=verify`);
   }
 
+  await clearFailedLoginAttempts(requestHeaders, email);
   await setSession(user.id);
   redirect(nextPath(locale, formData.get("next")));
 }

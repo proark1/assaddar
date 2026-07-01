@@ -4,6 +4,29 @@ import { CAL_LINK, getDict, isLocale, type Locale } from "@/content";
 import { ContactForm } from "@/components/contact-form";
 import { Nav } from "@/components/nav";
 import { Footer } from "@/components/footer";
+import { landingToolsContent } from "@/lib/landing-tools-content";
+
+function splitActions(value?: string) {
+  return value
+    ? value
+        .split("|")
+        .map((action) => action.trim())
+        .filter(Boolean)
+    : [];
+}
+
+function parseReadiness(value?: string) {
+  return value
+    ? value
+        .split(",")
+        .map((item) => Number.parseInt(item, 10))
+        .filter((item) => item >= 1 && item <= 5)
+    : [];
+}
+
+function numbered(items: string[]) {
+  return items.map((item, index) => `${index + 1}. ${item}`).join("\n");
+}
 
 export function generateStaticParams() {
   return [{ locale: "de" }, { locale: "en" }];
@@ -40,10 +63,21 @@ export default async function TerminPage({
     source?: string;
     score?: string;
     band?: string;
+    phase?: string;
+    bandBody?: string;
+    nextStep?: string;
+    industryKey?: string;
     industry?: string;
+    industryFocus?: string;
+    readiness?: string;
+    bottleneckIndex?: string;
     bottleneck?: string;
     lever?: string;
     actions?: string;
+    people?: string;
+    manualHours?: string;
+    hourlyRate?: string;
+    automationRate?: string;
     monthlyHours?: string;
     monthlyValue?: string;
     annualValue?: string;
@@ -56,12 +90,28 @@ export default async function TerminPage({
   const tt = t.termin;
   const email = t.finalCta.email;
   const isDe = safe === "de";
-  const actions = query.actions
-    ? query.actions
-        .split("|")
-        .map((action) => action.trim())
-        .filter(Boolean)
-    : [];
+  const tools = landingToolsContent[safe];
+  const actions = splitActions(query.actions);
+  const readiness = parseReadiness(query.readiness);
+  const selectedIndustry = tools.industries.find(
+    (industry) => industry.key === query.industryKey,
+  );
+  const score = Number.parseInt(query.score || "", 10);
+  const band = Number.isFinite(score)
+    ? tools.bands.find((entry) => score <= entry.max)
+    : undefined;
+  const readinessLines =
+    readiness.length === tools.areas.length
+      ? tools.areas.map((area, index) => {
+          const value = readiness[index] ?? 1;
+          const answer = tools.scale[value - 1];
+          return [
+            `${index + 1}. ${area.label}: ${value}/5 (${answer})`,
+            `   ${isDe ? "Frage" : "Question"}: ${area.description}`,
+            `   ${isDe ? "Hebel" : "Lever"}: ${area.lever}`,
+          ].join("\n");
+        })
+      : [];
   const leadContext =
     query.source === "asdar-check"
       ? [
@@ -87,6 +137,54 @@ export default async function TerminPage({
           .filter(Boolean)
           .join("\n")
       : "";
+  const checkLeadContext =
+    query.source === "asdar-check"
+      ? [
+          isDe ? "ASDAR Potenzial-Check" : "ASDAR potential check",
+          isDe ? "Ergebnis" : "Result",
+          query.score && `Score: ${query.score}/100`,
+          query.band && `${isDe ? "Einordnung" : "Assessment"}: ${query.band}`,
+          (band?.phase || query.phase) &&
+            `${isDe ? "ASDAR Phase" : "ASDAR phase"}: ${band?.phase || query.phase}`,
+          (band?.body || query.bandBody) &&
+            `${isDe ? "Einordnungstext" : "Assessment text"}: ${band?.body || query.bandBody}`,
+          (band?.nextStep || query.nextStep) &&
+            `${isDe ? "Beratungsschritt" : "Consulting step"}: ${band?.nextStep || query.nextStep}`,
+          isDe ? "Geklicktes Profil" : "Clicked profile",
+          `${isDe ? "Profil" : "Profile"}: ${
+            selectedIndustry?.label || query.industry || "-"
+          }`,
+          `${isDe ? "Fokus" : "Focus"}: ${
+            selectedIndustry?.focus || query.industryFocus || "-"
+          }`,
+          readinessLines.length > 0 &&
+            `${isDe ? "Alle Antworten" : "All answers"}:\n${readinessLines.join("\n")}`,
+          query.bottleneck &&
+            `${isDe ? "Engpass" : "Bottleneck"}: ${query.bottleneck}`,
+          query.lever &&
+            `${isDe ? "Erster Automatisierungshebel" : "First automation lever"}: ${query.lever}`,
+          actions.length > 0 &&
+            `${isDe ? "Naechste Aktionen" : "Next actions"}:\n${numbered(actions)}`,
+          isDe ? "Zeitwert-Annahmen" : "Time value assumptions",
+          query.people &&
+            `${isDe ? "Beteiligte Personen" : "People involved"}: ${query.people}`,
+          query.manualHours &&
+            `${isDe ? "Manuelle Stunden pro Person/Woche" : "Manual hours per person/week"}: ${query.manualHours}`,
+          query.hourlyRate &&
+            `${isDe ? "Interner Stundensatz" : "Internal hourly rate"}: ${query.hourlyRate} EUR`,
+          query.automationRate &&
+            `${isDe ? "Reduzierbarer Anteil" : "Reducible share"}: ${query.automationRate}%`,
+          isDe ? "Berechneter Zeitwert" : "Calculated time value",
+          query.monthlyHours &&
+            `${isDe ? "Geschaetzte freie Stunden/Monat" : "Estimated free hours/month"}: ${query.monthlyHours}`,
+          query.monthlyValue &&
+            `${isDe ? "Geschaetzter Wert/Monat" : "Estimated value/month"}: ${query.monthlyValue} EUR`,
+          query.annualValue &&
+            `${isDe ? "Geschaetzter Wert/Jahr" : "Estimated value/year"}: ${query.annualValue} EUR`,
+        ]
+          .filter((line): line is string => typeof line === "string" && line.length > 0)
+          .join("\n")
+      : leadContext;
   const initialMessage =
     query.source === "asdar-check"
       ? isDe
@@ -115,7 +213,7 @@ export default async function TerminPage({
               t={tt}
               email={email}
               locale={safe}
-              leadContext={leadContext}
+              leadContext={checkLeadContext}
               initialMessage={initialMessage}
             />
           </div>

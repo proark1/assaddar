@@ -2,9 +2,9 @@
 
 import { headers } from "next/headers";
 import { Resend } from "resend";
-import { contactFromEmail } from "@/lib/portal/config";
+import { contactFromEmail, contactToEmail } from "@/lib/portal/config";
 import { parseContactForm } from "@/lib/portal/contact-validation";
-import { ingestInboundEmail } from "@/lib/portal/crm";
+import { ingestInboundEmail, notifyAdminAboutInteraction } from "@/lib/portal/crm";
 import { checkRateLimit, clientIpFromHeaders } from "@/lib/portal/rate-limit";
 import { rejectUntrustedOrigin } from "@/lib/portal/security";
 import { id, mutateStore } from "@/lib/portal/store";
@@ -110,16 +110,21 @@ async function createWebsiteLead(input: WebsiteLeadInput) {
       createdAt: now,
     });
 
-    await ingestInboundEmail(store, {
+    const interaction = await ingestInboundEmail(store, {
       providerMessageId: leadId,
       from: `${input.name} <${input.email}>`,
       fromName: input.name,
-      to: ["assad.dar@gmail.com"],
+      to: [contactToEmail()],
       subject: `Website Anfrage: ${companyName}`,
       text: [input.leadContext, input.message].filter(Boolean).join("\n\n"),
       createdAt: now,
       source: "Website Kontaktformular",
+      channel: "website",
+      provider: "website",
     });
+    if (interaction) {
+      await notifyAdminAboutInteraction(store, interaction, "de");
+    }
   });
 }
 
@@ -168,11 +173,13 @@ export async function submitContact(
     message,
     leadContext,
   };
+  await captureWebsiteLead(leadInput);
 
   const key = process.env.RESEND_API_KEY;
   if (!key) return { status: "noconfig" };
   const from = contactFromEmail();
   if (!from) return { status: "noconfig" };
+  const to = contactToEmail();
 
   try {
     const resend = new Resend(key);
@@ -186,13 +193,12 @@ export async function submitContact(
 
     const result = await resend.emails.send({
       from,
-      to: ["assad.dar@gmail.com"],
+      to: [to],
       replyTo: email,
       subject: `Neue Anfrage über assad-dar.de — ${name}`,
       text: lines.join("\n"),
     });
     if (result.error) return { status: "error" };
-    await captureWebsiteLead(leadInput);
     return { status: "ok" };
   } catch {
     return { status: "error" };

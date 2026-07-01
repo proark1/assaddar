@@ -5,7 +5,10 @@ import {
   portalProductionConfigErrors,
   requireEmailVerification,
 } from "@/lib/portal/config";
-import { checkRateLimit, clientIpFromHeaders } from "@/lib/portal/rate-limit";
+import {
+  clearFailedLoginAttempts,
+  recordFailedLoginAttempt,
+} from "@/lib/portal/login-attempts";
 import { rejectUntrustedOrigin } from "@/lib/portal/security";
 import { findUserByEmailForLogin } from "@/lib/portal/store";
 import { verifyPassword } from "@/lib/portal/password";
@@ -53,26 +56,18 @@ export async function POST(request: NextRequest) {
   const copy = getAuthCopy(locale).loginApi;
   const email = String(payload.email || "").trim().toLowerCase();
   const password = String(payload.password || "");
-  const rateLimit = await checkRateLimit(
-    `login:${clientIpFromHeaders(request.headers)}:${email || "unknown"}`,
-    8,
-    10 * 60 * 1000,
-    { failClosed: true },
-  );
-
-  if (!rateLimit.allowed) {
-    return jsonError(copy.rate, 429);
-  }
-
   const user = await findUserByEmailForLogin(email);
 
   if (!user || !verifyPassword(password, user.passwordHash)) {
-    return jsonError(copy.invalid, 401);
+    const rateLimit = await recordFailedLoginAttempt(request.headers, email);
+    return jsonError(copy.invalid, rateLimit.allowed ? 401 : 429);
   }
 
   if (requireEmailVerification() && !user.emailVerifiedAt) {
     return jsonError(copy.verify, 403);
   }
+
+  await clearFailedLoginAttempts(request.headers, email);
 
   const response = NextResponse.json({
     ok: true,

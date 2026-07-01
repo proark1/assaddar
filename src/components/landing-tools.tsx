@@ -217,6 +217,10 @@ function encodeList(items: readonly string[]) {
   return items.join(" | ");
 }
 
+function encodeReadiness(values: Array<RatingValue | null>) {
+  return values.map((value) => String(value ?? "")).join(",");
+}
+
 export function ReadinessAndRoiTools({ locale }: { locale: Locale }) {
   const t = landingToolsContent[locale];
   const [activeStep, setActiveStep] = useState<Step>(0);
@@ -299,15 +303,29 @@ export function ReadinessAndRoiTools({ locale }: { locale: Locale }) {
 
   const ctaHref =
     resultReady && readinessBand
-      ? `/${locale}/termin?source=asdar-check&score=${readinessScore}&band=${encodeURIComponent(
-          readinessBand.label,
-        )}&industry=${encodeURIComponent(
-          selectedIndustry.label,
-        )}&bottleneck=${encodeURIComponent(
-          bottleneckArea.label,
-        )}&lever=${encodeURIComponent(firstLever)}&actions=${encodeURIComponent(
-          encodeList(bottleneckArea.actions),
-        )}&monthlyHours=${monthlySavedHours}&monthlyValue=${monthlyValue}&annualValue=${annualValue}`
+      ? `/${locale}/termin?${new URLSearchParams({
+          source: "asdar-check",
+          score: String(readinessScore),
+          band: readinessBand.label,
+          phase: readinessBand.phase,
+          bandBody: readinessBand.body,
+          nextStep: readinessBand.nextStep,
+          industryKey: selectedIndustry.key,
+          industry: selectedIndustry.label,
+          industryFocus: selectedIndustry.focus,
+          readiness: encodeReadiness(readiness),
+          bottleneckIndex: String(bottleneckIndex),
+          bottleneck: bottleneckArea.label,
+          lever: firstLever,
+          actions: encodeList(bottleneckArea.actions),
+          people: String(people),
+          manualHours: String(manualHours),
+          hourlyRate: String(hourlyRate),
+          automationRate: String(automationRate),
+          monthlyHours: String(monthlySavedHours),
+          monthlyValue: String(monthlyValue),
+          annualValue: String(annualValue),
+        }).toString()}`
       : "#readiness-check";
 
   const roiOutputs = [

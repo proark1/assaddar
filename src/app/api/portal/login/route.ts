@@ -5,7 +5,10 @@ import {
   portalProductionConfigErrors,
   requireEmailVerification,
 } from "@/lib/portal/config";
-import { checkRateLimit, clientIpFromHeaders } from "@/lib/portal/rate-limit";
+import {
+  clearFailedLoginAttempts,
+  recordFailedLoginAttempt,
+} from "@/lib/portal/login-attempts";
 import { rejectUntrustedOrigin } from "@/lib/portal/security";
 import { findUserByEmailForLogin } from "@/lib/portal/store";
 import { verifyPassword } from "@/lib/portal/password";
@@ -42,26 +45,18 @@ export async function POST(request: NextRequest) {
 
   const email = String(formData.get("email") || "").trim().toLowerCase();
   const password = String(formData.get("password") || "");
-  const rateLimit = await checkRateLimit(
-    `login:${clientIpFromHeaders(request.headers)}:${email || "unknown"}`,
-    8,
-    10 * 60 * 1000,
-    { failClosed: true },
-  );
-
-  if (!rateLimit.allowed) {
-    return redirectTo(request, `/${locale}/login?error=rate`);
-  }
-
   const user = await findUserByEmailForLogin(email);
 
   if (!user || !verifyPassword(password, user.passwordHash)) {
+    await recordFailedLoginAttempt(request.headers, email);
     return redirectTo(request, `/${locale}/login?error=invalid`);
   }
 
   if (requireEmailVerification() && !user.emailVerifiedAt) {
     return redirectTo(request, `/${locale}/login?error=verify`);
   }
+
+  await clearFailedLoginAttempts(request.headers, email);
 
   const response = redirectTo(request, nextPath(locale, formData.get("next")));
   const session = createSessionCookie(user);
