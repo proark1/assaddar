@@ -621,10 +621,19 @@ function groupByProjectId<T extends { projectId: string }>(items: T[]) {
   return grouped;
 }
 
+function isMissingColumn(error: unknown, column: string) {
+  const code =
+    typeof error === "object" && error !== null && "code" in error
+      ? String((error as { code?: unknown }).code)
+      : "";
+  const message = error instanceof Error ? error.message : String(error);
+  return code === "42703" && message.includes(column);
+}
+
 export async function findPostgresUserByEmail(email: string) {
   const sql = getSql();
   const rows = await sql`
-    select id, name, email, password_hash, role, email_verified_at, session_version, created_at
+    select id, name, email, password_hash, role, email_verified_at, created_at
     from portal_users
     where lower(email) = lower(${email})
     limit 1
@@ -636,7 +645,7 @@ export async function findPostgresUserByEmail(email: string) {
 export async function findPostgresUserById(userId: string) {
   const sql = getSql();
   const rows = await sql`
-    select id, name, email, password_hash, role, email_verified_at, session_version, created_at
+    select id, name, email, password_hash, role, email_verified_at, created_at
     from portal_users
     where id = ${userId}
     limit 1
@@ -647,11 +656,15 @@ export async function findPostgresUserById(userId: string) {
 
 export async function bumpPostgresUserSessionVersion(userId: string) {
   const sql = getSql();
-  await sql`
-    update portal_users
-    set session_version = session_version + 1
-    where id = ${userId}
-  `;
+  try {
+    await sql`
+      update portal_users
+      set session_version = session_version + 1
+      where id = ${userId}
+    `;
+  } catch (error) {
+    if (!isMissingColumn(error, "session_version")) throw error;
+  }
 }
 
 export async function createPostgresRegisteredCustomer({
@@ -677,11 +690,11 @@ export async function createPostgresRegisteredCustomer({
 
     await tx`
       insert into portal_users (
-        id, name, email, password_hash, role, email_verified_at, session_version, created_at
+        id, name, email, password_hash, role, email_verified_at, created_at
       )
       values (
         ${userId}, ${name}, ${email}, ${passwordHash}, 'customer',
-        ${emailVerifiedAt ?? null}, 0, ${createdAt}
+        ${emailVerifiedAt ?? null}, ${createdAt}
       )
     `;
 
@@ -789,7 +802,7 @@ async function readPostgresProjectBundles(
   const memberUserIds = [...new Set(members.map((member) => member.userId))];
   const userRows =
     memberUserIds.length > 0
-      ? await sql`select id, name, email, password_hash, role, email_verified_at, session_version, created_at from portal_users where id in ${sql(memberUserIds)}`
+      ? await sql`select id, name, email, password_hash, role, email_verified_at, created_at from portal_users where id in ${sql(memberUserIds)}`
       : [];
   const users = new Map(
     (userRows as Row[]).map((row) => {
@@ -890,7 +903,7 @@ export async function readPostgresCustomersWithProjectBundles(): Promise<
 > {
   const sql = getSql();
   const customerRows = await sql`
-    select id, name, email, password_hash, role, email_verified_at, session_version, created_at
+    select id, name, email, password_hash, role, email_verified_at, created_at
     from portal_users
     where role = 'customer'
     order by name asc
@@ -970,7 +983,7 @@ export async function createPostgresProjectForAdmin({
 
     if (customerEmail) {
       const rows = await tx`
-        select id, name, email, password_hash, role, email_verified_at, session_version, created_at
+        select id, name, email, password_hash, role, email_verified_at, created_at
         from portal_users
         where lower(email) = lower(${customerEmail})
         limit 1
@@ -1328,15 +1341,14 @@ async function writeStoreRows(tx: SqlLike, store: PortalStore) {
   {
     for (const user of store.users) {
       await tx`
-        insert into portal_users (id, name, email, password_hash, role, email_verified_at, session_version, created_at)
-        values (${user.id}, ${user.name}, ${user.email}, ${user.passwordHash}, ${user.role}, ${user.emailVerifiedAt ?? null}, ${user.sessionVersion ?? 0}, ${user.createdAt})
+        insert into portal_users (id, name, email, password_hash, role, email_verified_at, created_at)
+        values (${user.id}, ${user.name}, ${user.email}, ${user.passwordHash}, ${user.role}, ${user.emailVerifiedAt ?? null}, ${user.createdAt})
         on conflict (id) do update set
           name = excluded.name,
           email = excluded.email,
           password_hash = excluded.password_hash,
           role = excluded.role,
-          email_verified_at = excluded.email_verified_at,
-          session_version = excluded.session_version
+          email_verified_at = excluded.email_verified_at
       `;
     }
 
