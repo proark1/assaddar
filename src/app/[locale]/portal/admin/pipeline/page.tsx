@@ -75,7 +75,7 @@ export default async function AdminPipelinePage({
             className="inline-flex items-center gap-2 rounded-lg bg-copper px-4 py-2.5 text-sm font-medium text-oncopper transition-colors hover:bg-copper-hi"
           >
             <PencilLine className="h-4 w-4" />
-            Drafts
+            Entwürfe
           </Link>
         </>
       }
@@ -87,7 +87,7 @@ export default async function AdminPipelinePage({
             title={`${activeCount} aktive Projekte sauber steuern`}
           >
             Projekte sind nach operativer Situation sortiert: neue Analyse,
-            Umsetzung, Kundenblocker, Billing und Abschluss.
+            Umsetzung, Kundenblocker, Abrechnung und Abschluss.
           </PortalSectionTitle>
           <div className="grid grid-cols-2 gap-3 sm:grid-cols-3">
             <div className="rounded-lg border border-hairline bg-surface px-4 py-3">

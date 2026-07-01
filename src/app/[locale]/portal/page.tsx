@@ -77,11 +77,11 @@ export default async function PortalPage({
     <PortalShell
       user={user}
       locale={safe}
-      eyebrow={user.role === "admin" ? "Consultant Workspace" : "Kundenportal"}
+      eyebrow={user.role === "admin" ? "Admin-Workspace" : "Kundenportal"}
       activeNav="dashboard"
       title={
         user.role === "admin"
-          ? "Alle Beratungsprojekte im Überblick"
+          ? "Projektübersicht"
           : "Ihre Projektübersicht"
       }
       actions={

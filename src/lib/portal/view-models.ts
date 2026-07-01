@@ -671,7 +671,7 @@ export const getAdminDashboardViewModel = cache(
         keywords: "kanban status projekt flow",
       },
       {
-        label: "Draft Review öffnen",
+        label: "Entwürfe prüfen",
         href: `/${locale}/portal/admin/drafts`,
         group: "Workflow",
         keywords: "updates kommunikation meeting proposal",
@@ -683,7 +683,7 @@ export const getAdminDashboardViewModel = cache(
         keywords: "kunden account login zugriff",
       },
       {
-        label: "Templates bearbeiten",
+        label: "Vorlagen bearbeiten",
         href: `/${locale}/portal/admin/templates`,
         group: "Admin",
         keywords: "branchen playbook industry",

@@ -26,7 +26,7 @@ import {
 export const dynamic = "force-dynamic";
 
 export const metadata: Metadata = {
-  title: "Template Library | Assad Dar Portal",
+  title: "Vorlagen | Assad Dar Portal",
   robots: { index: false, follow: false },
 };
 
@@ -64,7 +64,7 @@ export default async function AdminTemplatesPage({
       user={user}
       locale={safe}
       eyebrow="Admin"
-      title="Template Library"
+      title="Vorlagen"
       activeNav="templates"
       backHref={`/${safe}/portal/admin`}
       actions={
@@ -80,7 +80,7 @@ export default async function AdminTemplatesPage({
       <PortalCard>
         <PortalSectionTitle
           eyebrow="Playbooks"
-          title="Branchen-Templates verwalten"
+          title="Branchenvorlagen verwalten"
         >
           Jede Vorlage enthält Intake, Diagnosefragen, Quick Wins,
           Automatisierungsideen, Risiken, Meeting-Guidance, Aufgaben,
@@ -94,7 +94,7 @@ export default async function AdminTemplatesPage({
           <input
             name="q"
             defaultValue={query.q ?? ""}
-            placeholder="Template, Branche, Quick Win suchen..."
+            placeholder="Vorlage, Branche, Quick Win suchen..."
             className={fieldClass}
           />
           <button
@@ -334,7 +334,7 @@ export default async function AdminTemplatesPage({
           <PortalCard>
             <div className="flex gap-3 text-sm text-ink2">
               <BookOpen className="h-4 w-4 shrink-0 text-copper" />
-              Keine Templates passen zur Suche.
+              Keine Vorlagen passen zur Suche.
             </div>
           </PortalCard>
         )}

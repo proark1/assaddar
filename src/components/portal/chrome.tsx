@@ -3,7 +3,9 @@ import {
   ArrowLeft,
   BookOpen,
   BriefcaseBusiness,
+  ChevronDown,
   Clock3,
+  ExternalLink,
   FileText,
   FolderKanban,
   Images,
@@ -235,46 +237,74 @@ export function PortalShell({
   actions?: React.ReactNode;
   children: React.ReactNode;
 }) {
-  const nav = locale === "de"
-    ? {
-        website: "Webseite",
-        dashboard: "Übersicht",
-        cockpit: "Cockpit",
-        today: "Heute",
-        pipeline: "Pipeline",
-        drafts: "Entwürfe",
-        customers: "Kunden",
-        communications: "Kommunikation",
-        templates: "Vorlagen",
-        blog: "Blog",
-        settings: "Einstellungen",
-        settingsLabel: "Einstellungen",
-        logoutLabel: "Abmelden",
-        mobileLabel: "Mobile Portal-Navigation",
-        back: "Zurück",
-      }
-    : {
-        website: "Website",
-        dashboard: "Dashboard",
-        cockpit: "Cockpit",
-        today: "Today",
-        pipeline: "Pipeline",
-        drafts: "Drafts",
-        customers: "Customers",
-        communications: "Comms",
-        templates: "Templates",
-        blog: "Blog",
-        settings: "Settings",
-        settingsLabel: "Settings",
-        logoutLabel: "Logout",
-        mobileLabel: "Mobile portal navigation",
-        back: "Back",
-      };
-  const navClass = (key: NonNullable<typeof activeNav>) =>
-    `inline-flex items-center gap-1.5 rounded-md px-2 py-1 transition-colors ${
+  type NavKey = NonNullable<typeof activeNav>;
+  const nav =
+    locale === "de"
+      ? {
+          website: "Zur Website",
+          dashboard: "Portalübersicht",
+          cockpit: "Cockpit",
+          today: "Heute",
+          pipeline: "Pipeline",
+          drafts: "Entwürfe",
+          customers: "Kunden",
+          communications: "Inbox",
+          opportunities: "Chancen",
+          templates: "Vorlagen",
+          blog: "Blog-Bilder",
+          projectsGroup: "Projekte",
+          communicationGroup: "Kommunikation",
+          knowledgeGroup: "Wissen",
+          settings: "Einstellungen",
+          settingsLabel: "Einstellungen",
+          logoutLabel: "Abmelden",
+          mobileLabel: "Portal-Navigation",
+          back: "Zurück",
+        }
+      : {
+          website: "View website",
+          dashboard: "Portal overview",
+          cockpit: "Cockpit",
+          today: "Today",
+          pipeline: "Pipeline",
+          drafts: "Drafts",
+          customers: "Customers",
+          communications: "Inbox",
+          opportunities: "Opportunities",
+          templates: "Templates",
+          blog: "Blog images",
+          projectsGroup: "Projects",
+          communicationGroup: "Communication",
+          knowledgeGroup: "Knowledge",
+          settings: "Settings",
+          settingsLabel: "Settings",
+          logoutLabel: "Logout",
+          mobileLabel: "Portal navigation",
+          back: "Back",
+        };
+  const brandHref =
+    user.role === "admin"
+      ? `/${locale}/portal/admin/today`
+      : `/${locale}/portal`;
+  const isActive = (keys: NavKey[]) =>
+    Boolean(activeNav && keys.includes(activeNav));
+  const navClass = (key: NavKey) =>
+    `inline-flex items-center gap-1.5 rounded-md px-2.5 py-1.5 transition-colors ${
       activeNav === key
         ? "bg-copper/10 text-copper"
         : "text-ink2 hover:text-ink"
+    }`;
+  const groupClass = (keys: NavKey[]) =>
+    `flex cursor-pointer list-none items-center gap-1.5 rounded-md px-2.5 py-1.5 transition-colors marker:hidden ${
+      isActive(keys)
+        ? "bg-copper/10 text-copper"
+        : "text-ink2 hover:text-ink"
+    }`;
+  const menuLinkClass = (key: NavKey) =>
+    `flex items-center gap-2 rounded-md px-3 py-2 text-sm transition-colors ${
+      activeNav === key
+        ? "bg-copper/10 text-copper"
+        : "text-ink2 hover:bg-surface2 hover:text-ink"
     }`;
   const mobileNavClass = (key: NonNullable<typeof activeNav>) =>
     `inline-flex min-h-11 shrink-0 items-center rounded-lg border px-3 py-2 ${
@@ -288,86 +318,20 @@ export function PortalShell({
       <header className="sticky top-0 z-50 border-b border-hairline bg-surface/90 backdrop-blur">
         <div className="mx-auto flex min-h-14 w-full max-w-[1240px] items-center justify-between gap-3 px-5 py-2 md:min-h-16 md:px-8 md:py-3">
           <Link
-            href={`/${locale}/portal`}
+            href={brandHref}
             className="inline-flex items-center gap-2 text-sm font-medium text-ink"
           >
             <BriefcaseBusiness className="h-4 w-4 text-copper" />
             Assad Dar Portal
           </Link>
-          <nav className="hidden items-center gap-5 text-sm text-ink2 md:flex">
-            <Link href={`/${locale}`} className={navClass("website")}>
+          <div className="flex items-center gap-3">
+            <Link
+              href={`/${locale}`}
+              className="hidden items-center gap-1.5 rounded-lg border border-hairline px-3 py-2 text-sm font-medium text-ink2 transition-colors hover:border-copper hover:text-copper md:inline-flex"
+            >
+              <ExternalLink className="h-3.5 w-3.5" />
               {nav.website}
             </Link>
-            <Link href={`/${locale}/portal`} className={navClass("dashboard")}>
-              {nav.dashboard}
-            </Link>
-            {user.role === "admin" && (
-              <>
-                <Link
-                  href={`/${locale}/portal/admin`}
-                  className={navClass("admin")}
-                >
-                  {nav.cockpit}
-                </Link>
-                <Link
-                  href={`/${locale}/portal/admin/today`}
-                  className={navClass("today")}
-                >
-                  <Clock3 className="h-3.5 w-3.5" />
-                  {nav.today}
-                </Link>
-                <Link
-                  href={`/${locale}/portal/admin/pipeline`}
-                  className={navClass("pipeline")}
-                >
-                  <FolderKanban className="h-3.5 w-3.5" />
-                  {nav.pipeline}
-                </Link>
-                <Link
-                  href={`/${locale}/portal/admin/drafts`}
-                  className={navClass("drafts")}
-                >
-                  <PencilLine className="h-3.5 w-3.5" />
-                  {nav.drafts}
-                </Link>
-                <Link
-                  href={`/${locale}/portal/admin/communications`}
-                  className={navClass("communications")}
-                >
-                  <MessageSquareText className="h-3.5 w-3.5" />
-                  {nav.communications}
-                </Link>
-                <Link
-                  href={`/${locale}/portal/admin/customers`}
-                  className={navClass("customers")}
-                >
-                  <Users className="h-3.5 w-3.5" />
-                  {nav.customers}
-                </Link>
-                <Link
-                  href={`/${locale}/portal/admin/templates`}
-                  className={navClass("templates")}
-                >
-                  <BookOpen className="h-3.5 w-3.5" />
-                  {nav.templates}
-                </Link>
-                <Link
-                  href={`/${locale}/portal/admin/blog`}
-                  className={navClass("blog")}
-                >
-                  <Images className="h-3.5 w-3.5" />
-                  {nav.blog}
-                </Link>
-              </>
-            )}
-            <Link
-              href={`/${locale}/portal/settings`}
-              className={navClass("settings")}
-            >
-              {nav.settings}
-            </Link>
-          </nav>
-          <div className="flex items-center gap-3">
             <div className="hidden text-right sm:block">
               <div className="text-sm font-medium text-ink">{user.name}</div>
               <div className="text-[12px] text-muted">{user.email}</div>
@@ -393,60 +357,177 @@ export function PortalShell({
         </div>
       </header>
 
-      <div className="sticky top-[57px] z-40 border-b border-hairline bg-surface md:hidden">
+      <div className="sticky top-[57px] z-40 border-b border-hairline bg-surface/95 backdrop-blur md:top-[65px]">
         <nav
-          className="mx-auto flex w-full max-w-[1240px] gap-2 overflow-x-auto px-5 py-2 text-sm text-ink2"
+          className="mx-auto flex w-full max-w-[1240px] gap-2 overflow-x-auto px-5 py-2 text-sm text-ink2 md:overflow-visible md:px-8"
           aria-label={nav.mobileLabel}
         >
-          <Link
-            href={`/${locale}`}
-            className={mobileNavClass("website")}
-          >
-            {nav.website}
-          </Link>
-          <Link
-            href={`/${locale}/portal`}
-            className={mobileNavClass("dashboard")}
-          >
-            {nav.dashboard}
-          </Link>
-          {user.role === "admin" && (
+          {user.role === "admin" ? (
             <>
               <Link
-                href={`/${locale}/portal/admin`}
-                className={mobileNavClass("admin")}
-              >
-                {nav.cockpit}
-              </Link>
-              <Link
                 href={`/${locale}/portal/admin/today`}
-                className={mobileNavClass("today")}
+                className={`${mobileNavClass("today")} md:hidden`}
               >
                 {nav.today}
               </Link>
               <Link
+                href={`/${locale}/portal/admin/today`}
+                className={`${navClass("today")} hidden md:inline-flex`}
+              >
+                <Clock3 className="h-3.5 w-3.5" />
+                {nav.today}
+              </Link>
+              <details className="group relative hidden md:block">
+                <summary className={groupClass([
+                  "admin",
+                  "dashboard",
+                  "pipeline",
+                  "customers",
+                ])}>
+                  <FolderKanban className="h-3.5 w-3.5" />
+                  {nav.projectsGroup}
+                  <ChevronDown className="h-3.5 w-3.5 transition-transform group-open:rotate-180" />
+                </summary>
+                <div className="absolute left-0 top-full z-50 mt-2 w-56 rounded-lg border border-hairline bg-surface p-2 shadow-card">
+                  <Link
+                    href={`/${locale}/portal/admin`}
+                    className={menuLinkClass("admin")}
+                  >
+                    <LayoutDashboard className="h-3.5 w-3.5" />
+                    {nav.cockpit}
+                  </Link>
+                  <Link
+                    href={`/${locale}/portal/admin/pipeline`}
+                    className={menuLinkClass("pipeline")}
+                  >
+                    <FolderKanban className="h-3.5 w-3.5" />
+                    {nav.pipeline}
+                  </Link>
+                  <Link
+                    href={`/${locale}/portal/admin/customers`}
+                    className={menuLinkClass("customers")}
+                  >
+                    <Users className="h-3.5 w-3.5" />
+                    {nav.customers}
+                  </Link>
+                  <Link
+                    href={`/${locale}/portal`}
+                    className={menuLinkClass("dashboard")}
+                  >
+                    <BriefcaseBusiness className="h-3.5 w-3.5" />
+                    {nav.dashboard}
+                  </Link>
+                </div>
+              </details>
+              <Link
+                href={`/${locale}/portal/admin`}
+                className={`${mobileNavClass("admin")} md:hidden`}
+              >
+                {nav.cockpit}
+              </Link>
+              <Link
                 href={`/${locale}/portal/admin/pipeline`}
-                className={mobileNavClass("pipeline")}
+                className={`${mobileNavClass("pipeline")} md:hidden`}
               >
                 {nav.pipeline}
               </Link>
               <Link
+                href={`/${locale}/portal/admin/customers`}
+                className={`${mobileNavClass("customers")} md:hidden`}
+              >
+                {nav.customers}
+              </Link>
+              <details className="group relative hidden md:block">
+                <summary className={groupClass(["communications", "drafts"])}>
+                  <MessageSquareText className="h-3.5 w-3.5" />
+                  {nav.communicationGroup}
+                  <ChevronDown className="h-3.5 w-3.5 transition-transform group-open:rotate-180" />
+                </summary>
+                <div className="absolute left-0 top-full z-50 mt-2 w-56 rounded-lg border border-hairline bg-surface p-2 shadow-card">
+                  <Link
+                    href={`/${locale}/portal/admin/communications`}
+                    className={menuLinkClass("communications")}
+                  >
+                    <MessageSquareText className="h-3.5 w-3.5" />
+                    {nav.communications}
+                  </Link>
+                  <Link
+                    href={`/${locale}/portal/admin/drafts`}
+                    className={menuLinkClass("drafts")}
+                  >
+                    <PencilLine className="h-3.5 w-3.5" />
+                    {nav.drafts}
+                  </Link>
+                  <Link
+                    href={`/${locale}/portal/admin/crm/opportunities`}
+                    className={menuLinkClass("communications")}
+                  >
+                    <FolderKanban className="h-3.5 w-3.5" />
+                    {nav.opportunities}
+                  </Link>
+                </div>
+              </details>
+              <Link
+                href={`/${locale}/portal/admin/communications`}
+                className={`${mobileNavClass("communications")} md:hidden`}
+              >
+                {nav.communicationGroup}
+              </Link>
+              <Link
                 href={`/${locale}/portal/admin/drafts`}
-                className={mobileNavClass("drafts")}
+                className={`${mobileNavClass("drafts")} md:hidden`}
               >
                 {nav.drafts}
               </Link>
+              <details className="group relative hidden md:block">
+                <summary className={groupClass(["templates", "blog"])}>
+                  <BookOpen className="h-3.5 w-3.5" />
+                  {nav.knowledgeGroup}
+                  <ChevronDown className="h-3.5 w-3.5 transition-transform group-open:rotate-180" />
+                </summary>
+                <div className="absolute left-0 top-full z-50 mt-2 w-56 rounded-lg border border-hairline bg-surface p-2 shadow-card">
+                  <Link
+                    href={`/${locale}/portal/admin/templates`}
+                    className={menuLinkClass("templates")}
+                  >
+                    <BookOpen className="h-3.5 w-3.5" />
+                    {nav.templates}
+                  </Link>
+                  <Link
+                    href={`/${locale}/portal/admin/blog`}
+                    className={menuLinkClass("blog")}
+                  >
+                    <Images className="h-3.5 w-3.5" />
+                    {nav.blog}
+                  </Link>
+                </div>
+              </details>
               <Link
-                href={`/${locale}/portal/admin/communications`}
-                className={mobileNavClass("communications")}
+                href={`/${locale}/portal/admin/templates`}
+                className={`${mobileNavClass("templates")} md:hidden`}
               >
-                {nav.communications}
+                {nav.templates}
               </Link>
               <Link
-                href={`/${locale}/portal/admin/customers`}
-                className={mobileNavClass("customers")}
+                href={`/${locale}/portal/admin/blog`}
+                className={`${mobileNavClass("blog")} md:hidden`}
               >
-                {nav.customers}
+                {nav.blog}
+              </Link>
+            </>
+          ) : (
+            <>
+              <Link
+                href={`/${locale}/portal`}
+                className={mobileNavClass("dashboard")}
+              >
+                {nav.dashboard}
+              </Link>
+              <Link
+                href={`/${locale}`}
+                className={mobileNavClass("website")}
+              >
+                {nav.website}
               </Link>
             </>
           )}

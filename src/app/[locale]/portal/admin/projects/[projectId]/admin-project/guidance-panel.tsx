@@ -238,7 +238,7 @@ export function GuidanceMainPanel({ ctx }: { ctx: AdminPanelContext }) {
           </PortalCard>
             <PortalCard>
             <PortalSectionTitle
-              eyebrow="AI Copilot"
+              eyebrow="KI-Copilot"
               title="Beratungsbrief für den nächsten Schritt"
             >
               Kompakte, projektbezogene Beratungshilfe aus Intake,
@@ -351,7 +351,7 @@ export function GuidanceMainPanel({ ctx }: { ctx: AdminPanelContext }) {
           </PortalCard>
             <PortalCard>
             <PortalSectionTitle
-              eyebrow="Private Intelligence"
+              eyebrow="Projektwissen"
               title="ASDAR Intake und Beratungsnotizen"
             >
               Dieser Bereich ist nur intern sichtbar und steuert die
@@ -526,7 +526,7 @@ export function GuidanceSidePanel({ ctx }: { ctx: AdminPanelContext }) {
     <>
             <PortalCard>
             <PortalSectionTitle
-              eyebrow="Industry Playbook"
+              eyebrow="Branchen-Playbook"
               title="Template für dieses Projekt"
             >
               Branchenbezogene Diagnose, Quick Wins und ASDAR-Schritte für den
@@ -608,7 +608,7 @@ export function GuidanceSidePanel({ ctx }: { ctx: AdminPanelContext }) {
           </PortalCard>
             <PortalCard>
             <PortalSectionTitle
-              eyebrow="Meeting Copilot"
+              eyebrow="Meeting-Copilot"
               title="Call- und Workshop-Guidance"
             >
               Nutze diese Punkte live im Termin, um schneller von Problem zu
@@ -895,8 +895,8 @@ export function GuidanceSidePanel({ ctx }: { ctx: AdminPanelContext }) {
           </PortalCard>
             <PortalCard>
             <PortalSectionTitle
-              eyebrow="Website Intelligence"
-              title="Website als Business-Signal scannen"
+              eyebrow="Website-Scan"
+              title="Website als Business-Signal prüfen"
             >
               Crawlt die Kundenseite, extrahiert Business-Kontext und speichert
               die Quellen als interne Projektintelligenz.
@@ -921,7 +921,7 @@ export function GuidanceSidePanel({ ctx }: { ctx: AdminPanelContext }) {
                   defaultChecked
                   className="mt-0.5 h-4 w-4 accent-[var(--color-copper)]"
                 />
-                Findings in Private Intelligence uebernehmen
+                Erkenntnisse in Private Intelligence übernehmen
               </label>
               <button
                 type="submit"
@@ -1001,7 +1001,7 @@ export function GuidanceSidePanel({ ctx }: { ctx: AdminPanelContext }) {
               ))}
               {!latestWebsiteCrawl && (
                 <p className="text-sm leading-relaxed text-muted">
-                  Noch kein Website-Scan fuer dieses Projekt gespeichert.
+                  Noch kein Website-Scan für dieses Projekt gespeichert.
                 </p>
               )}
             </div>
@@ -1011,8 +1011,8 @@ export function GuidanceSidePanel({ ctx }: { ctx: AdminPanelContext }) {
               eyebrow="Research"
               title="Competitor- und Prozessrecherche"
             >
-              Sammelt oeffentliche Konkurrenzsignale und Prozessnotizen als
-              interne Hypothesen fuer den naechsten Beratungsschritt.
+              Sammelt öffentliche Konkurrenzsignale und Prozessnotizen als
+              interne Hypothesen für den nächsten Beratungsschritt.
             </PortalSectionTitle>
             <form action={runPublicResearchAction} className="mt-5 space-y-4">
               <HiddenProjectFields locale={safe} projectId={projectId} />
@@ -1057,8 +1057,8 @@ export function GuidanceSidePanel({ ctx }: { ctx: AdminPanelContext }) {
           </PortalCard>
             <PortalCard>
             <PortalSectionTitle
-              eyebrow="External AI"
-              title="Multi-Provider Scan"
+              eyebrow="Externe KI"
+              title="Provider-Scan"
             >
               Nutzt konfigurierte Provider und speichert gute Ergebnisse als
               interne Projektinsights.

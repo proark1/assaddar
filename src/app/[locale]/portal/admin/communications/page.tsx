@@ -207,7 +207,7 @@ export default async function AdminCommunicationsPage({
       user={user}
       locale={safe}
       eyebrow="Admin"
-      title="Kommunikation & CRM Inbox"
+      title="Kommunikation & CRM"
       activeNav="communications"
       backHref={`/${safe}/portal/admin`}
       actions={
@@ -242,7 +242,7 @@ export default async function AdminCommunicationsPage({
           }`}
         >
           {query.error
-            ? `Aktion konnte nicht ausgefuehrt werden: ${query.error}`
+            ? `Aktion konnte nicht ausgeführt werden: ${query.error}`
             : query.saved === "queue"
               ? `Queue verarbeitet: ${query.triaged ?? "0"} triagiert, ${query.notified ?? "0"} Benachrichtigungen.`
               : "Aktion gespeichert."}
@@ -260,7 +260,7 @@ export default async function AdminCommunicationsPage({
           safe,
           status: "draft_ready",
           count: dashboard.actionBuckets.draftReady.length,
-          label: "Draft bereit",
+          label: "Entwurf bereit",
         })}
         {selectedLink({
           safe,
@@ -280,7 +280,7 @@ export default async function AdminCommunicationsPage({
           <div className="mt-3 text-2xl font-medium text-ink">
             {dashboard.stats.drafts}
           </div>
-          <div className="text-sm text-muted">Entwuerfe</div>
+          <div className="text-sm text-muted">Entwürfe</div>
         </PortalCard>
         <PortalCard>
           <Workflow className="h-4 w-4 text-copper" />
@@ -294,7 +294,7 @@ export default async function AdminCommunicationsPage({
       <div className="mt-6 grid gap-6 xl:grid-cols-[0.9fr_1.35fr_0.85fr]">
         <div className="space-y-4">
           <PortalCard>
-            <PortalSectionTitle eyebrow="Action Inbox" title="Nachrichten" />
+            <PortalSectionTitle eyebrow="Inbox" title="Nachrichten" />
             <form className="mt-5 grid gap-2">
               <input type="hidden" name="status" value={inboxQuery.status || "open"} />
               <div className="relative">
@@ -310,7 +310,7 @@ export default async function AdminCommunicationsPage({
                 <select name="status" defaultValue={inboxQuery.status} className={fieldClass}>
                   <option value="open">Offen</option>
                   <option value="high">High</option>
-                  <option value="draft_ready">Draft bereit</option>
+                  <option value="draft_ready">Entwurf bereit</option>
                   <option value="needs_reply">Antwort offen</option>
                   <option value="handled">Erledigt</option>
                   <option value="all">Alle</option>
@@ -464,7 +464,7 @@ export default async function AdminCommunicationsPage({
 
           {selectedDrafts.length > 0 && (
             <PortalCard>
-              <PortalSectionTitle eyebrow="AI" title="Antworten bearbeiten & senden" />
+              <PortalSectionTitle eyebrow="Antworten" title="Entwürfe bearbeiten und senden" />
               <div className="mt-5 space-y-4">
                 {selectedDrafts.map((draft, index) => (
                   <form
@@ -554,7 +554,7 @@ export default async function AdminCommunicationsPage({
               <textarea
                 name="body"
                 className={textareaClass}
-                placeholder="Notiz, Call-Zusammenfassung oder naechster Schritt..."
+                placeholder="Notiz, Call-Zusammenfassung oder nächster Schritt..."
               />
               <button className="inline-flex items-center gap-2 rounded-lg bg-copper px-4 py-2.5 text-sm font-medium text-oncopper transition-colors hover:bg-copper-hi">
                 <CheckCircle2 className="h-4 w-4" />
@@ -566,7 +566,7 @@ export default async function AdminCommunicationsPage({
 
         <aside className="space-y-4">
           <PortalCard>
-            <PortalSectionTitle eyebrow="Admin Alerts" title="Benachrichtigungen" />
+            <PortalSectionTitle eyebrow="Admin-Hinweise" title="Benachrichtigungen" />
             <div className="mt-5 space-y-3">
               {dashboard.notifications.slice(0, 8).map((event) => (
                 <div
@@ -698,7 +698,7 @@ export default async function AdminCommunicationsPage({
           </PortalCard>
 
           <PortalCard>
-            <PortalSectionTitle eyebrow="Sales" title="Chancen" />
+            <PortalSectionTitle eyebrow="CRM" title="Chancen" />
             <div className="mt-5 space-y-3">
               {dashboard.openOpportunities.slice(0, 6).map((opportunity) => (
                 <form

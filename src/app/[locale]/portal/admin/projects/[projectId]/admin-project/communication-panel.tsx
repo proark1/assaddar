@@ -464,7 +464,7 @@ export function CommunicationSidePanel({ ctx }: { ctx: AdminPanelContext }) {
     <>
             <PortalCard>
             <PortalSectionTitle
-              eyebrow="Customer Signals"
+              eyebrow="Kundensignale"
               title="Input, Freigaben, Reminder"
             >
               Schneller Blick darauf, was vom Kunden gekommen ist und wo Assad

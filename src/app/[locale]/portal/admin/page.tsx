@@ -12,8 +12,6 @@ import {
   FolderKanban,
   Gauge,
   History,
-  MessageSquareText,
-  PencilLine,
   Search,
   Users,
 } from "lucide-react";
@@ -90,7 +88,7 @@ export default async function AdminPage({
       user={user}
       locale={safe}
       eyebrow="Admin"
-      title="Consulting Cockpit"
+      title="Admin-Cockpit"
       activeNav="admin"
       backHref={`/${safe}/portal`}
       actions={
@@ -102,41 +100,6 @@ export default async function AdminPage({
           >
             <Clock3 className="h-4 w-4" />
             Heute
-          </Link>
-          <Link
-            href={`/${safe}/portal/admin/pipeline`}
-            className="inline-flex items-center gap-2 rounded-lg border border-hairline px-4 py-2.5 text-sm font-medium text-ink transition-colors hover:border-copper hover:text-copper"
-          >
-            <FolderKanban className="h-4 w-4" />
-            Pipeline
-          </Link>
-          <Link
-            href={`/${safe}/portal/admin/drafts`}
-            className="inline-flex items-center gap-2 rounded-lg border border-hairline px-4 py-2.5 text-sm font-medium text-ink transition-colors hover:border-copper hover:text-copper"
-          >
-            <PencilLine className="h-4 w-4" />
-            Drafts
-          </Link>
-          <Link
-            href={`/${safe}/portal/admin/templates`}
-            className="inline-flex items-center gap-2 rounded-lg border border-hairline px-4 py-2.5 text-sm font-medium text-ink transition-colors hover:border-copper hover:text-copper"
-          >
-            <BookOpen className="h-4 w-4" />
-            Templates
-          </Link>
-          <Link
-            href={`/${safe}/portal/admin/communications`}
-            className="inline-flex items-center gap-2 rounded-lg border border-hairline px-4 py-2.5 text-sm font-medium text-ink transition-colors hover:border-copper hover:text-copper"
-          >
-            <MessageSquareText className="h-4 w-4" />
-            Kommunikation
-          </Link>
-          <Link
-            href={`/${safe}/portal/admin/customers`}
-            className="inline-flex items-center gap-2 rounded-lg border border-hairline px-4 py-2.5 text-sm font-medium text-ink transition-colors hover:border-copper hover:text-copper"
-          >
-            <Users className="h-4 w-4" />
-            Kunden
           </Link>
         </>
       }
@@ -152,7 +115,7 @@ export default async function AdminPage({
           <PortalCard>
             <PortalSectionTitle
               eyebrow="Heute"
-              title="Command Center"
+              title="Schaltzentrale"
             >
               Der schnelle Überblick darüber, wo Assad jetzt handeln,
               nachfassen oder ein Update veröffentlichen sollte.
@@ -276,7 +239,7 @@ export default async function AdminPage({
                 title="Assad Assist laufen lassen"
               >
                 Prüft alle aktiven Projekte und erzeugt interne Aufgaben,
-                Diagnosis-Insights, Proposal-Hinweise, Rechnungsnachfassungen
+                Diagnose-Insights, Angebotshinweise, Rechnungsnachfassungen
                 und Update-Entwürfe. Nichts Kritisches wird automatisch an
                 Kunden gesendet.
               </PortalSectionTitle>
@@ -410,7 +373,7 @@ export default async function AdminPage({
             <PortalCard>
               <PortalSectionTitle
                 eyebrow="Inbox"
-                title="Notification Center"
+                title="Kundensignale"
               >
                 Neue Kundensignale, offene Rechnungen und Projekte, die ein
                 sichtbares Update brauchen.
@@ -508,7 +471,7 @@ export default async function AdminPage({
           <PortalCard>
             <PortalSectionTitle
               eyebrow="Heute"
-              title="Needs Attention"
+              title="Handlungsbedarf"
             >
               Automatisch erkannte Punkte, bei denen Assad nachfassen,
               erinnern oder den nächsten Beratungsschritt setzen sollte.
@@ -548,8 +511,8 @@ export default async function AdminPage({
 
           <PortalCard>
             <PortalSectionTitle
-              eyebrow="Playbook Library"
-              title="Industrie-Templates für schnelle Beratung"
+              eyebrow="Vorlagenbibliothek"
+              title="Branchenvorlagen für schnelle Beratung"
             >
               Jede Vorlage bringt Intake-Felder, Diagnosefragen, Quick Wins,
               Aufgaben, Meilensteine und Meeting-Guidance für den Admin mit.
@@ -768,7 +731,7 @@ export default async function AdminPage({
           )}
           {query.error === "website" && (
             <p className="mt-4 rounded-md border border-critical/30 bg-critical/10 px-3 py-2 text-sm text-critical">
-              Bitte eine gueltige Website eintragen.
+              Bitte eine gültige Website eintragen.
             </p>
           )}
           <div className="mt-5 grid grid-cols-4 gap-2 text-center text-[11px] text-muted">

@@ -29,16 +29,16 @@ import {
 export const dynamic = "force-dynamic";
 
 export const metadata: Metadata = {
-  title: "Draft Review | Assad Dar Portal",
+  title: "Entwürfe prüfen | Assad Dar Portal",
   robots: { index: false, follow: false },
 };
 
 const typeLabels = {
   customer_update: "Kundenupdate",
-  meeting_summary: "Meeting Summary",
-  proposal: "Proposal",
+  meeting_summary: "Meeting-Zusammenfassung",
+  proposal: "Angebot",
   final_report: "Abschlussbericht",
-  invoice_reminder: "Rechnungsreminder",
+  invoice_reminder: "Rechnungserinnerung",
   next_call_agenda: "Call-Agenda",
 };
 
@@ -70,7 +70,7 @@ export default async function AdminDraftsPage({
       user={user}
       locale={safe}
       eyebrow="Admin"
-      title="Draft Review"
+      title="Entwürfe prüfen"
       activeNav="drafts"
       backHref={`/${safe}/portal/admin`}
       actions={
@@ -98,14 +98,14 @@ export default async function AdminDraftsPage({
             eyebrow="Review"
             title="Kundenkommunikation schneller freigeben"
           >
-            Assad bekommt vorbereitete Updates, Meeting-Summaries und
+            Assad bekommt vorbereitete Updates, Meeting-Zusammenfassungen und
             Angebotsideen als editierbare Entwürfe. Erst nach Klick wird etwas
             im Kundenportal veröffentlicht.
           </PortalSectionTitle>
           <div className="grid grid-cols-2 gap-3">
             <div className="rounded-lg border border-hairline bg-surface px-4 py-3">
               <div className="text-xl font-medium text-ink">{drafts.length}</div>
-              <div className="text-[12px] text-muted">offene Drafts</div>
+              <div className="text-[12px] text-muted">offene Entwürfe</div>
             </div>
             <div className="rounded-lg border border-hairline bg-surface px-4 py-3">
               <div className="text-xl font-medium text-ink">{waitingCount}</div>
@@ -116,7 +116,7 @@ export default async function AdminDraftsPage({
       </PortalCard>
 
       {drafts.length === 0 ? (
-        <EmptyState title="Keine Drafts offen">
+        <EmptyState title="Keine Entwürfe offen">
           Aktuell gibt es keine vorbereiteten Updates, die geprüft werden
           müssen.
         </EmptyState>
