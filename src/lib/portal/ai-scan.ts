@@ -31,6 +31,9 @@ export function buildExternalAiScanPrompt(bundle: ProjectBundle) {
           .join(" | ")}`,
       ].join("\n")
     : "Website scan: not available";
+  const researchEvidence =
+    bundle.aiInsights.find((insight) => insight.title.startsWith("Research Scan:"))
+      ?.body ?? "Research scan: not available";
   const templatePrompt = [
     `Industry playbook: ${template.label}`,
     `Best for: ${template.bestFor}`,
@@ -54,6 +57,7 @@ export function buildExternalAiScanPrompt(bundle: ProjectBundle) {
     `Constraints: ${redactForExternalAi(bundle.intelligence.constraints)}`,
     `Opportunities: ${redactForExternalAi(bundle.intelligence.opportunities)}`,
     `Website evidence: ${websiteEvidence}`,
+    `Research evidence: ${redactForExternalAi(researchEvidence)}`,
     "",
     templatePrompt,
     "",

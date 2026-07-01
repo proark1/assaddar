@@ -29,6 +29,18 @@ const migrationChecks = [
       "alter table portal_payment_events enable row level security",
     ],
   },
+  {
+    file: "supabase/migrations/008_website_crawl_intelligence.sql",
+    patterns: [
+      "create table if not exists portal_website_crawl_runs",
+      "create table if not exists portal_website_crawl_pages",
+      "alter table portal_website_crawl_runs enable row level security",
+    ],
+  },
+  {
+    file: "supabase/migrations/009_website_crawl_queue_flags.sql",
+    patterns: ["add column if not exists apply_to_intelligence"],
+  },
 ];
 
 const failures = [];
@@ -71,7 +83,12 @@ if (databaseUrl) {
             'stripe_payment_intent_id',
             'paid_at'
           )) or
-          (table_name = 'portal_payment_events')
+          (table_name = 'portal_payment_events') or
+          (table_name = 'portal_website_crawl_runs' and column_name in (
+            'id',
+            'apply_to_intelligence'
+          )) or
+          (table_name = 'portal_website_crawl_pages')
         )
     `;
     const observed = new Set(rows.map((row) => `${row.table_name}.${row.column_name}`));
@@ -81,6 +98,9 @@ if (databaseUrl) {
       "portal_invoices.stripe_payment_intent_id",
       "portal_invoices.paid_at",
       "portal_payment_events.id",
+      "portal_website_crawl_runs.id",
+      "portal_website_crawl_runs.apply_to_intelligence",
+      "portal_website_crawl_pages.id",
     ]) {
       if (!observed.has(expected)) failures.push(`database missing ${expected}`);
     }
@@ -88,9 +108,19 @@ if (databaseUrl) {
     const rlsRows = await sql`
       select relname, relrowsecurity
       from pg_class
-      where relname in ('portal_payment_events', 'blog_hero_images')
+      where relname in (
+        'portal_payment_events',
+        'blog_hero_images',
+        'portal_website_crawl_runs',
+        'portal_website_crawl_pages'
+      )
     `;
-    for (const table of ["portal_payment_events", "blog_hero_images"]) {
+    for (const table of [
+      "portal_payment_events",
+      "blog_hero_images",
+      "portal_website_crawl_runs",
+      "portal_website_crawl_pages",
+    ]) {
       const row = rlsRows.find((entry) => entry.relname === table);
       if (!row?.relrowsecurity) failures.push(`database RLS is not enabled for ${table}`);
     }

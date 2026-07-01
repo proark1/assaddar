@@ -53,12 +53,33 @@ for (const name of [
   "BLOG_HERO_MAX_UPLOAD_BYTES",
   "BLOG_IMAGE_TIMEOUT_MS",
   "BLOG_IMAGE_MAX_BYTES",
+  "WEBSITE_CRAWL_MAX_PAGES",
+  "WEBSITE_CRAWL_MAX_DEPTH",
+  "WEBSITE_CRAWL_TIMEOUT_MS",
+  "WEBSITE_CRAWL_MAX_TEXT_CHARS",
+  "WEBSITE_CRAWL_RENDERED_FALLBACK_MIN_WORDS",
 ]) {
   if (!process.env[name]) continue;
   const value = Number(process.env[name]);
   if (!Number.isFinite(value) || value <= 0) {
     failures.push(`${name} must be a positive byte count`);
   }
+}
+
+if (
+  process.env.WEBSITE_CRAWL_RENDERED_FALLBACK &&
+  !["true", "false"].includes(process.env.WEBSITE_CRAWL_RENDERED_FALLBACK)
+) {
+  failures.push("WEBSITE_CRAWL_RENDERED_FALLBACK must be true or false");
+}
+
+if (
+  process.env.WEBSITE_CRAWL_RENDERED_FALLBACK === "true" &&
+  !process.env.PLAYWRIGHT_CHROMIUM_EXECUTABLE_PATH
+) {
+  warnings.push(
+    "PLAYWRIGHT_CHROMIUM_EXECUTABLE_PATH not set; rendered crawl fallback requires a Chromium runtime",
+  );
 }
 
 if (failures.length > 0) {

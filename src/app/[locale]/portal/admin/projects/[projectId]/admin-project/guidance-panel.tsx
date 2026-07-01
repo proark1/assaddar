@@ -46,7 +46,9 @@ import {
   generateProjectBriefAction,
   inviteCustomerAction,
   addMeetingNoteAction,
+  processWebsiteCrawlQueueAction,
   runAiScanAction,
+  runPublicResearchAction,
   runWebsiteCrawlAction,
   saveProjectKpiAction,
   saveProjectWorkflowAction,
@@ -926,7 +928,17 @@ export function GuidanceSidePanel({ ctx }: { ctx: AdminPanelContext }) {
                 className="inline-flex w-full items-center justify-center gap-2 rounded-lg bg-copper px-4 py-2.5 text-sm font-medium text-oncopper transition-colors hover:bg-copper-hi"
               >
                 <Eye className="h-4 w-4" />
-                Website scannen
+                Scan vormerken
+              </button>
+            </form>
+            <form action={processWebsiteCrawlQueueAction} className="mt-3">
+              <HiddenProjectFields locale={safe} projectId={projectId} />
+              <button
+                type="submit"
+                className="inline-flex w-full items-center justify-center gap-2 rounded-lg border border-hairline px-4 py-2.5 text-sm font-medium text-ink transition-colors hover:border-copper hover:text-copper"
+              >
+                <Bot className="h-4 w-4" />
+                Queue jetzt verarbeiten
               </button>
             </form>
             {latestWebsiteCrawl && (
@@ -993,6 +1005,55 @@ export function GuidanceSidePanel({ ctx }: { ctx: AdminPanelContext }) {
                 </p>
               )}
             </div>
+          </PortalCard>
+            <PortalCard>
+            <PortalSectionTitle
+              eyebrow="Research"
+              title="Competitor- und Prozessrecherche"
+            >
+              Sammelt oeffentliche Konkurrenzsignale und Prozessnotizen als
+              interne Hypothesen fuer den naechsten Beratungsschritt.
+            </PortalSectionTitle>
+            <form action={runPublicResearchAction} className="mt-5 space-y-4">
+              <HiddenProjectFields locale={safe} projectId={projectId} />
+              <div>
+                <label className="mb-1.5 block text-sm text-ink2">
+                  Thema
+                </label>
+                <input
+                  name="researchTopic"
+                  placeholder="z.B. Lead-to-offer Prozess, Customer Support, Reporting"
+                  className={fieldClass}
+                />
+              </div>
+              <div>
+                <label className="mb-1.5 block text-sm text-ink2">
+                  Wettbewerber-Websites
+                </label>
+                <textarea
+                  name="competitorUrls"
+                  placeholder="Je Zeile eine URL"
+                  className={textareaClass}
+                />
+              </div>
+              <div>
+                <label className="mb-1.5 block text-sm text-ink2">
+                  Prozessnotizen
+                </label>
+                <textarea
+                  name="processContext"
+                  placeholder="Was soll verglichen werden, welcher Prozess ist kritisch?"
+                  className={textareaClass}
+                />
+              </div>
+              <button
+                type="submit"
+                className="inline-flex w-full items-center justify-center gap-2 rounded-lg bg-copper px-4 py-2.5 text-sm font-medium text-oncopper transition-colors hover:bg-copper-hi"
+              >
+                <BookOpen className="h-4 w-4" />
+                Research Insight speichern
+              </button>
+            </form>
           </PortalCard>
             <PortalCard>
             <PortalSectionTitle

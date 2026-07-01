@@ -49,6 +49,12 @@ PORTAL_SMOKE_BASE_URL=http://127.0.0.1:3000 pnpm test:portal
 - Admin dashboard loads command center, automation, leads, inbox, timeline, and
   project filters.
 - Admin project creation validates required company data.
+- Creating a project with a website creates a queued Website Intelligence run
+  without blocking project creation.
+- Admin project guidance can process the website crawl queue and then shows
+  completed/failed crawl status plus source pages.
+- Competitor/process research accepts competitor URLs and stores an internal
+  Research Scan insight.
 - Customer invite and assignment flows create internal audit updates.
 - Publishing customer updates sends notification only when preference allows.
 - Blog hero generation and compression require admin access.
@@ -61,3 +67,5 @@ PORTAL_SMOKE_BASE_URL=http://127.0.0.1:3000 pnpm test:portal
   are rejected.
 - Stripe webhook rejects missing/invalid signatures.
 - Cron endpoint rejects missing `CRON_SECRET` in production.
+- `/api/cron/website-crawls` processes queued crawls only with the cron secret
+  in production.

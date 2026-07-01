@@ -26,6 +26,9 @@ importers:
       next:
         specifier: ^16.2.9
         version: 16.2.9(react-dom@19.2.7(react@19.2.7))(react@19.2.7)
+      playwright-core:
+        specifier: ^1.61.1
+        version: 1.61.1
       postgres:
         specifier: ^3.4.9
         version: 3.4.9
@@ -789,6 +792,11 @@ packages:
   picocolors@1.1.1:
     resolution: {integrity: sha512-xceH2snhtb5M9liqDsmEw56le376mTZkEX/jEb/RxNFyegNul7eNslCXP9FDj/Lcu0X8KEyMceP2ntpaHrDEVA==}
 
+  playwright-core@1.61.1:
+    resolution: {integrity: sha512-h7Qlt6m4REp25qvIdvbDtVmD4LqVXfpRxhORv9L0jzETM05p4fuPJ3dKyuSXQxDSbXnmS79HAgi9589lGSpLkg==}
+    engines: {node: '>=18'}
+    hasBin: true
+
   postal-mime@2.7.4:
     resolution: {integrity: sha512-0WdnFQYUrPGGTFu1uOqD2s7omwua8xaeYGdO6rb88oD5yJ/4pPHDA4sdWqfD8wQVfCny563n/HQS7zTFft+f/g==}
 
@@ -1405,6 +1413,8 @@ snapshots:
   parse-srcset@1.0.2: {}
 
   picocolors@1.1.1: {}
+
+  playwright-core@1.61.1: {}
 
   postal-mime@2.7.4: {}
 

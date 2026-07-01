@@ -282,7 +282,10 @@ function normalizeStore(store: PortalStore): PortalStore {
     invoices: store.invoices ?? [],
     paymentEvents: store.paymentEvents ?? [],
     aiInsights: store.aiInsights ?? [],
-    websiteCrawlRuns: store.websiteCrawlRuns ?? [],
+    websiteCrawlRuns: (store.websiteCrawlRuns ?? []).map((run) => ({
+      ...run,
+      applyToIntelligence: run.applyToIntelligence ?? true,
+    })),
     websiteCrawlPages: store.websiteCrawlPages ?? [],
     authTokens: store.authTokens ?? [],
     templateOverrides: store.templateOverrides ?? [],

@@ -374,6 +374,8 @@ function toWebsiteCrawlRun(row: Row): WebsiteCrawlRun {
     pageCount: number(row.page_count),
     summary: value(row.summary),
     error: value(row.error) || undefined,
+    applyToIntelligence:
+      row.apply_to_intelligence == null ? true : boolean(row.apply_to_intelligence),
     createdBy: value(row.created_by),
     createdAt: iso(row.created_at),
   };
@@ -1628,12 +1630,14 @@ async function writeStoreRows(tx: SqlLike, store: PortalStore) {
       await tx`
         insert into portal_website_crawl_runs (
           id, project_id, website_url, status, started_at, completed_at,
-          page_count, summary, error, created_by, created_at
+          page_count, summary, error, apply_to_intelligence, created_by,
+          created_at
         )
         values (
           ${run.id}, ${run.projectId}, ${run.websiteUrl}, ${run.status},
           ${run.startedAt}, ${run.completedAt ?? null}, ${run.pageCount},
-          ${run.summary}, ${run.error ?? null}, ${run.createdBy}, ${run.createdAt}
+          ${run.summary}, ${run.error ?? null}, ${run.applyToIntelligence},
+          ${run.createdBy}, ${run.createdAt}
         )
         on conflict (id) do update set
           website_url = excluded.website_url,
@@ -1642,7 +1646,8 @@ async function writeStoreRows(tx: SqlLike, store: PortalStore) {
           completed_at = excluded.completed_at,
           page_count = excluded.page_count,
           summary = excluded.summary,
-          error = excluded.error
+          error = excluded.error,
+          apply_to_intelligence = excluded.apply_to_intelligence
       `;
     }
 

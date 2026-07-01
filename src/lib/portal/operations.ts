@@ -2245,7 +2245,8 @@ function projectText(bundle: ProjectBundle) {
       .filter(
         (insight) =>
           insight.title.startsWith("AI Scan:") ||
-          insight.title.startsWith("Website Intelligence:"),
+          insight.title.startsWith("Website Intelligence:") ||
+          insight.title.startsWith("Research Scan:"),
       )
       .slice(0, 3)
       .flatMap((insight) => [insight.title, insight.body]),

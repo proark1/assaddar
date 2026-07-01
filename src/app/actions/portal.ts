@@ -18,9 +18,10 @@ import {
 } from "@/lib/portal/crm";
 import { sendPortalEmail } from "@/lib/portal/email";
 import {
-  crawlWebsite,
-  formatWebsiteIntelligenceReport,
-} from "@/lib/portal/website-scraper";
+  enqueueWebsiteCrawlRun,
+  processWebsiteCrawlQueue,
+} from "@/lib/portal/website-intelligence";
+import { normalizeWebsiteUrl } from "@/lib/portal/website-scraper";
 import { getAuthCopy } from "@/lib/portal/auth-copy";
 import {
   createProjectForAdmin,
@@ -35,6 +36,7 @@ import {
 } from "@/lib/portal/store";
 import { createInvoiceCheckoutUrl } from "@/lib/portal/payments";
 import { hashPassword } from "@/lib/portal/password";
+import { buildPublicResearchReport } from "@/lib/portal/research";
 import { savePortalFile } from "@/lib/portal/storage";
 import { isFileLike, readPortalUpload } from "@/lib/portal/uploads";
 import {
@@ -91,153 +93,6 @@ import {
   visibility,
 } from "./portal-action-utils";
 
-async function crawlAndStoreWebsiteIntelligence({
-  projectId,
-  userId,
-  website,
-  applyToIntelligence,
-}: {
-  projectId: string;
-  userId: string;
-  website: string;
-  applyToIntelligence: boolean;
-}) {
-  const startedAt = new Date().toISOString();
-  let crawlResult: Awaited<ReturnType<typeof crawlWebsite>> | null = null;
-  let crawlError = "";
-
-  try {
-    crawlResult = await crawlWebsite(website);
-    crawlError = crawlResult.error ?? "";
-  } catch (error) {
-    crawlError = error instanceof Error ? error.message : "Website crawl failed.";
-  }
-
-  const status = crawlResult && !crawlError ? "completed" : "failed";
-  const normalizedUrl = crawlResult?.normalizedUrl || website;
-  const report = crawlResult
-    ? formatWebsiteIntelligenceReport(crawlResult.intelligence)
-    : `Website crawl failed for ${website}.\n\n${crawlError}`;
-  const host = (() => {
-    try {
-      return new URL(normalizedUrl).hostname.replace(/^www\./, "");
-    } catch {
-      return "website";
-    }
-  })();
-
-  return mutateStore((store) => {
-    const nextBundle = getProjectBundle(store, projectId);
-    if (!nextBundle) return false;
-    const now = new Date().toISOString();
-    const runId = id("crawl");
-    const organization = store.organizations.find(
-      (entry) => entry.id === nextBundle.organization.id,
-    );
-    if (organization) organization.website = normalizedUrl;
-
-    store.websiteCrawlRuns.push({
-      id: runId,
-      projectId,
-      websiteUrl: normalizedUrl,
-      status,
-      startedAt,
-      completedAt: now,
-      pageCount: crawlResult?.pages.length ?? 0,
-      summary: crawlResult?.intelligence.summary ?? "",
-      error: crawlError || undefined,
-      createdBy: userId,
-      createdAt: startedAt,
-    });
-
-    for (const page of crawlResult?.pages ?? []) {
-      store.websiteCrawlPages.push({
-        id: id("page"),
-        runId,
-        projectId,
-        url: page.url,
-        title: page.title,
-        description: page.description,
-        pageType: page.pageType,
-        statusCode: page.statusCode,
-        depth: page.depth,
-        wordCount: page.wordCount,
-        textExcerpt: page.textExcerpt,
-        discoveredFrom: page.discoveredFrom,
-        crawledAt: page.crawledAt,
-        error: page.error,
-      });
-    }
-
-    store.aiInsights.push({
-      id: id("insight"),
-      projectId,
-      title: `Website Intelligence: ${host} (${status})`,
-      body: report,
-      kind: status === "completed" ? "guidance" : "risk",
-      createdAt: now,
-    });
-
-    if (crawlResult && applyToIntelligence) {
-      const current = getProjectBundle(store, projectId)?.intelligence;
-      if (current) {
-        const intelligence = crawlResult.intelligence;
-        upsertIntelligence(store, projectId, {
-          companyContext: appendNote(
-            current.companyContext,
-            "Website Scan: Unternehmenskontext",
-            intelligence.companyContext,
-          ),
-          stakeholders: current.stakeholders,
-          issues: appendNote(
-            current.issues,
-            "Website Scan: Risiken und Luecken",
-            intelligence.issues,
-          ),
-          goals: current.goals,
-          currentTools: appendNote(
-            current.currentTools,
-            "Website Scan: digitale Signale",
-            intelligence.currentTools,
-          ),
-          dataSituation: appendNote(
-            current.dataSituation,
-            "Website Scan: Quellen und Datenlage",
-            intelligence.dataSituation,
-          ),
-          constraints: appendNote(
-            current.constraints,
-            "Website Scan: Validierung",
-            intelligence.constraints,
-          ),
-          opportunities: appendNote(
-            current.opportunities,
-            "Website Scan: AI- und Digitalisierungshebel",
-            intelligence.opportunities,
-          ),
-          internalNotes: appendNote(
-            current.internalNotes,
-            "Website Scan: interne Quellen",
-            intelligence.internalNotes,
-          ),
-        });
-      }
-    }
-
-    addAuditUpdate({
-      store,
-      projectId,
-      userId,
-      title: "Website Intelligence Scan",
-      body: `${normalizedUrl} wurde gescannt. Status: ${status}. Seiten: ${
-        crawlResult?.pages.length ?? 0
-      }.`,
-    });
-
-    return status === "completed";
-  });
-}
-
 export async function createProjectAction(formData: FormData) {
   const locale = safeLocale(formData.get("locale"));
   const user = await requireAdminAction(locale);
@@ -255,9 +110,17 @@ export async function createProjectAction(formData: FormData) {
     text(formData, "projectName") || template?.projectName || "Neues ASDAR Projekt";
   const summary = text(formData, "summary") || template?.summary || "";
   const customerEmail = text(formData, "customerEmail").toLowerCase();
-  const website = text(formData, "website");
+  const rawWebsite = text(formData, "website");
+  let website = "";
 
   if (!company) redirect(`/${locale}/portal/admin?error=company`);
+  if (rawWebsite) {
+    try {
+      website = normalizeWebsiteUrl(rawWebsite);
+    } catch {
+      redirect(`/${locale}/portal/admin?error=website`);
+    }
+  }
 
   const projectId = await createProjectForAdmin({
     userId: user.id,
@@ -451,11 +314,12 @@ export async function createProjectAction(formData: FormData) {
   }
 
   if (website) {
-    await crawlAndStoreWebsiteIntelligence({
+    await enqueueWebsiteCrawlRun({
       projectId,
       userId: user.id,
       website,
       applyToIntelligence: true,
+      source: "project_create",
     });
   }
 
@@ -3295,19 +3159,80 @@ export async function runWebsiteCrawlAction(formData: FormData) {
     redirect(`${adminProjectPath(locale, projectId)}?error=website`);
   }
 
-  const saved = await crawlAndStoreWebsiteIntelligence({
-    projectId,
-    userId: user.id,
-    website,
-    applyToIntelligence,
-  });
+  let runId: string | null = null;
+  try {
+    runId = await enqueueWebsiteCrawlRun({
+      projectId,
+      userId: user.id,
+      website,
+      applyToIntelligence,
+      source: "admin_manual",
+    });
+  } catch {
+    redirect(`${adminProjectPath(locale, projectId)}?view=guidance&error=website`);
+  }
 
   revalidateProjectViews(locale, projectId);
   redirect(
     `${adminProjectPath(locale, projectId)}?view=guidance&${
-      saved ? "saved=website" : "error=website"
+      runId ? "saved=website-queued" : "error=website"
     }`,
   );
+}
+
+export async function processWebsiteCrawlQueueAction(formData: FormData) {
+  const locale = safeLocale(formData.get("locale"));
+  await requireAdminAction(locale);
+  const projectId = text(formData, "projectId");
+  const result = await processWebsiteCrawlQueue({ limit: 2 });
+
+  if (projectId) revalidateProjectViews(locale, projectId);
+  revalidatePath(`/${locale}/portal/admin`);
+  redirect(
+    `${adminProjectPath(locale, projectId)}?view=guidance&saved=website-processed&completed=${result.completed}&failed=${result.failed}`,
+  );
+}
+
+export async function runPublicResearchAction(formData: FormData) {
+  const locale = safeLocale(formData.get("locale"));
+  const user = await requireAdminAction(locale);
+  const projectId = text(formData, "projectId");
+  const topic = text(formData, "researchTopic");
+  const processContext = text(formData, "processContext");
+  const competitorUrls = lines(formData, "competitorUrls");
+  const sourceStore = await readStore();
+  const bundle = getProjectBundle(sourceStore, projectId);
+  if (!bundle) redirect(`/${locale}/portal/admin`);
+
+  const report = await buildPublicResearchReport({
+    bundle,
+    topic,
+    processContext,
+    competitorUrls,
+  });
+
+  await mutateStore((store) => {
+    if (!getProjectBundle(store, projectId)) return;
+    const now = new Date().toISOString();
+    store.aiInsights.push({
+      id: id("insight"),
+      projectId,
+      title: `Research Scan: ${topic || "Competitors and processes"}`,
+      body: report,
+      kind: "guidance",
+      createdAt: now,
+    });
+    addAuditUpdate({
+      store,
+      projectId,
+      userId: user.id,
+      title: "Research Scan gespeichert",
+      body: `Thema: ${topic || "Competitors and processes"}. URLs: ${competitorUrls.length}.`,
+    });
+  });
+
+  revalidateProjectViews(locale, projectId);
+  redirect(`${adminProjectPath(locale, projectId)}?view=guidance&saved=research`);
 }
 
 export async function runAiScanAction(formData: FormData) {

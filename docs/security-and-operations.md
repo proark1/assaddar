@@ -20,6 +20,8 @@
 - Supabase migrations enable RLS and expose portal tables/storage only to the
   service role.
 - External AI scan prompts redact direct identifiers unless explicitly enabled.
+- Website Intelligence crawls run as queued internal jobs, respect robots.txt
+  and same-site crawl limits, and store source pages as admin-only evidence.
 
 ## Production Requirements
 
@@ -34,6 +36,12 @@ Before real customer data:
 6. Enable Supabase backups and document one restore drill.
 7. Keep `EXTERNAL_AI_SEND_IDENTIFIERS=false` unless the customer agreement and
    data-processing setup explicitly permit identifiers.
+8. Run Supabase migrations through `009_website_crawl_queue_flags.sql`.
+9. Schedule `/api/cron/website-crawls` with `Authorization: Bearer $CRON_SECRET`.
+   Vercel uses `vercel.json`; Railway needs a scheduler or monitor to call the
+   endpoint.
+10. Leave `WEBSITE_CRAWL_RENDERED_FALLBACK=false` unless the deployment has a
+    working Chromium runtime and `PLAYWRIGHT_CHROMIUM_EXECUTABLE_PATH`.
 
 ## Remaining Hardening Backlog
 

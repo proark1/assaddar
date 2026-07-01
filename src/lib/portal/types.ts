@@ -174,6 +174,7 @@ export type WebsiteCrawlRun = {
   pageCount: number;
   summary: string;
   error?: string;
+  applyToIntelligence: boolean;
   createdBy: string;
   createdAt: string;
 };

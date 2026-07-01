@@ -766,6 +766,11 @@ export default async function AdminPage({
               Bitte mindestens den Unternehmensnamen eintragen.
             </p>
           )}
+          {query.error === "website" && (
+            <p className="mt-4 rounded-md border border-critical/30 bg-critical/10 px-3 py-2 text-sm text-critical">
+              Bitte eine gueltige Website eintragen.
+            </p>
+          )}
           <div className="mt-5 grid grid-cols-4 gap-2 text-center text-[11px] text-muted">
             {["Kunde", "Template", "Problem", "Start"].map((step, index) => (
               <div key={step} className="rounded-md border border-hairline bg-bg px-2 py-2">

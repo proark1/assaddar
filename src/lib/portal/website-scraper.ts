@@ -6,6 +6,7 @@ const DEFAULT_MAX_PAGES = 14;
 const DEFAULT_MAX_DEPTH = 2;
 const DEFAULT_TIMEOUT_MS = 8000;
 const DEFAULT_MAX_TEXT_CHARS = 4500;
+const DEFAULT_RENDER_FALLBACK_MIN_WORDS = 80;
 
 export type ScrapedWebsitePage = {
   url: string;
@@ -54,6 +55,10 @@ function intEnv(name: string, fallback: number, min: number, max: number) {
   const parsed = Number.parseInt(process.env[name] ?? "", 10);
   if (!Number.isFinite(parsed)) return fallback;
   return Math.min(max, Math.max(min, parsed));
+}
+
+function boolEnv(name: string) {
+  return process.env[name] === "true";
 }
 
 function normalizeHost(host: string) {
@@ -259,6 +264,35 @@ async function fetchWithTimeout(url: string, timeoutMs: number) {
   }
 }
 
+async function renderWithPlaywright(url: string, timeoutMs: number) {
+  if (!boolEnv("WEBSITE_CRAWL_RENDERED_FALLBACK")) return null;
+  try {
+    const dynamicImport = new Function(
+      "specifier",
+      "return import(specifier)",
+    ) as (specifier: string) => Promise<any>;
+    const playwright = await dynamicImport("playwright-core").catch(() =>
+      dynamicImport("playwright"),
+    );
+    const browser = await playwright.chromium.launch({
+      headless: true,
+      executablePath:
+        process.env.PLAYWRIGHT_CHROMIUM_EXECUTABLE_PATH || undefined,
+    });
+    try {
+      const page = await browser.newPage({ userAgent: USER_AGENT });
+      page.setDefaultTimeout(timeoutMs);
+      await page.goto(url, { waitUntil: "networkidle", timeout: timeoutMs });
+      const html = await page.content();
+      return { html, url: page.url() || url };
+    } finally {
+      await browser.close();
+    }
+  } catch {
+    return null;
+  }
+}
+
 async function readRobots(root: URL, timeoutMs: number): Promise<RobotsRules> {
   try {
     const robotsUrl = new URL("/robots.txt", root);
@@ -380,13 +414,30 @@ async function scrapePage(
       };
     }
 
-    const html = await response.text();
+    let html = await response.text();
+    let finalUrl = response.url || entry.url;
+    const fallbackMinWords = intEnv(
+      "WEBSITE_CRAWL_RENDERED_FALLBACK_MIN_WORDS",
+      DEFAULT_RENDER_FALLBACK_MIN_WORDS,
+      10,
+      500,
+    );
+    const initialText = visibleText(html);
+    const initialWords = initialText.split(/\s+/).filter(Boolean).length;
+    if (initialWords < fallbackMinWords) {
+      const rendered = await renderWithPlaywright(finalUrl, timeoutMs);
+      if (rendered) {
+        html = rendered.html;
+        finalUrl = rendered.url;
+      }
+    }
+
     const title = cleanText(firstMatch(html, /<title[^>]*>([\s\S]*?)<\/title>/i));
     const description = extractMetaDescription(html);
     const headings = extractHeadings(html);
     const text = visibleText(html);
-    const links = extractLinks(html, response.url || entry.url, root);
-    const pageType = classifyPage(response.url || entry.url, title, headings);
+    const links = extractLinks(html, finalUrl, root);
+    const pageType = classifyPage(finalUrl, title, headings);
     const textExcerpt = text.slice(0, maxTextChars);
     const wordCount = textExcerpt
       .split(/\s+/)
@@ -394,7 +445,7 @@ async function scrapePage(
       .filter(Boolean).length;
 
     return {
-      url: canonicalUrl(response.url || entry.url) || entry.url,
+      url: canonicalUrl(finalUrl) || entry.url,
       title,
       description,
       pageType,
