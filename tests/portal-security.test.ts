@@ -2,6 +2,7 @@ import assert from "node:assert/strict";
 import test from "node:test";
 import { sanitizeRenderedHtml } from "../src/lib/markdown";
 import { buildExternalAiScanPrompt } from "../src/lib/portal/ai-scan";
+import { portalProductionConfigErrors } from "../src/lib/portal/config";
 import { parseContactForm } from "../src/lib/portal/contact-validation";
 import { notifyAdminAboutInteraction } from "../src/lib/portal/crm";
 import { loginFailureRateLimitKey } from "../src/lib/portal/login-attempts";
@@ -143,6 +144,64 @@ test("trustedRequestOrigin rejects cross-site browser posts", () => {
   writableEnv.NODE_ENV = originalNodeEnv;
   if (originalAppUrl === undefined) delete process.env.APP_URL;
   else process.env.APP_URL = originalAppUrl;
+});
+
+test("portal production readiness does not require CRM automation integrations", () => {
+  const keys = [
+    "NODE_ENV",
+    "AUTH_SECRET",
+    "NEXTAUTH_SECRET",
+    "PORTAL_DATA_BACKEND",
+    "DATABASE_URL",
+    "POSTGRES_URL",
+    "PORTAL_FILE_STORAGE",
+    "SUPABASE_URL",
+    "SUPABASE_SERVICE_ROLE_KEY",
+    "SUPABASE_STORAGE_BUCKET",
+    "RESEND_API_KEY",
+    "CONTACT_FROM_EMAIL",
+    "RESEND_WEBHOOK_SECRET",
+    "GEMINI_API_KEY",
+    "GEMINI_MODEL",
+    "TELEGRAM_BOT_TOKEN",
+    "TELEGRAM_ADMIN_CHAT_ID",
+    "WHATSAPP_BUSINESS_TOKEN",
+    "WHATSAPP_PHONE_NUMBER_ID",
+    "WHATSAPP_ADMIN_PHONE",
+  ] as const;
+  const original = new Map(keys.map((key) => [key, process.env[key]]));
+  const writableEnv = process.env as Record<string, string | undefined>;
+
+  try {
+    writableEnv.NODE_ENV = "production";
+    process.env.AUTH_SECRET = "x".repeat(32);
+    delete process.env.NEXTAUTH_SECRET;
+    process.env.PORTAL_DATA_BACKEND = "postgres";
+    process.env.DATABASE_URL = "postgres://example";
+    delete process.env.POSTGRES_URL;
+    process.env.PORTAL_FILE_STORAGE = "supabase";
+    process.env.SUPABASE_URL = "https://supabase.example";
+    process.env.SUPABASE_SERVICE_ROLE_KEY = "service-role";
+    process.env.SUPABASE_STORAGE_BUCKET = "portal-files";
+    process.env.RESEND_API_KEY = "resend";
+    process.env.CONTACT_FROM_EMAIL = "Assad Dar <portal@assad-dar.de>";
+    delete process.env.RESEND_WEBHOOK_SECRET;
+    delete process.env.GEMINI_API_KEY;
+    delete process.env.GEMINI_MODEL;
+    delete process.env.TELEGRAM_BOT_TOKEN;
+    delete process.env.TELEGRAM_ADMIN_CHAT_ID;
+    delete process.env.WHATSAPP_BUSINESS_TOKEN;
+    delete process.env.WHATSAPP_PHONE_NUMBER_ID;
+    delete process.env.WHATSAPP_ADMIN_PHONE;
+
+    assert.deepEqual(portalProductionConfigErrors(), []);
+  } finally {
+    for (const key of keys) {
+      const value = original.get(key);
+      if (value === undefined) delete writableEnv[key];
+      else writableEnv[key] = value;
+    }
+  }
 });
 
 test("parseContactForm rejects invalid and overlong contact input", () => {
