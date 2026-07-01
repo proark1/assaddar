@@ -55,6 +55,8 @@ PORTAL_SMOKE_BASE_URL=http://127.0.0.1:3000 pnpm test:portal
   completed/failed crawl status plus source pages.
 - Competitor/process research accepts competitor URLs and stores an internal
   Research Scan insight.
+- Admin delivery can rate tasks by benefit/effort and both admin/customer
+  project views render the priority matrix when rated items exist.
 - Customer invite and assignment flows create internal audit updates.
 - Publishing customer updates sends notification only when preference allows.
 - Blog hero generation and compression require admin access.

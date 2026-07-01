@@ -92,6 +92,11 @@ export function taskStatus(value: string): ProjectTask["status"] {
   return "todo";
 }
 
+export function priorityMatrixLevel(value: string): ProjectTask["benefit"] {
+  if (value === "low" || value === "high") return value;
+  return undefined;
+}
+
 export function milestoneStatus(value: string): ProjectMilestone["status"] {
   if (value === "done" || value === "active" || value === "planned") {
     return value;

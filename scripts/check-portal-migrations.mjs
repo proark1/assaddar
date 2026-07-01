@@ -41,6 +41,15 @@ const migrationChecks = [
     file: "supabase/migrations/009_website_crawl_queue_flags.sql",
     patterns: ["add column if not exists apply_to_intelligence"],
   },
+  {
+    file: "supabase/migrations/010_project_task_priority_matrix.sql",
+    patterns: [
+      "add column if not exists benefit",
+      "add column if not exists effort",
+      "portal_project_tasks_benefit_check",
+      "portal_project_tasks_effort_check",
+    ],
+  },
 ];
 
 const failures = [];
@@ -88,7 +97,11 @@ if (databaseUrl) {
             'id',
             'apply_to_intelligence'
           )) or
-          (table_name = 'portal_website_crawl_pages')
+          (table_name = 'portal_website_crawl_pages') or
+          (table_name = 'portal_project_tasks' and column_name in (
+            'benefit',
+            'effort'
+          ))
         )
     `;
     const observed = new Set(rows.map((row) => `${row.table_name}.${row.column_name}`));
@@ -101,6 +114,8 @@ if (databaseUrl) {
       "portal_website_crawl_runs.id",
       "portal_website_crawl_runs.apply_to_intelligence",
       "portal_website_crawl_pages.id",
+      "portal_project_tasks.benefit",
+      "portal_project_tasks.effort",
     ]) {
       if (!observed.has(expected)) failures.push(`database missing ${expected}`);
     }

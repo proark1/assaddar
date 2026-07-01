@@ -81,6 +81,7 @@ import {
   markerLine,
   milestoneStatus,
   notifyProjectCustomers,
+  priorityMatrixLevel,
   randomTemporaryPassword,
   requireAdminAction,
   requireProjectAccessForAction,
@@ -208,6 +209,8 @@ export async function createProjectAction(formData: FormData) {
           title: `Pilot vorbereiten: ${setupPilot}`,
           owner: "assad",
           status: "todo",
+          benefit: "high",
+          effort: "low",
           visibleToCustomer: true,
           createdAt: now,
         });
@@ -1185,6 +1188,8 @@ export async function completeSetupWizardAction(formData: FormData) {
         : "Pilotprozess konkretisieren",
       owner: "assad",
       status: "todo",
+      benefit: "high",
+      effort: "low",
       visibleToCustomer: true,
       createdAt: now,
     });
@@ -2104,6 +2109,8 @@ export async function addTaskAction(formData: FormData) {
   const projectId = text(formData, "projectId");
   const title = text(formData, "title") || "Neue Aufgabe";
   const visibleToCustomer = checkbox(formData, "visibleToCustomer");
+  const benefit = priorityMatrixLevel(text(formData, "benefit")) ?? "high";
+  const effort = priorityMatrixLevel(text(formData, "effort")) ?? "low";
 
   await mutateStore((store) => {
     if (!getProjectBundle(store, projectId)) return;
@@ -2118,6 +2125,8 @@ export async function addTaskAction(formData: FormData) {
           : text(formData, "status") === "doing"
             ? "doing"
             : "todo",
+      benefit,
+      effort,
       dueDate: text(formData, "dueDate") || undefined,
       visibleToCustomer,
       createdAt: new Date().toISOString(),
@@ -2143,7 +2152,7 @@ export async function addTaskAction(formData: FormData) {
 
   revalidatePath(adminProjectPath(locale, projectId));
   revalidatePath(`/${locale}/portal/projects/${projectId}`);
-  redirect(`${adminProjectPath(locale, projectId)}?saved=task`);
+  redirect(`${adminProjectPath(locale, projectId)}?view=delivery&saved=task`);
 }
 
 export async function addMilestoneAction(formData: FormData) {
@@ -2198,6 +2207,10 @@ export async function updateTaskStatusAction(formData: FormData) {
   const projectId = text(formData, "projectId");
   const taskId = text(formData, "taskId");
   const nextStatus = taskStatus(text(formData, "status"));
+  const hasBenefit = formData.has("benefit");
+  const hasEffort = formData.has("effort");
+  const nextBenefit = priorityMatrixLevel(text(formData, "benefit"));
+  const nextEffort = priorityMatrixLevel(text(formData, "effort"));
 
   await mutateStore((store) => {
     const task = store.tasks.find(
@@ -2206,7 +2219,22 @@ export async function updateTaskStatusAction(formData: FormData) {
     if (!task || !getProjectBundle(store, projectId)) return;
 
     const previousStatus = task.status;
+    const previousBenefit = task.benefit;
+    const previousEffort = task.effort;
     task.status = nextStatus;
+    if (hasBenefit) task.benefit = nextBenefit;
+    if (hasEffort) task.effort = nextEffort;
+    const matrixChanged =
+      previousBenefit !== task.benefit || previousEffort !== task.effort;
+    if (matrixChanged) {
+      addAuditUpdate({
+        store,
+        projectId,
+        userId: user.id,
+        title: "Matrixwertung geaendert",
+        body: `"${task.title}" wurde in der Aufwand-Nutzen-Matrix aktualisiert.`,
+      });
+    }
     addAuditUpdate({
       store,
       projectId,
@@ -2218,7 +2246,7 @@ export async function updateTaskStatusAction(formData: FormData) {
 
   revalidatePath(adminProjectPath(locale, projectId));
   revalidatePath(`/${locale}/portal/projects/${projectId}`);
-  redirect(`${adminProjectPath(locale, projectId)}?saved=task-status`);
+  redirect(`${adminProjectPath(locale, projectId)}?view=delivery&saved=task-status`);
 }
 
 export async function updateMilestoneStatusAction(formData: FormData) {

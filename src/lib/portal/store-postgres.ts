@@ -232,14 +232,22 @@ function toProjectTask(row: Row): ProjectTask {
     owner: value(row.owner) === "customer" ? "customer" : "assad",
     status:
       value(row.status) === "done"
-        ? "done"
-        : value(row.status) === "doing"
-          ? "doing"
-          : "todo",
+          ? "done"
+          : value(row.status) === "doing"
+            ? "doing"
+            : "todo",
+    benefit: priorityMatrixLevel(row.benefit),
+    effort: priorityMatrixLevel(row.effort),
     dueDate: dateOnly(row.due_date),
     visibleToCustomer: boolean(row.visible_to_customer),
     createdAt: iso(row.created_at),
   };
+}
+
+function priorityMatrixLevel(value_: unknown): ProjectTask["benefit"] {
+  const raw = value(value_);
+  if (raw === "low" || raw === "high") return raw;
+  return undefined;
 }
 
 function toProjectMilestone(row: Row): ProjectMilestone {
@@ -1294,6 +1302,8 @@ export async function readPostgresStore(
             : value(row.status) === "doing"
               ? "doing"
               : "todo",
+        benefit: priorityMatrixLevel(row.benefit),
+        effort: priorityMatrixLevel(row.effort),
         dueDate: dateOnly(row.due_date),
         visibleToCustomer: boolean(row.visible_to_customer),
         createdAt: iso(row.created_at),
@@ -1520,12 +1530,14 @@ async function writeStoreRows(tx: SqlLike, store: PortalStore) {
 
     for (const task of store.tasks) {
       await tx`
-        insert into portal_project_tasks (id, project_id, title, owner, status, due_date, visible_to_customer, created_at)
-        values (${task.id}, ${task.projectId}, ${task.title}, ${task.owner}, ${task.status}, ${task.dueDate ?? null}, ${task.visibleToCustomer}, ${task.createdAt})
+        insert into portal_project_tasks (id, project_id, title, owner, status, benefit, effort, due_date, visible_to_customer, created_at)
+        values (${task.id}, ${task.projectId}, ${task.title}, ${task.owner}, ${task.status}, ${task.benefit ?? null}, ${task.effort ?? null}, ${task.dueDate ?? null}, ${task.visibleToCustomer}, ${task.createdAt})
         on conflict (id) do update set
           title = excluded.title,
           owner = excluded.owner,
           status = excluded.status,
+          benefit = excluded.benefit,
+          effort = excluded.effort,
           due_date = excluded.due_date,
           visible_to_customer = excluded.visible_to_customer
       `;

@@ -73,6 +73,7 @@ import {
   PortalSectionTitle,
   textareaClass,
 } from "@/components/portal/chrome";
+import { ProcessPriorityMatrix } from "@/components/portal/priority-matrix";
 import { ArchiveProjectConfirm } from "@/components/portal/destructive-actions";
 import { amountInputValue, HiddenProjectFields, type AdminPanelContext } from "./shared";
 
@@ -125,6 +126,17 @@ export function DeliveryPanel({ ctx }: { ctx: AdminPanelContext }) {
 
   return (
     <>
+            <PortalCard>
+            <PortalSectionTitle
+              eyebrow="Priorisierung"
+              title="Aufwand gegen Nutzen"
+            >
+              Kundensichtbare Prozesse erscheinen auch in der Kundenansicht.
+            </PortalSectionTitle>
+            <div className="mt-5">
+              <ProcessPriorityMatrix tasks={bundle.tasks} showUnrated />
+            </div>
+          </PortalCard>
             <PortalCard>
             <PortalSectionTitle eyebrow="Dateien" title="Upload" />
             <form
@@ -317,12 +329,12 @@ export function DeliveryPanel({ ctx }: { ctx: AdminPanelContext }) {
             </div>
           </PortalCard>
             <PortalCard>
-            <PortalSectionTitle eyebrow="Aufgaben" title="Tasks" />
+            <PortalSectionTitle eyebrow="Aufgaben" title="Prozesse & Tasks" />
             <form action={addTaskAction} className="mt-5 space-y-3">
               <HiddenProjectFields locale={safe} projectId={projectId} />
               <input
                 name="title"
-                placeholder="Aufgabe"
+                placeholder="Prozess, Use Case oder Aufgabe"
                 className={fieldClass}
               />
               <div className="grid grid-cols-2 gap-3">
@@ -334,6 +346,16 @@ export function DeliveryPanel({ ctx }: { ctx: AdminPanelContext }) {
                   <option value="todo">Todo</option>
                   <option value="doing">Doing</option>
                   <option value="done">Done</option>
+                </select>
+              </div>
+              <div className="grid grid-cols-2 gap-3">
+                <select name="benefit" defaultValue="high" className={fieldClass}>
+                  <option value="high">Hoher Nutzen</option>
+                  <option value="low">Wenig Nutzen</option>
+                </select>
+                <select name="effort" defaultValue="low" className={fieldClass}>
+                  <option value="low">Wenig Aufwand</option>
+                  <option value="high">Hoher Aufwand</option>
                 </select>
               </div>
               <input name="dueDate" type="date" className={fieldClass} />
@@ -370,7 +392,7 @@ export function DeliveryPanel({ ctx }: { ctx: AdminPanelContext }) {
                     </div>
                     <form
                       action={updateTaskStatusAction}
-                      className="flex items-center gap-2"
+                      className="grid gap-2 sm:grid-cols-[minmax(0,1fr)_minmax(0,1fr)_minmax(0,1fr)_40px]"
                     >
                       <HiddenProjectFields
                         locale={safe}
@@ -386,10 +408,28 @@ export function DeliveryPanel({ ctx }: { ctx: AdminPanelContext }) {
                         <option value="doing">Doing</option>
                         <option value="done">Done</option>
                       </select>
+                      <select
+                        name="benefit"
+                        defaultValue={task.benefit ?? ""}
+                        className={fieldClass}
+                      >
+                        <option value="">Keine Matrix</option>
+                        <option value="high">Hoher Nutzen</option>
+                        <option value="low">Wenig Nutzen</option>
+                      </select>
+                      <select
+                        name="effort"
+                        defaultValue={task.effort ?? ""}
+                        className={fieldClass}
+                      >
+                        <option value="">Keine Matrix</option>
+                        <option value="low">Wenig Aufwand</option>
+                        <option value="high">Hoher Aufwand</option>
+                      </select>
                       <button
                         type="submit"
-                        aria-label="Aufgabenstatus speichern"
-                        className="inline-flex h-9 w-9 shrink-0 items-center justify-center rounded-lg border border-hairline text-ink2 transition-colors hover:border-copper hover:text-copper"
+                        aria-label="Aufgabe speichern"
+                        className="inline-flex h-10 w-10 shrink-0 items-center justify-center rounded-lg border border-hairline text-ink2 transition-colors hover:border-copper hover:text-copper"
                       >
                         <CheckCircle2 className="h-4 w-4" />
                       </button>

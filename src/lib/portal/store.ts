@@ -197,6 +197,8 @@ function buildSeedStore(): PortalStore {
         title: "Beispielangebote und Preislogik bereitstellen",
         owner: "customer",
         status: "todo",
+        benefit: "high",
+        effort: "low",
         dueDate: "2026-07-03",
         visibleToCustomer: true,
         createdAt,
@@ -207,6 +209,8 @@ function buildSeedStore(): PortalStore {
         title: "ASDAR Analysebogen auswerten",
         owner: "assad",
         status: "doing",
+        benefit: "high",
+        effort: "low",
         dueDate: "2026-06-28",
         visibleToCustomer: true,
         createdAt,
@@ -276,7 +280,17 @@ function normalizeStore(store: PortalStore): PortalStore {
     projectMembers: store.projectMembers ?? [],
     projectIntelligence: store.projectIntelligence ?? [],
     updates: store.updates ?? [],
-    tasks: store.tasks ?? [],
+    tasks: (store.tasks ?? []).map((task) => ({
+      ...task,
+      benefit:
+        task.benefit === "low" || task.benefit === "high"
+          ? task.benefit
+          : undefined,
+      effort:
+        task.effort === "low" || task.effort === "high"
+          ? task.effort
+          : undefined,
+    })),
     milestones: store.milestones ?? [],
     files: store.files ?? [],
     invoices: store.invoices ?? [],

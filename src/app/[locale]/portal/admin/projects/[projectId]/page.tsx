@@ -597,6 +597,9 @@ export default async function AdminProjectPage({
           {activeView === "communication" && (
             <CommunicationMainPanel ctx={adminPanelContext} />
           )}
+          {activeView === "delivery" && (
+            <DeliveryPanel ctx={adminPanelContext} />
+          )}
         </div>
 
         <aside className="space-y-6 xl:sticky xl:top-6">
@@ -649,9 +652,6 @@ export default async function AdminProjectPage({
             <CommunicationSidePanel ctx={adminPanelContext} />
           )}
           {activeView === "access" && <AccessPanel ctx={adminPanelContext} />}
-          {activeView === "delivery" && (
-            <DeliveryPanel ctx={adminPanelContext} />
-          )}
           {activeView === "billing" && <BillingPanel ctx={adminPanelContext} />}
         </aside>
       </div>

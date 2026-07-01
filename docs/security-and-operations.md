@@ -36,7 +36,7 @@ Before real customer data:
 6. Enable Supabase backups and document one restore drill.
 7. Keep `EXTERNAL_AI_SEND_IDENTIFIERS=false` unless the customer agreement and
    data-processing setup explicitly permit identifiers.
-8. Run Supabase migrations through `009_website_crawl_queue_flags.sql`.
+8. Run Supabase migrations through `010_project_task_priority_matrix.sql`.
 9. Schedule `/api/cron/website-crawls` with `Authorization: Bearer $CRON_SECRET`.
    Vercel uses `vercel.json`; Railway needs a scheduler or monitor to call the
    endpoint.

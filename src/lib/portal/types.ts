@@ -87,6 +87,8 @@ export type ProjectTask = {
   title: string;
   owner: "assad" | "customer";
   status: "todo" | "doing" | "done";
+  benefit?: "low" | "high";
+  effort?: "low" | "high";
   dueDate?: string;
   visibleToCustomer: boolean;
   createdAt: string;

@@ -54,6 +54,8 @@ import {
   PortalStepNav,
   textareaClass,
 } from "@/components/portal/chrome";
+import { ProcessPriorityMatrix } from "@/components/portal/priority-matrix";
+import { hasTaskPriorityMatrixItems } from "@/lib/portal/priority-matrix";
 
 export const dynamic = "force-dynamic";
 
@@ -122,6 +124,7 @@ export default async function CustomerProjectPage({
           : "overview";
     return `/${safe}/portal/projects/${projectId}?view=${mapped}`;
   };
+  const showPriorityMatrix = hasTaskPriorityMatrixItems(tasks);
   const steps: Array<{
     id: CustomerProjectView;
     eyebrow: string;
@@ -329,6 +332,21 @@ export default async function CustomerProjectPage({
             active: step.id === activeView,
           }))}
         />
+
+        {showPriorityMatrix && (
+          <PortalCard>
+            <PortalSectionTitle
+              eyebrow="Priorisierung"
+              title="Aufwand gegen Nutzen"
+            >
+              Diese Matrix zeigt, welche freigegebenen Prozesse zuerst sinnvoll
+              sind.
+            </PortalSectionTitle>
+            <div className="mt-5">
+              <ProcessPriorityMatrix tasks={tasks} showOwner={false} />
+            </div>
+          </PortalCard>
+        )}
 
         {activeView === "actions" && (
           <PortalCard>
