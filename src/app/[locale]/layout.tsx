@@ -3,7 +3,6 @@ import { GeistSans } from "geist/font/sans";
 import { GeistMono } from "geist/font/mono";
 import { Source_Serif_4 } from "next/font/google";
 import { getDict, isLocale, locales, type Locale } from "@/content";
-import { AssaddarPlatformWidget } from "@/components/assaddar-platform-widget";
 import { AnalyticsEvents } from "@/components/analytics-events";
 import { THEME_BOOTSTRAP_SCRIPT } from "@/lib/theme-script";
 import "../globals.css";
@@ -12,7 +11,7 @@ const serif = Source_Serif_4({
   subsets: ["latin"],
   variable: "--font-source-serif",
   display: "swap",
-  weight: ["400", "500", "600"],
+  weight: ["400"],
 });
 
 const SITE_URL = "https://assad-dar.de";
@@ -80,7 +79,6 @@ export default async function LocaleLayout({
       <body>
         {children}
         <AnalyticsEvents />
-        <AssaddarPlatformWidget />
       </body>
     </html>
   );

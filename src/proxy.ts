@@ -11,12 +11,17 @@ function originFrom(value?: string | null) {
 
 function contentSecurityPolicy() {
   const isDev = process.env.NODE_ENV !== "production";
-  const widgetOrigin = originFrom(process.env.NEXT_PUBLIC_ASSADDAR_WIDGET_URL);
-  const apiOrigin = originFrom(process.env.NEXT_PUBLIC_ASSADDAR_API_URL);
+  const widgetOrigin = originFrom(
+    process.env.NEXT_PUBLIC_ASSADDAR_WIDGET_URL ??
+      "https://assaddar-widget-production.up.railway.app/widget.js",
+  );
+  const apiOrigin = originFrom(
+    process.env.NEXT_PUBLIC_ASSADDAR_API_URL ??
+      "https://assaddar-api-production.up.railway.app",
+  );
   const scriptSrc = [
     "'self'",
     "'unsafe-inline'",
-    "'sha256-jtYfVmh343Lzlxyz12+K96v89zjSVCm5o4gc7fShn1s='",
     isDev ? "'unsafe-eval'" : "",
     widgetOrigin,
   ].filter(Boolean);
@@ -62,7 +67,7 @@ export const config = {
   matcher: [
     {
       source:
-        "/((?!_next/static|_next/image|favicon.ico|icon.svg|robots.txt|sitemap.xml).*)",
+        "/((?!api|_next/static|_next/image|favicon.ico|icon.svg|robots.txt|sitemap.xml).*)",
       missing: [
         { type: "header", key: "next-router-prefetch" },
         { type: "header", key: "purpose", value: "prefetch" },

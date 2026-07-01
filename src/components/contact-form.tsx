@@ -13,11 +13,13 @@ export function ContactForm({
   email,
   locale,
   leadContext = "",
+  initialMessage = "",
 }: {
   t: Dict["termin"];
   email: string;
   locale: Locale;
   leadContext?: string;
+  initialMessage?: string;
 }) {
   const [state, action, pending] = useActionState(submitContact, INITIAL);
 
@@ -83,6 +85,7 @@ export function ContactForm({
           name="message"
           required
           rows={5}
+          defaultValue={initialMessage}
           className={`${inputCls} resize-y`}
         />
       </div>

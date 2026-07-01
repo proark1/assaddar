@@ -1208,6 +1208,8 @@ export function MiniCaseStudies({ locale }: { locale: Locale }) {
 }
 
 export function Blog({ t }: { t: Dict["blog"] }) {
+  const previewPosts = blogPosts.slice(0, 6);
+
   return (
     <Section id="blog" className="border-t border-hairline">
       <Container>
@@ -1219,7 +1221,7 @@ export function Blog({ t }: { t: Dict["blog"] }) {
           <p className="mt-4 max-w-2xl text-base text-ink2">{t.intro}</p>
         </Reveal>
         <div className="mt-12 grid gap-5 md:grid-cols-2 lg:grid-cols-3">
-          {blogPosts.map((p, i) => (
+          {previewPosts.map((p, i) => (
             <Reveal key={p.slug} delay={(i % 3) * 0.05}>
               <Link
                 href={`/de/blog/${p.slug}`}

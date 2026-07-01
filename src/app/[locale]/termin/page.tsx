@@ -40,7 +40,10 @@ export default async function TerminPage({
     source?: string;
     score?: string;
     band?: string;
+    industry?: string;
     bottleneck?: string;
+    lever?: string;
+    actions?: string;
     monthlyHours?: string;
     monthlyValue?: string;
     annualValue?: string;
@@ -53,14 +56,27 @@ export default async function TerminPage({
   const tt = t.termin;
   const email = t.finalCta.email;
   const isDe = safe === "de";
+  const actions = query.actions
+    ? query.actions
+        .split("|")
+        .map((action) => action.trim())
+        .filter(Boolean)
+    : [];
   const leadContext =
     query.source === "asdar-check"
       ? [
           isDe ? "ASDAR Potenzial-Check" : "ASDAR potential check",
           query.score && `Score: ${query.score}/100`,
           query.band && `${isDe ? "Einordnung" : "Assessment"}: ${query.band}`,
+          query.industry && `${isDe ? "Profil" : "Profile"}: ${query.industry}`,
           query.bottleneck &&
             `${isDe ? "Engpass" : "Bottleneck"}: ${query.bottleneck}`,
+          query.lever &&
+            `${isDe ? "Erster Automatisierungshebel" : "First automation lever"}: ${query.lever}`,
+          actions.length > 0 &&
+            `${isDe ? "Nächste Aktionen" : "Next actions"}:\n${actions
+              .map((action, index) => `${index + 1}. ${action}`)
+              .join("\n")}`,
           query.monthlyHours &&
             `${isDe ? "Geschätzte freie Stunden/Monat" : "Estimated free hours/month"}: ${query.monthlyHours}`,
           query.monthlyValue &&
@@ -70,6 +86,12 @@ export default async function TerminPage({
         ]
           .filter(Boolean)
           .join("\n")
+      : "";
+  const initialMessage =
+    query.source === "asdar-check"
+      ? isDe
+        ? "Ich möchte das ASDAR Check Ergebnis besprechen und klären, welcher Prozess zuerst vereinfacht werden sollte."
+        : "I would like to discuss the ASDAR check result and clarify which process should be simplified first."
       : "";
 
   return (
@@ -94,6 +116,7 @@ export default async function TerminPage({
               email={email}
               locale={safe}
               leadContext={leadContext}
+              initialMessage={initialMessage}
             />
           </div>
 

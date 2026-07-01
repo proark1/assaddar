@@ -11,7 +11,7 @@ import {
 } from "@/components/sections-server";
 import { Faq } from "@/components/faq";
 import { JsonLd } from "@/components/json-ld";
-import { ReadinessAndRoiTools } from "@/components/landing-tools";
+import { ReadinessAndRoiToolsLoader } from "@/components/landing-tools-loader";
 
 export function generateStaticParams() {
   return locales.map((locale) => ({ locale }));
@@ -85,7 +85,7 @@ export default async function Home({
       <Nav t={t.nav} locale={safe} />
       <main id="main" tabIndex={-1} className="outline-none">
         <Hero t={t.hero} />
-        <ReadinessAndRoiTools locale={safe} />
+        <ReadinessAndRoiToolsLoader locale={safe} />
         <TrustSignals locale={safe} />
         <MiniCaseStudies locale={safe} />
         <Angebote t={t.angebote} />
