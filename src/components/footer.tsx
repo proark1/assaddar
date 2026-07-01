@@ -1,6 +1,6 @@
 import Link from "next/link";
 import type { Dict, Locale } from "@/content";
-import { AssaddarPlatformWidget } from "@/components/assaddar-platform-widget";
+import { AssadChatbot } from "@/components/assad-chatbot";
 
 export function Footer({ t, locale }: { t: Dict["footer"]; locale: Locale }) {
   return (
@@ -55,7 +55,7 @@ export function Footer({ t, locale }: { t: Dict["footer"]; locale: Locale }) {
           </div>
         </div>
       </footer>
-      <AssaddarPlatformWidget />
+      <AssadChatbot locale={locale} />
     </>
   );
 }

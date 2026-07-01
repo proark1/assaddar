@@ -67,7 +67,7 @@ export function AssadChatbot({ locale }: { locale: Locale }) {
             </div>
             <button
               type="button"
-              aria-label={locale === "de" ? "Chat schließen" : "Close chat"}
+              aria-label={locale === "de" ? "Chat schliessen" : "Close chat"}
               onClick={() => setOpen(false)}
               className="inline-flex h-8 w-8 items-center justify-center rounded-lg text-ink2 transition-colors hover:bg-surface2 hover:text-ink"
             >
