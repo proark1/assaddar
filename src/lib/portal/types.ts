@@ -223,6 +223,29 @@ export type PortalTemplateOverride = {
   updatedAt: string;
 };
 
+export type IntegrationSettingKey =
+  | "openai_api_key"
+  | "openai_model"
+  | "anthropic_api_key"
+  | "claude_model"
+  | "gemini_api_key"
+  | "gemini_model"
+  | "grok_api_key"
+  | "grok_model"
+  | "grok_api_base"
+  | "resend_api_key"
+  | "contact_from_email"
+  | "crm_from_email"
+  | "resend_webhook_secret";
+
+export type PortalIntegrationSetting = {
+  key: IntegrationSettingKey;
+  encryptedValue: string;
+  valueHint: string;
+  updatedBy: string;
+  updatedAt: string;
+};
+
 export type RateLimitBucket = {
   key: string;
   count: number;
@@ -373,6 +396,7 @@ export type PortalStore = {
   websiteCrawlPages: WebsiteCrawlPage[];
   authTokens: AuthToken[];
   templateOverrides: PortalTemplateOverride[];
+  integrationSettings: PortalIntegrationSetting[];
   rateLimitBuckets: RateLimitBucket[];
   crmContacts: CrmContact[];
   crmOpportunities: CrmOpportunity[];

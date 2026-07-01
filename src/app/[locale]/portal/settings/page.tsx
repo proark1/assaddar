@@ -1,10 +1,17 @@
 import type { Metadata } from "next";
 import Link from "next/link";
-import { Bell, History, KeyRound, MailCheck, ShieldCheck } from "lucide-react";
+import { Bell, Bot, History, KeyRound, MailCheck, Send, ShieldCheck } from "lucide-react";
 import { changePasswordAction } from "@/app/actions/auth";
-import { updateNotificationPreferencesAction } from "@/app/actions/portal";
+import {
+  saveIntegrationSettingsAction,
+  updateNotificationPreferencesAction,
+} from "@/app/actions/portal";
 import { isLocale, type Locale } from "@/content";
 import { requireUser } from "@/lib/portal/auth";
+import {
+  listIntegrationSettingStatuses,
+  type IntegrationSettingStatus,
+} from "@/lib/portal/integration-settings";
 import { listProjectBundlesForUser } from "@/lib/portal/store";
 import {
   buildUserNotificationHistory,
@@ -27,6 +34,17 @@ export const metadata: Metadata = {
   robots: { index: false, follow: false },
 };
 
+function sourceLabel(source: IntegrationSettingStatus["source"]) {
+  if (source === "saved") return "Settings";
+  if (source === "env") return "Env";
+  return "Missing";
+}
+
+function statusTone(status: IntegrationSettingStatus) {
+  if (status.configured) return status.source === "saved" ? "green" : "copper";
+  return "red";
+}
+
 export default async function PortalSettingsPage({
   params,
   searchParams,
@@ -46,6 +64,14 @@ export default async function PortalSettingsPage({
   const notificationHistory = buildUserNotificationHistory(user, bundles).slice(
     0,
     12,
+  );
+  const integrationStatuses =
+    user.role === "admin" ? await listIntegrationSettingStatuses() : [];
+  const aiIntegrationStatuses = integrationStatuses.filter(
+    (status) => status.group === "ai",
+  );
+  const emailIntegrationStatuses = integrationStatuses.filter(
+    (status) => status.group === "email",
   );
   const preferenceItems = [
     {
@@ -97,6 +123,11 @@ export default async function PortalSettingsPage({
       {query.saved === "notifications" && (
         <p className="mb-6 rounded-md border border-success/30 bg-success/10 px-3 py-2 text-sm text-success">
           Benachrichtigungseinstellungen wurden gespeichert.
+        </p>
+      )}
+      {query.saved === "integrations" && (
+        <p className="mb-6 rounded-md border border-success/30 bg-success/10 px-3 py-2 text-sm text-success">
+          Integrations settings were saved.
         </p>
       )}
       {query.error === "notifications" && (
@@ -207,6 +238,115 @@ export default async function PortalSettingsPage({
           </form>
         </PortalCard>
       </div>
+
+      {user.role === "admin" && (
+        <PortalCard className="mt-6">
+          <PortalSectionTitle
+            eyebrow="Admin"
+            title="AI and API settings"
+          >
+            Store provider keys and sender settings for the portal. Saved values
+            are encrypted server-side; environment variables remain the fallback.
+          </PortalSectionTitle>
+
+          <form action={saveIntegrationSettingsAction} className="mt-5 space-y-6">
+            <input type="hidden" name="locale" value={safe} />
+
+            {[
+              {
+                key: "ai",
+                title: "AI engines",
+                icon: Bot,
+                items: aiIntegrationStatuses,
+              },
+              {
+                key: "email",
+                title: "Email delivery",
+                icon: Send,
+                items: emailIntegrationStatuses,
+              },
+            ].map((group) => {
+              const Icon = group.icon;
+              return (
+                <div key={group.key} className="space-y-3">
+                  <div className="flex items-center gap-2 text-sm font-medium text-ink">
+                    <Icon className="h-4 w-4 text-copper" />
+                    {group.title}
+                  </div>
+                  <div className="grid gap-3 lg:grid-cols-2">
+                    {group.items.map((setting) => (
+                      <div
+                        key={setting.key}
+                        className="rounded-lg border border-hairline bg-bg p-4"
+                      >
+                        <div className="flex flex-wrap items-start justify-between gap-3">
+                          <div>
+                            <label
+                              htmlFor={setting.key}
+                              className="block text-sm font-medium text-ink"
+                            >
+                              {setting.label}
+                            </label>
+                            <p className="mt-1 text-[12px] leading-relaxed text-muted">
+                              {setting.description}
+                            </p>
+                          </div>
+                          <Badge tone={statusTone(setting)}>
+                            {sourceLabel(setting.source)}
+                          </Badge>
+                        </div>
+
+                        <input
+                          id={setting.key}
+                          name={setting.key}
+                          type={setting.kind === "secret" ? "password" : "text"}
+                          autoComplete="off"
+                          placeholder={
+                            setting.hint
+                              ? `${sourceLabel(setting.source)}: ${setting.hint}`
+                              : setting.placeholder || "Enter value"
+                          }
+                          className="mt-3 w-full rounded-lg border border-hairline bg-surface px-3 py-2 text-sm text-ink outline-none transition-colors placeholder:text-muted focus:border-copper"
+                        />
+
+                        <div className="mt-3 flex flex-wrap items-center justify-between gap-3 text-[12px] text-muted">
+                          <span>
+                            {setting.updatedAt
+                              ? `Updated ${formatDate(setting.updatedAt)}`
+                              : setting.env.join(", ")}
+                          </span>
+                          <label className="inline-flex items-center gap-2">
+                            <input
+                              name={`clear_${setting.key}`}
+                              type="checkbox"
+                              disabled={setting.source !== "saved"}
+                              className="h-4 w-4 accent-[var(--color-copper)] disabled:opacity-40"
+                            />
+                            Clear saved value
+                          </label>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              );
+            })}
+
+            <SubmitButton
+              pendingLabel={
+                <>
+                  <KeyRound className="h-4 w-4" />
+                  Saving...
+                </>
+              }
+              className="inline-flex items-center gap-2 rounded-lg bg-copper px-4 py-2.5 text-sm font-medium text-oncopper transition-colors hover:bg-copper-hi disabled:cursor-wait disabled:opacity-70"
+            >
+              <KeyRound className="h-4 w-4" />
+              Save integrations
+            </SubmitButton>
+          </form>
+        </PortalCard>
+      )}
 
       <div className="mt-6 grid gap-6 lg:grid-cols-[0.9fr_1.1fr]">
         <PortalCard>

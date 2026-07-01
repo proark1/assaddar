@@ -307,6 +307,7 @@ test("CRM admin alerts include full ASDAR check details", async () => {
       websiteCrawlPages: [],
       authTokens: [],
       templateOverrides: [],
+      integrationSettings: [],
       rateLimitBuckets: [],
       crmContacts: [
         {
@@ -405,6 +406,7 @@ test("CRM admin alerts include next task and draft context", async () => {
       websiteCrawlPages: [],
       authTokens: [],
       templateOverrides: [],
+      integrationSettings: [],
       rateLimitBuckets: [],
       crmContacts: [
         {

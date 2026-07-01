@@ -5,7 +5,8 @@ import {
   normalizeEmail,
   notifyAdminAboutInteraction,
 } from "@/lib/portal/crm";
-import { inboundEmailDomain, resendWebhookSecret } from "@/lib/portal/config";
+import { inboundEmailDomain } from "@/lib/portal/config";
+import { resolveIntegrationValue } from "@/lib/portal/integration-settings";
 import { mutateStore } from "@/lib/portal/store";
 
 export const dynamic = "force-dynamic";
@@ -138,7 +139,7 @@ function hasInboundRecipient(recipients: string[]) {
 
 export async function POST(request: Request) {
   const body = await request.text();
-  const secret = resendWebhookSecret();
+  const secret = await resolveIntegrationValue("resend_webhook_secret");
 
   if (!verifySvixSignature({ body, headers: request.headers, secret })) {
     return new NextResponse("Invalid signature", { status: 400 });

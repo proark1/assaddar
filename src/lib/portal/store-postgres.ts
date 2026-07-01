@@ -15,6 +15,7 @@ import type {
   Organization,
   PaymentEvent,
   PortalStore,
+  PortalIntegrationSetting,
   Project,
   ProjectBundle,
   ProjectFile,
@@ -452,6 +453,40 @@ function toTemplateOverride(row: Row): PortalTemplateOverride {
     quickWins: stringList(row.quick_wins),
     automationIdeas: stringList(row.automation_ideas),
     risks: stringList(row.risks),
+    updatedBy: value(row.updated_by),
+    updatedAt: iso(row.updated_at),
+  };
+}
+
+function integrationSettingKey(value_: unknown): PortalIntegrationSetting["key"] | null {
+  const raw = value(value_);
+  if (
+    raw === "openai_api_key" ||
+    raw === "openai_model" ||
+    raw === "anthropic_api_key" ||
+    raw === "claude_model" ||
+    raw === "gemini_api_key" ||
+    raw === "gemini_model" ||
+    raw === "grok_api_key" ||
+    raw === "grok_model" ||
+    raw === "grok_api_base" ||
+    raw === "resend_api_key" ||
+    raw === "contact_from_email" ||
+    raw === "crm_from_email" ||
+    raw === "resend_webhook_secret"
+  ) {
+    return raw;
+  }
+  return null;
+}
+
+function toIntegrationSetting(row: Row): PortalIntegrationSetting | null {
+  const key = integrationSettingKey(row.key);
+  if (!key) return null;
+  return {
+    key,
+    encryptedValue: value(row.encrypted_value),
+    valueHint: value(row.value_hint),
     updatedBy: value(row.updated_by),
     updatedAt: iso(row.updated_at),
   };
@@ -1186,6 +1221,7 @@ export async function readPostgresStore(
     websiteCrawlPages,
     authTokens,
     templateOverrides,
+    integrationSettings,
     rateLimitBuckets,
     crmContacts,
     crmOpportunities,
@@ -1214,6 +1250,9 @@ export async function readPostgresStore(
     ),
     sql`select * from portal_auth_tokens order by created_at desc`,
     sql`select * from portal_template_overrides order by updated_at desc`,
+    optionalPortalRows(
+      sql`select * from portal_integration_settings order by updated_at desc`,
+    ),
     sql`select * from portal_rate_limits order by updated_at desc`,
     sql`select * from crm_contacts order by updated_at desc`,
     sql`select * from crm_opportunities order by updated_at desc`,
@@ -1453,6 +1492,9 @@ export async function readPostgresStore(
       }),
     ),
     templateOverrides: (templateOverrides as Row[]).map(toTemplateOverride),
+    integrationSettings: (integrationSettings as Row[])
+      .map(toIntegrationSetting)
+      .filter((entry): entry is PortalIntegrationSetting => Boolean(entry)),
     rateLimitBuckets: (rateLimitBuckets as Row[]).map(toRateLimitBucket),
     crmContacts: (crmContacts as Row[]).map(toCrmContact),
     crmOpportunities: (crmOpportunities as Row[]).map(toCrmOpportunity),
@@ -1754,6 +1796,23 @@ async function writeStoreRows(tx: SqlLike, store: PortalStore) {
           quick_wins = excluded.quick_wins,
           automation_ideas = excluded.automation_ideas,
           risks = excluded.risks,
+          updated_by = excluded.updated_by,
+          updated_at = excluded.updated_at
+      `;
+    }
+
+    for (const setting of store.integrationSettings ?? []) {
+      await tx`
+        insert into portal_integration_settings (
+          key, encrypted_value, value_hint, updated_by, updated_at
+        )
+        values (
+          ${setting.key}, ${setting.encryptedValue}, ${setting.valueHint},
+          ${setting.updatedBy}, ${setting.updatedAt}
+        )
+        on conflict (key) do update set
+          encrypted_value = excluded.encrypted_value,
+          value_hint = excluded.value_hint,
           updated_by = excluded.updated_by,
           updated_at = excluded.updated_at
       `;

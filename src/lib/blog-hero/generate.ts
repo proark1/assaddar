@@ -1,3 +1,5 @@
+import { resolveIntegrationValue } from "@/lib/portal/integration-settings";
+
 export type GeneratedImage = {
   bytes: Buffer;
   contentType: string;
@@ -152,7 +154,7 @@ function extractGeminiImage(data: unknown): GeneratedImage | null {
 }
 
 async function generateWithGemini(prompt: string): Promise<GeneratedImage> {
-  const key = process.env.GEMINI_API_KEY;
+  const key = await resolveIntegrationValue("gemini_api_key");
   if (!key) throw new Error("GEMINI_API_KEY is not configured.");
   const model = process.env.GEMINI_IMAGE_MODEL || "gemini-3.1-flash-image";
 
@@ -196,7 +198,7 @@ async function generateWithGemini(prompt: string): Promise<GeneratedImage> {
 }
 
 async function generateWithOpenAI(prompt: string): Promise<GeneratedImage> {
-  const key = process.env.OPENAI_API_KEY;
+  const key = await resolveIntegrationValue("openai_api_key");
   if (!key) throw new Error("OPENAI_API_KEY is not configured.");
   const model = process.env.OPENAI_IMAGE_MODEL || "gpt-image-1";
 
@@ -239,7 +241,7 @@ async function generateWithOpenAI(prompt: string): Promise<GeneratedImage> {
 
 /**
  * Generate a blog hero image from a prompt.
- * Default provider: Gemini 3.1 Flash Image (GEMINI_API_KEY).
+ * Default provider: Gemini 3.1 Flash Image (Gemini API key).
  * Set BLOG_IMAGE_PROVIDER=openai to use OpenAI gpt-image-1 instead.
  */
 export async function generateHeroImage(prompt: string): Promise<GeneratedImage> {

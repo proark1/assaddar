@@ -98,9 +98,6 @@ export function portalProductionConfigErrors() {
     errors.push("SUPABASE_SERVICE_ROLE_KEY must be configured.");
   }
   if (!storage.bucket) errors.push("SUPABASE_STORAGE_BUCKET must be configured.");
-  if (!process.env.RESEND_API_KEY) errors.push("RESEND_API_KEY must be configured.");
-  if (!contactFromEmail()) errors.push("CONTACT_FROM_EMAIL must be configured.");
-
   return errors;
 }
 

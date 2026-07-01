@@ -183,7 +183,7 @@ export default async function AdminCommunicationsPage({
   const store = await readStore();
   const inboxQuery = parseInboxQuery(query);
   const dashboard = buildCrmDashboard(store, inboxQuery);
-  const diagnostics = buildCrmDiagnostics(store);
+  const diagnostics = await buildCrmDiagnostics(store);
   const selectedInteraction =
     dashboard.allInteractions.find((entry) => entry.id === query.interaction) ??
     dashboard.interactions[0] ??

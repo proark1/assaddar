@@ -19,6 +19,8 @@
   configured.
 - Supabase migrations enable RLS and expose portal tables/storage only to the
   service role.
+- Admin-managed integration secrets are encrypted server-side and can fall back
+  to environment variables.
 - External AI scan prompts redact direct identifiers unless explicitly enabled.
 - Website Intelligence crawls run as queued internal jobs, respect robots.txt
   and same-site crawl limits, and store source pages as admin-only evidence.
@@ -30,13 +32,14 @@ Before real customer data:
 1. Use `PORTAL_DATA_BACKEND=postgres` and `PORTAL_FILE_STORAGE=supabase`.
 2. Store files in a private Supabase Storage bucket.
 3. Set a long random `AUTH_SECRET`; rotate after suspected exposure.
-4. Set `CRON_SECRET`, `RESEND_API_KEY`, `CONTACT_FROM_EMAIL`, and production
-   `APP_URL=https://...`.
+4. Set `CRON_SECRET` and production `APP_URL=https://...`; add Resend, sender,
+   Gemini/OpenAI/Claude/Grok keys either as environment variables or in
+   Admin -> Settings after the database migration is live.
 5. Configure Stripe webhook secrets if invoice payment links are enabled.
 6. Enable Supabase backups and document one restore drill.
 7. Keep `EXTERNAL_AI_SEND_IDENTIFIERS=false` unless the customer agreement and
    data-processing setup explicitly permit identifiers.
-8. Run Supabase migrations through `010_project_task_priority_matrix.sql`.
+8. Run Supabase migrations through `011_portal_integration_settings.sql`.
 9. Schedule `/api/cron/website-crawls` with `Authorization: Bearer $CRON_SECRET`.
    Vercel uses `vercel.json`; Railway needs a scheduler or monitor to call the
    endpoint.

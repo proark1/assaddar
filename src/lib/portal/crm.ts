@@ -1,6 +1,10 @@
 import { Resend } from "resend";
-import { appUrl, crmFromEmail } from "./config";
+import { appUrl } from "./config";
 import { requestExternalAiInsight } from "./ai-providers";
+import {
+  resolveIntegrationValues,
+  resolveIntegrationValuesFromStore,
+} from "./integration-settings";
 import {
   sendTelegramAdminAlert,
   sendWhatsAppAdminAlert,
@@ -827,7 +831,7 @@ export function buildCrmContactTimeline(store: PortalStore, contactId?: string) 
   return [...interactions, ...tasks].sort((a, b) => b.date.localeCompare(a.date));
 }
 
-export function buildCrmDiagnostics(store: PortalStore) {
+export async function buildCrmDiagnostics(store: PortalStore) {
   const latestInbound = store.crmInteractions.find(
     (interaction) => interaction.direction === "inbound",
   );
@@ -838,14 +842,25 @@ export function buildCrmDiagnostics(store: PortalStore) {
     (event) => event.channel === "whatsapp",
   );
   const latestDraft = store.crmEmailDrafts[0];
+  const {
+    resend_api_key: resendKey,
+    resend_webhook_secret: resendSecret,
+    gemini_api_key: geminiKey,
+    gemini_model: geminiModel,
+  } = await resolveIntegrationValues([
+    "resend_api_key",
+    "resend_webhook_secret",
+    "gemini_api_key",
+    "gemini_model",
+  ]);
   return {
     resend: {
-      configured: Boolean(process.env.RESEND_WEBHOOK_SECRET),
+      configured: Boolean(resendKey || resendSecret),
       lastEventAt: latestInbound?.createdAt,
       lastStatus: latestInbound ? "received" : "none",
     },
     gemini: {
-      configured: Boolean(process.env.GEMINI_API_KEY && process.env.GEMINI_MODEL),
+      configured: Boolean(geminiKey && geminiModel),
       lastEventAt: latestDraft?.createdAt,
       lastStatus: latestDraft ? "drafted" : "none",
     },
@@ -950,8 +965,16 @@ export async function sendCrmEmailDraft(
     ? store.crmContacts.find((entry) => entry.id === draft.contactId)
     : undefined;
   const to = contact?.email || normalizeEmail(interaction?.from || "");
-  const from = crmFromEmail();
-  const key = process.env.RESEND_API_KEY;
+  const {
+    resend_api_key: key,
+    crm_from_email: crmFrom,
+    contact_from_email: contactFrom,
+  } = resolveIntegrationValuesFromStore(store, [
+    "resend_api_key",
+    "crm_from_email",
+    "contact_from_email",
+  ]);
+  const from = crmFrom || contactFrom;
 
   if (!key || !from || !to) return { ok: false, reason: "config" };
   if (contact?.consent === "unsubscribed") return { ok: false, reason: "consent" };

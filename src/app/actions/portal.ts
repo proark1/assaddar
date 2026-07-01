@@ -18,6 +18,10 @@ import {
 } from "@/lib/portal/crm";
 import { sendPortalEmail } from "@/lib/portal/email";
 import {
+  integrationSettingDefinitions,
+  saveIntegrationSettings,
+} from "@/lib/portal/integration-settings";
+import {
   enqueueWebsiteCrawlRun,
   processWebsiteCrawlQueue,
 } from "@/lib/portal/website-intelligence";
@@ -63,6 +67,7 @@ import {
 } from "@/lib/portal/templates";
 import type {
   CrmOpportunityStage,
+  IntegrationSettingKey,
   Invoice,
 } from "@/lib/portal/types";
 import { createAuthToken } from "@/lib/portal/tokens";
@@ -408,6 +413,26 @@ export async function updateNotificationPreferencesAction(formData: FormData) {
   redirect(
     `/${locale}/portal/settings?${saved ? "saved=notifications" : "error=notifications"}`,
   );
+}
+
+export async function saveIntegrationSettingsAction(formData: FormData) {
+  const locale = safeLocale(formData.get("locale"));
+  const user = await requireAdminAction(locale);
+  const values: Partial<Record<IntegrationSettingKey, string>> = {};
+  const clears = new Set<IntegrationSettingKey>();
+
+  for (const definition of integrationSettingDefinitions) {
+    const rawValue = text(formData, definition.key);
+    if (rawValue) values[definition.key] = rawValue;
+    if (checkbox(formData, `clear_${definition.key}`)) {
+      clears.add(definition.key);
+    }
+  }
+
+  await saveIntegrationSettings({ userId: user.id, values, clears });
+
+  revalidatePath(`/${locale}/portal/settings`);
+  redirect(`/${locale}/portal/settings?saved=integrations`);
 }
 
 export async function saveTemplateOverrideAction(formData: FormData) {

@@ -2,9 +2,10 @@
 
 import { headers } from "next/headers";
 import { Resend } from "resend";
-import { contactFromEmail, contactToEmail } from "@/lib/portal/config";
+import { contactToEmail } from "@/lib/portal/config";
 import { parseContactForm } from "@/lib/portal/contact-validation";
 import { ingestInboundEmail, notifyAdminAboutInteraction } from "@/lib/portal/crm";
+import { resolveIntegrationValues } from "@/lib/portal/integration-settings";
 import { checkRateLimit, clientIpFromHeaders } from "@/lib/portal/rate-limit";
 import { rejectUntrustedOrigin } from "@/lib/portal/security";
 import { id, mutateStore } from "@/lib/portal/store";
@@ -175,10 +176,11 @@ export async function submitContact(
   };
   await captureWebsiteLead(leadInput);
 
-  const key = process.env.RESEND_API_KEY;
-  if (!key) return { status: "noconfig" };
-  const from = contactFromEmail();
-  if (!from) return { status: "noconfig" };
+  const {
+    resend_api_key: key,
+    contact_from_email: from,
+  } = await resolveIntegrationValues(["resend_api_key", "contact_from_email"]);
+  if (!key || !from) return { status: "noconfig" };
   const to = contactToEmail();
 
   try {

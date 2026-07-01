@@ -1,5 +1,5 @@
 import { Resend } from "resend";
-import { contactFromEmail } from "./config";
+import { resolveIntegrationValues } from "./integration-settings";
 
 export async function sendPortalEmail({
   to,
@@ -10,10 +10,12 @@ export async function sendPortalEmail({
   subject: string;
   text: string;
 }) {
-  const key = process.env.RESEND_API_KEY;
-  if (!key) return false;
-  const from = contactFromEmail();
+  const {
+    resend_api_key: key,
+    contact_from_email: from,
+  } = await resolveIntegrationValues(["resend_api_key", "contact_from_email"]);
   if (!from) return false;
+  if (!key) return false;
 
   const resend = new Resend(key);
   const result = await resend.emails.send({

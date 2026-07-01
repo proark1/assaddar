@@ -50,6 +50,15 @@ const migrationChecks = [
       "portal_project_tasks_effort_check",
     ],
   },
+  {
+    file: "supabase/migrations/011_portal_integration_settings.sql",
+    patterns: [
+      "create table if not exists portal_integration_settings",
+      "encrypted_value text not null",
+      "portal_integration_settings_key_check",
+      "alter table portal_integration_settings enable row level security",
+    ],
+  },
 ];
 
 const failures = [];
@@ -101,6 +110,11 @@ if (databaseUrl) {
           (table_name = 'portal_project_tasks' and column_name in (
             'benefit',
             'effort'
+          )) or
+          (table_name = 'portal_integration_settings' and column_name in (
+            'key',
+            'encrypted_value',
+            'value_hint'
           ))
         )
     `;
@@ -116,6 +130,9 @@ if (databaseUrl) {
       "portal_website_crawl_pages.id",
       "portal_project_tasks.benefit",
       "portal_project_tasks.effort",
+      "portal_integration_settings.key",
+      "portal_integration_settings.encrypted_value",
+      "portal_integration_settings.value_hint",
     ]) {
       if (!observed.has(expected)) failures.push(`database missing ${expected}`);
     }
@@ -127,7 +144,8 @@ if (databaseUrl) {
         'portal_payment_events',
         'blog_hero_images',
         'portal_website_crawl_runs',
-        'portal_website_crawl_pages'
+        'portal_website_crawl_pages',
+        'portal_integration_settings'
       )
     `;
     for (const table of [
@@ -135,6 +153,7 @@ if (databaseUrl) {
       "blog_hero_images",
       "portal_website_crawl_runs",
       "portal_website_crawl_pages",
+      "portal_integration_settings",
     ]) {
       const row = rlsRows.find((entry) => entry.relname === table);
       if (!row?.relrowsecurity) failures.push(`database RLS is not enabled for ${table}`);

@@ -1,3 +1,5 @@
+import { resolveIntegrationValues } from "./integration-settings";
+
 export type ExternalAiProvider = "openai" | "gemini" | "grok" | "claude";
 
 export const externalAiProviders: Array<{
@@ -86,8 +88,8 @@ async function parseJson(response: Response) {
 }
 
 async function callOpenAi({ system, prompt }: Omit<AiRequest, "provider">) {
-  const key = process.env.OPENAI_API_KEY;
-  const model = process.env.OPENAI_MODEL;
+  const { openai_api_key: key, openai_model: model } =
+    await resolveIntegrationValues(["openai_api_key", "openai_model"]);
   if (!key || !model) return null;
 
   const response = await fetchWithTimeout("https://api.openai.com/v1/responses", {
@@ -109,8 +111,8 @@ async function callOpenAi({ system, prompt }: Omit<AiRequest, "provider">) {
 }
 
 async function callGemini({ system, prompt }: Omit<AiRequest, "provider">) {
-  const key = process.env.GEMINI_API_KEY;
-  const model = process.env.GEMINI_MODEL;
+  const { gemini_api_key: key, gemini_model: model } =
+    await resolveIntegrationValues(["gemini_api_key", "gemini_model"]);
   if (!key || !model) return null;
 
   const endpoint = `https://generativelanguage.googleapis.com/v1beta/models/${encodeURIComponent(
@@ -131,9 +133,16 @@ async function callGemini({ system, prompt }: Omit<AiRequest, "provider">) {
 }
 
 async function callGrok({ system, prompt }: Omit<AiRequest, "provider">) {
-  const key = process.env.GROK_API_KEY;
-  const model = process.env.GROK_MODEL;
-  const base = process.env.GROK_API_BASE || "https://api.x.ai/v1";
+  const {
+    grok_api_key: key,
+    grok_model: model,
+    grok_api_base: configuredBase,
+  } = await resolveIntegrationValues([
+    "grok_api_key",
+    "grok_model",
+    "grok_api_base",
+  ]);
+  const base = configuredBase || "https://api.x.ai/v1";
   if (!key || !model) return null;
 
   const response = await fetchWithTimeout(
@@ -160,8 +169,8 @@ async function callGrok({ system, prompt }: Omit<AiRequest, "provider">) {
 }
 
 async function callClaude({ system, prompt }: Omit<AiRequest, "provider">) {
-  const key = process.env.ANTHROPIC_API_KEY;
-  const model = process.env.CLAUDE_MODEL || process.env.ANTHROPIC_MODEL;
+  const { anthropic_api_key: key, claude_model: model } =
+    await resolveIntegrationValues(["anthropic_api_key", "claude_model"]);
   if (!key || !model) return null;
 
   const response = await fetchWithTimeout("https://api.anthropic.com/v1/messages", {

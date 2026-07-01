@@ -7,15 +7,15 @@ const required = [
   ["SUPABASE_URL", process.env.SUPABASE_URL],
   ["SUPABASE_SERVICE_ROLE_KEY", process.env.SUPABASE_SERVICE_ROLE_KEY],
   ["SUPABASE_STORAGE_BUCKET", process.env.SUPABASE_STORAGE_BUCKET],
-  ["RESEND_API_KEY", process.env.RESEND_API_KEY],
-  ["CONTACT_FROM_EMAIL", process.env.CONTACT_FROM_EMAIL],
-  ["RESEND_WEBHOOK_SECRET", process.env.RESEND_WEBHOOK_SECRET],
-  ["GEMINI_API_KEY", process.env.GEMINI_API_KEY],
-  ["GEMINI_MODEL", process.env.GEMINI_MODEL],
   ["CRON_SECRET", process.env.CRON_SECRET],
 ];
 
 const recommended = [
+  ["RESEND_API_KEY or admin integration setting", process.env.RESEND_API_KEY],
+  ["CONTACT_FROM_EMAIL or admin integration setting", process.env.CONTACT_FROM_EMAIL],
+  ["RESEND_WEBHOOK_SECRET or admin integration setting", process.env.RESEND_WEBHOOK_SECRET],
+  ["GEMINI_API_KEY or admin integration setting", process.env.GEMINI_API_KEY],
+  ["GEMINI_MODEL or admin integration setting", process.env.GEMINI_MODEL],
   ["STRIPE_SECRET_KEY", process.env.STRIPE_SECRET_KEY],
   ["STRIPE_WEBHOOK_SECRET", process.env.STRIPE_WEBHOOK_SECRET],
 ];
