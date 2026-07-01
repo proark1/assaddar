@@ -16,6 +16,7 @@ import {
   readPostgresProjectBundleForUser,
   readPostgresProjectBundlesForUser,
   readPostgresStore,
+  readPostgresTemplateOverrides,
   writePostgresStore,
 } from "./store-postgres";
 import type {
@@ -24,6 +25,7 @@ import type {
   Project,
   ProjectBundle,
   ProjectIntelligence,
+  PortalTemplateOverride,
   User,
 } from "./types";
 
@@ -248,6 +250,8 @@ function buildSeedStore(): PortalStore {
     ],
     paymentEvents: [],
     aiInsights: [],
+    websiteCrawlRuns: [],
+    websiteCrawlPages: [],
     authTokens: [],
     templateOverrides: [],
     rateLimitBuckets: [],
@@ -278,6 +282,8 @@ function normalizeStore(store: PortalStore): PortalStore {
     invoices: store.invoices ?? [],
     paymentEvents: store.paymentEvents ?? [],
     aiInsights: store.aiInsights ?? [],
+    websiteCrawlRuns: store.websiteCrawlRuns ?? [],
+    websiteCrawlPages: store.websiteCrawlPages ?? [],
     authTokens: store.authTokens ?? [],
     templateOverrides: store.templateOverrides ?? [],
     rateLimitBuckets: store.rateLimitBuckets ?? [],
@@ -464,6 +470,12 @@ export function getProjectBundle(
     aiInsights: store.aiInsights
       .filter((entry) => entry.projectId === projectId)
       .sort((a, b) => b.createdAt.localeCompare(a.createdAt)),
+    websiteCrawlRuns: store.websiteCrawlRuns
+      .filter((entry) => entry.projectId === projectId)
+      .sort((a, b) => b.createdAt.localeCompare(a.createdAt)),
+    websiteCrawlPages: store.websiteCrawlPages
+      .filter((entry) => entry.projectId === projectId)
+      .sort((a, b) => b.crawledAt.localeCompare(a.crawledAt)),
   };
 }
 
@@ -514,6 +526,15 @@ export async function listCustomersWithProjectBundles(): Promise<
     .sort((a, b) => a.customer.name.localeCompare(b.customer.name));
 }
 
+export async function listTemplateOverrides(): Promise<PortalTemplateOverride[]> {
+  if (isPostgresBackendEnabled()) {
+    return readPostgresTemplateOverrides();
+  }
+
+  const store = await readStore();
+  return store.templateOverrides ?? [];
+}
+
 export async function createRegisteredCustomerForAuth(
   input: CreateRegisteredCustomerForAuthInput,
 ) {
@@ -560,6 +581,7 @@ export async function createProjectForAdmin(
       id: orgId,
       name: input.company,
       industry: input.industry,
+      website: input.website || undefined,
       createdAt,
     });
 

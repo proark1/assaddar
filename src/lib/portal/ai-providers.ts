@@ -1,4 +1,14 @@
-export type ExternalAiProvider = "openai" | "gemini" | "grok";
+export type ExternalAiProvider = "openai" | "gemini" | "grok" | "claude";
+
+export const externalAiProviders: Array<{
+  id: ExternalAiProvider;
+  label: string;
+}> = [
+  { id: "openai", label: "OpenAI / ChatGPT" },
+  { id: "claude", label: "Claude" },
+  { id: "gemini", label: "Gemini" },
+  { id: "grok", label: "Grok" },
+];
 
 export type ExternalAiResult = {
   provider: ExternalAiProvider;
@@ -49,6 +59,19 @@ function geminiText(value: unknown): string {
   return (
     data.candidates?.[0]?.content?.parts
       ?.map((part) => part.text ?? "")
+      .join("\n")
+      .trim() ?? ""
+  );
+}
+
+function claudeText(value: unknown): string {
+  const data = value as {
+    content?: Array<{ type?: string; text?: string }>;
+  };
+  return (
+    data.content
+      ?.filter((part) => part.type === "text" || part.text)
+      .map((part) => part.text ?? "")
       .join("\n")
       .trim() ?? ""
   );
@@ -136,6 +159,31 @@ async function callGrok({ system, prompt }: Omit<AiRequest, "provider">) {
   return firstChoiceText(data);
 }
 
+async function callClaude({ system, prompt }: Omit<AiRequest, "provider">) {
+  const key = process.env.ANTHROPIC_API_KEY;
+  const model = process.env.CLAUDE_MODEL || process.env.ANTHROPIC_MODEL;
+  if (!key || !model) return null;
+
+  const response = await fetchWithTimeout("https://api.anthropic.com/v1/messages", {
+    method: "POST",
+    headers: {
+      "anthropic-version": "2023-06-01",
+      "content-type": "application/json",
+      "x-api-key": key,
+    },
+    body: JSON.stringify({
+      model,
+      max_tokens: 1200,
+      system,
+      messages: [{ role: "user", content: prompt }],
+    }),
+  });
+  const data = await parseJson(response);
+  if (!response.ok) throw new Error("Claude request failed");
+
+  return claudeText(data);
+}
+
 export async function requestExternalAiInsight(
   request: AiRequest,
 ): Promise<ExternalAiResult> {
@@ -145,7 +193,9 @@ export async function requestExternalAiInsight(
         ? await callOpenAi(request)
         : request.provider === "gemini"
           ? await callGemini(request)
-          : await callGrok(request);
+          : request.provider === "claude"
+            ? await callClaude(request)
+            : await callGrok(request);
 
     if (!text) {
       return {

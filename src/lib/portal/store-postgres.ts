@@ -26,6 +26,8 @@ import type {
   PortalTemplateOverride,
   RateLimitBucket,
   User,
+  WebsiteCrawlPage,
+  WebsiteCrawlRun,
 } from "./types";
 
 type Row = Record<string, unknown>;
@@ -45,6 +47,7 @@ export type CreateProjectInput = {
   userId: string;
   company: string;
   industry: string;
+  website?: string;
   projectName: string;
   summary: string;
   customerEmail: string;
@@ -353,6 +356,48 @@ function toAiInsight(row: Row): AiInsight {
   };
 }
 
+function toWebsiteCrawlRun(row: Row): WebsiteCrawlRun {
+  const status = value(row.status);
+  return {
+    id: value(row.id),
+    projectId: value(row.project_id),
+    websiteUrl: value(row.website_url),
+    status:
+      status === "queued" ||
+      status === "running" ||
+      status === "completed" ||
+      status === "failed"
+        ? status
+        : "failed",
+    startedAt: iso(row.started_at),
+    completedAt: optionalIso(row.completed_at),
+    pageCount: number(row.page_count),
+    summary: value(row.summary),
+    error: value(row.error) || undefined,
+    createdBy: value(row.created_by),
+    createdAt: iso(row.created_at),
+  };
+}
+
+function toWebsiteCrawlPage(row: Row): WebsiteCrawlPage {
+  return {
+    id: value(row.id),
+    runId: value(row.run_id),
+    projectId: value(row.project_id),
+    url: value(row.url),
+    title: value(row.title),
+    description: value(row.description),
+    pageType: value(row.page_type),
+    statusCode: number(row.status_code),
+    depth: number(row.depth),
+    wordCount: number(row.word_count),
+    textExcerpt: value(row.text_excerpt),
+    discoveredFrom: value(row.discovered_from) || undefined,
+    crawledAt: iso(row.crawled_at),
+    error: value(row.error) || undefined,
+  };
+}
+
 function stringList(value: unknown): string[] {
   if (Array.isArray(value)) return value.map(String).filter(Boolean);
   if (typeof value !== "string") return [];
@@ -630,6 +675,15 @@ function isMissingColumn(error: unknown, column: string) {
   return code === "42703" && message.includes(column);
 }
 
+function isMissingRelation(error: unknown, relation: string) {
+  const code =
+    typeof error === "object" && error !== null && "code" in error
+      ? String((error as { code?: unknown }).code)
+      : "";
+  const message = error instanceof Error ? error.message : String(error);
+  return code === "42P01" && message.includes(relation);
+}
+
 export async function findPostgresUserByEmail(email: string) {
   const sql = getSql();
   const rows = await sql`
@@ -780,6 +834,8 @@ async function readPostgresProjectBundles(
     fileRows,
     invoiceRows,
     aiInsightRows,
+    websiteCrawlRunRows,
+    websiteCrawlPageRows,
   ] = await Promise.all([
     sql`select * from portal_organizations where id in ${sql(organizationIds)}`,
     sql`select * from portal_project_members where project_id in ${sql(projectIds)} order by created_at asc`,
@@ -790,6 +846,8 @@ async function readPostgresProjectBundles(
     sql`select * from portal_project_files where project_id in ${sql(projectIds)} order by uploaded_at desc`,
     sql`select * from portal_invoices where project_id in ${sql(projectIds)} order by created_at desc`,
     sql`select * from portal_ai_insights where project_id in ${sql(projectIds)} order by created_at desc`,
+    sql`select * from portal_website_crawl_runs where project_id in ${sql(projectIds)} order by created_at desc`,
+    sql`select * from portal_website_crawl_pages where project_id in ${sql(projectIds)} order by crawled_at desc`,
   ]);
 
   const organizations = new Map(
@@ -831,6 +889,12 @@ async function readPostgresProjectBundles(
   const aiInsightsByProject = groupByProjectId(
     (aiInsightRows as Row[]).map(toAiInsight),
   );
+  const websiteCrawlRunsByProject = groupByProjectId(
+    (websiteCrawlRunRows as Row[]).map(toWebsiteCrawlRun),
+  );
+  const websiteCrawlPagesByProject = groupByProjectId(
+    (websiteCrawlPageRows as Row[]).map(toWebsiteCrawlPage),
+  );
 
   return projects.flatMap((project) => {
     const organization = organizations.get(project.organizationId);
@@ -855,6 +919,8 @@ async function readPostgresProjectBundles(
         files: filesByProject.get(project.id) ?? [],
         invoices: invoicesByProject.get(project.id) ?? [],
         aiInsights: aiInsightsByProject.get(project.id) ?? [],
+        websiteCrawlRuns: websiteCrawlRunsByProject.get(project.id) ?? [],
+        websiteCrawlPages: websiteCrawlPagesByProject.get(project.id) ?? [],
       },
     ];
   });
@@ -927,10 +993,28 @@ export async function readPostgresCustomersWithProjectBundles(): Promise<
   }));
 }
 
+export async function readPostgresTemplateOverrides(): Promise<
+  PortalTemplateOverride[]
+> {
+  const sql = getSql();
+  try {
+    const rows = await sql`
+      select *
+      from portal_template_overrides
+      order by updated_at desc
+    `;
+    return (rows as Row[]).map(toTemplateOverride);
+  } catch (error) {
+    if (isMissingRelation(error, "portal_template_overrides")) return [];
+    throw error;
+  }
+}
+
 export async function createPostgresProjectForAdmin({
   userId,
   company,
   industry,
+  website,
   projectName,
   summary,
   customerEmail,
@@ -943,8 +1027,8 @@ export async function createPostgresProjectForAdmin({
 
   await sql.begin(async (tx) => {
     await tx`
-      insert into portal_organizations (id, name, industry, created_at)
-      values (${orgId}, ${company}, ${industry}, ${createdAt})
+      insert into portal_organizations (id, name, industry, website, created_at)
+      values (${orgId}, ${company}, ${industry}, ${website || null}, ${createdAt})
     `;
 
     await tx`
@@ -1066,6 +1150,8 @@ export async function readPostgresStore(
     invoices,
     paymentEvents,
     aiInsights,
+    websiteCrawlRuns,
+    websiteCrawlPages,
     authTokens,
     templateOverrides,
     rateLimitBuckets,
@@ -1088,6 +1174,8 @@ export async function readPostgresStore(
     sql`select * from portal_invoices order by created_at desc`,
     sql`select * from portal_payment_events order by created_at desc`,
     sql`select * from portal_ai_insights order by created_at desc`,
+    sql`select * from portal_website_crawl_runs order by created_at desc`,
+    sql`select * from portal_website_crawl_pages order by crawled_at desc`,
     sql`select * from portal_auth_tokens order by created_at desc`,
     sql`select * from portal_template_overrides order by updated_at desc`,
     sql`select * from portal_rate_limits order by updated_at desc`,
@@ -1308,6 +1396,8 @@ export async function readPostgresStore(
         createdAt: iso(row.created_at),
       }),
     ),
+    websiteCrawlRuns: (websiteCrawlRuns as Row[]).map(toWebsiteCrawlRun),
+    websiteCrawlPages: (websiteCrawlPages as Row[]).map(toWebsiteCrawlPage),
     authTokens: (authTokens as Row[]).map(
       (row): AuthToken => ({
         id: value(row.id),
@@ -1531,6 +1621,57 @@ async function writeStoreRows(tx: SqlLike, store: PortalStore) {
           title = excluded.title,
           body = excluded.body,
           kind = excluded.kind
+      `;
+    }
+
+    for (const run of store.websiteCrawlRuns ?? []) {
+      await tx`
+        insert into portal_website_crawl_runs (
+          id, project_id, website_url, status, started_at, completed_at,
+          page_count, summary, error, created_by, created_at
+        )
+        values (
+          ${run.id}, ${run.projectId}, ${run.websiteUrl}, ${run.status},
+          ${run.startedAt}, ${run.completedAt ?? null}, ${run.pageCount},
+          ${run.summary}, ${run.error ?? null}, ${run.createdBy}, ${run.createdAt}
+        )
+        on conflict (id) do update set
+          website_url = excluded.website_url,
+          status = excluded.status,
+          started_at = excluded.started_at,
+          completed_at = excluded.completed_at,
+          page_count = excluded.page_count,
+          summary = excluded.summary,
+          error = excluded.error
+      `;
+    }
+
+    for (const page of store.websiteCrawlPages ?? []) {
+      await tx`
+        insert into portal_website_crawl_pages (
+          id, run_id, project_id, url, title, description, page_type,
+          status_code, depth, word_count, text_excerpt, discovered_from,
+          crawled_at, error
+        )
+        values (
+          ${page.id}, ${page.runId}, ${page.projectId}, ${page.url},
+          ${page.title}, ${page.description}, ${page.pageType},
+          ${page.statusCode}, ${page.depth}, ${page.wordCount},
+          ${page.textExcerpt}, ${page.discoveredFrom ?? null},
+          ${page.crawledAt}, ${page.error ?? null}
+        )
+        on conflict (id) do update set
+          url = excluded.url,
+          title = excluded.title,
+          description = excluded.description,
+          page_type = excluded.page_type,
+          status_code = excluded.status_code,
+          depth = excluded.depth,
+          word_count = excluded.word_count,
+          text_excerpt = excluded.text_excerpt,
+          discovered_from = excluded.discovered_from,
+          crawled_at = excluded.crawled_at,
+          error = excluded.error
       `;
     }
 

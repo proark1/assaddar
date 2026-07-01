@@ -1648,7 +1648,7 @@ export function buildAiProviderComparison(
     });
   }
 
-  return ["openai", "gemini", "grok"]
+  return ["openai", "claude", "gemini", "grok"]
     .map((provider) => latestByProvider.get(provider))
     .filter((entry): entry is AiProviderComparison => Boolean(entry));
 }
@@ -2242,7 +2242,11 @@ function projectText(bundle: ProjectBundle) {
       .slice(0, 3)
       .flatMap((update) => [update.title, update.body]),
     ...bundle.aiInsights
-      .filter((insight) => insight.title.startsWith("AI Scan:"))
+      .filter(
+        (insight) =>
+          insight.title.startsWith("AI Scan:") ||
+          insight.title.startsWith("Website Intelligence:"),
+      )
       .slice(0, 3)
       .flatMap((insight) => [insight.title, insight.body]),
   ].join("\n");

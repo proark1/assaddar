@@ -162,6 +162,39 @@ export type AiInsight = {
   createdAt: string;
 };
 
+export type WebsiteCrawlStatus = "queued" | "running" | "completed" | "failed";
+
+export type WebsiteCrawlRun = {
+  id: string;
+  projectId: string;
+  websiteUrl: string;
+  status: WebsiteCrawlStatus;
+  startedAt: string;
+  completedAt?: string;
+  pageCount: number;
+  summary: string;
+  error?: string;
+  createdBy: string;
+  createdAt: string;
+};
+
+export type WebsiteCrawlPage = {
+  id: string;
+  runId: string;
+  projectId: string;
+  url: string;
+  title: string;
+  description: string;
+  pageType: string;
+  statusCode: number;
+  depth: number;
+  wordCount: number;
+  textExcerpt: string;
+  discoveredFrom?: string;
+  crawledAt: string;
+  error?: string;
+};
+
 export type AuthToken = {
   id: string;
   userId: string;
@@ -333,6 +366,8 @@ export type PortalStore = {
   invoices: Invoice[];
   paymentEvents: PaymentEvent[];
   aiInsights: AiInsight[];
+  websiteCrawlRuns: WebsiteCrawlRun[];
+  websiteCrawlPages: WebsiteCrawlPage[];
   authTokens: AuthToken[];
   templateOverrides: PortalTemplateOverride[];
   rateLimitBuckets: RateLimitBucket[];
@@ -356,4 +391,6 @@ export type ProjectBundle = {
   files: ProjectFile[];
   invoices: Invoice[];
   aiInsights: AiInsight[];
+  websiteCrawlRuns: WebsiteCrawlRun[];
+  websiteCrawlPages: WebsiteCrawlPage[];
 };

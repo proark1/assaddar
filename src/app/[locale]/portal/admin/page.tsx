@@ -795,6 +795,16 @@ export default async function AdminPage({
                 </div>
                 <div>
                   <label className="mb-1.5 block text-sm text-ink2">
+                    Website
+                  </label>
+                  <input
+                    name="website"
+                    placeholder="https://kunde.de"
+                    className={fieldClass}
+                  />
+                </div>
+                <div>
+                  <label className="mb-1.5 block text-sm text-ink2">
                     Kunden-E-Mail
                   </label>
                   <input

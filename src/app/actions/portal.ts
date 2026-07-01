@@ -17,6 +17,10 @@ import {
   updateCrmDraft,
 } from "@/lib/portal/crm";
 import { sendPortalEmail } from "@/lib/portal/email";
+import {
+  crawlWebsite,
+  formatWebsiteIntelligenceReport,
+} from "@/lib/portal/website-scraper";
 import { getAuthCopy } from "@/lib/portal/auth-copy";
 import {
   createProjectForAdmin,
@@ -24,6 +28,7 @@ import {
   getProjectBundle,
   id,
   listProjectsForUser,
+  listTemplateOverrides,
   mutateStore,
   readStore,
   upsertIntelligence,
@@ -86,16 +91,163 @@ import {
   visibility,
 } from "./portal-action-utils";
 
+async function crawlAndStoreWebsiteIntelligence({
+  projectId,
+  userId,
+  website,
+  applyToIntelligence,
+}: {
+  projectId: string;
+  userId: string;
+  website: string;
+  applyToIntelligence: boolean;
+}) {
+  const startedAt = new Date().toISOString();
+  let crawlResult: Awaited<ReturnType<typeof crawlWebsite>> | null = null;
+  let crawlError = "";
+
+  try {
+    crawlResult = await crawlWebsite(website);
+    crawlError = crawlResult.error ?? "";
+  } catch (error) {
+    crawlError = error instanceof Error ? error.message : "Website crawl failed.";
+  }
+
+  const status = crawlResult && !crawlError ? "completed" : "failed";
+  const normalizedUrl = crawlResult?.normalizedUrl || website;
+  const report = crawlResult
+    ? formatWebsiteIntelligenceReport(crawlResult.intelligence)
+    : `Website crawl failed for ${website}.\n\n${crawlError}`;
+  const host = (() => {
+    try {
+      return new URL(normalizedUrl).hostname.replace(/^www\./, "");
+    } catch {
+      return "website";
+    }
+  })();
+
+  return mutateStore((store) => {
+    const nextBundle = getProjectBundle(store, projectId);
+    if (!nextBundle) return false;
+    const now = new Date().toISOString();
+    const runId = id("crawl");
+    const organization = store.organizations.find(
+      (entry) => entry.id === nextBundle.organization.id,
+    );
+    if (organization) organization.website = normalizedUrl;
+
+    store.websiteCrawlRuns.push({
+      id: runId,
+      projectId,
+      websiteUrl: normalizedUrl,
+      status,
+      startedAt,
+      completedAt: now,
+      pageCount: crawlResult?.pages.length ?? 0,
+      summary: crawlResult?.intelligence.summary ?? "",
+      error: crawlError || undefined,
+      createdBy: userId,
+      createdAt: startedAt,
+    });
+
+    for (const page of crawlResult?.pages ?? []) {
+      store.websiteCrawlPages.push({
+        id: id("page"),
+        runId,
+        projectId,
+        url: page.url,
+        title: page.title,
+        description: page.description,
+        pageType: page.pageType,
+        statusCode: page.statusCode,
+        depth: page.depth,
+        wordCount: page.wordCount,
+        textExcerpt: page.textExcerpt,
+        discoveredFrom: page.discoveredFrom,
+        crawledAt: page.crawledAt,
+        error: page.error,
+      });
+    }
+
+    store.aiInsights.push({
+      id: id("insight"),
+      projectId,
+      title: `Website Intelligence: ${host} (${status})`,
+      body: report,
+      kind: status === "completed" ? "guidance" : "risk",
+      createdAt: now,
+    });
+
+    if (crawlResult && applyToIntelligence) {
+      const current = getProjectBundle(store, projectId)?.intelligence;
+      if (current) {
+        const intelligence = crawlResult.intelligence;
+        upsertIntelligence(store, projectId, {
+          companyContext: appendNote(
+            current.companyContext,
+            "Website Scan: Unternehmenskontext",
+            intelligence.companyContext,
+          ),
+          stakeholders: current.stakeholders,
+          issues: appendNote(
+            current.issues,
+            "Website Scan: Risiken und Luecken",
+            intelligence.issues,
+          ),
+          goals: current.goals,
+          currentTools: appendNote(
+            current.currentTools,
+            "Website Scan: digitale Signale",
+            intelligence.currentTools,
+          ),
+          dataSituation: appendNote(
+            current.dataSituation,
+            "Website Scan: Quellen und Datenlage",
+            intelligence.dataSituation,
+          ),
+          constraints: appendNote(
+            current.constraints,
+            "Website Scan: Validierung",
+            intelligence.constraints,
+          ),
+          opportunities: appendNote(
+            current.opportunities,
+            "Website Scan: AI- und Digitalisierungshebel",
+            intelligence.opportunities,
+          ),
+          internalNotes: appendNote(
+            current.internalNotes,
+            "Website Scan: interne Quellen",
+            intelligence.internalNotes,
+          ),
+        });
+      }
+    }
+
+    addAuditUpdate({
+      store,
+      projectId,
+      userId,
+      title: "Website Intelligence Scan",
+      body: `${normalizedUrl} wurde gescannt. Status: ${status}. Seiten: ${
+        crawlResult?.pages.length ?? 0
+      }.`,
+    });
+
+    return status === "completed";
+  });
+}
+
 export async function createProjectAction(formData: FormData) {
   const locale = safeLocale(formData.get("locale"));
   const user = await requireAdminAction(locale);
 
   const company = text(formData, "company");
   const customerName = text(formData, "customerName");
-  const sourceStore = await readStore();
+  const templateOverrides = await listTemplateOverrides();
   const template = getEffectiveConsultingTemplate(
     text(formData, "templateId"),
-    sourceStore.templateOverrides,
+    templateOverrides,
   );
   const industry =
     text(formData, "industry") || template?.industryLabel || "Noch nicht gesetzt";
@@ -103,6 +255,7 @@ export async function createProjectAction(formData: FormData) {
     text(formData, "projectName") || template?.projectName || "Neues ASDAR Projekt";
   const summary = text(formData, "summary") || template?.summary || "";
   const customerEmail = text(formData, "customerEmail").toLowerCase();
+  const website = text(formData, "website");
 
   if (!company) redirect(`/${locale}/portal/admin?error=company`);
 
@@ -110,6 +263,7 @@ export async function createProjectAction(formData: FormData) {
     userId: user.id,
     company,
     industry,
+    website,
     projectName,
     summary,
     customerEmail,
@@ -296,6 +450,15 @@ export async function createProjectAction(formData: FormData) {
     });
   }
 
+  if (website) {
+    await crawlAndStoreWebsiteIntelligence({
+      projectId,
+      userId: user.id,
+      website,
+      applyToIntelligence: true,
+    });
+  }
+
   revalidatePath(`/${locale}/portal`);
   redirect(adminProjectPath(locale, projectId));
 }
@@ -384,7 +547,7 @@ export async function saveTemplateOverrideAction(formData: FormData) {
   const locale = safeLocale(formData.get("locale"));
   const user = await requireAdminAction(locale);
   const templateId = text(formData, "templateId");
-  const sourceStore = await readStore();
+  const templateOverrides = await listTemplateOverrides();
   const base = getConsultingTemplate(templateId);
   if (!base) redirect(`/${locale}/portal/admin/templates?error=template`);
 
@@ -412,9 +575,7 @@ export async function saveTemplateOverrideAction(formData: FormData) {
     else store.templateOverrides.push(next);
   });
 
-  const query = sourceStore.templateOverrides.some(
-    (entry) => entry.templateId === templateId,
-  )
+  const query = templateOverrides.some((entry) => entry.templateId === templateId)
     ? "updated=template"
     : "created=template";
   revalidatePath(`/${locale}/portal/admin/templates`);
@@ -982,11 +1143,11 @@ export async function applyConsultingTemplateAction(formData: FormData) {
   const locale = safeLocale(formData.get("locale"));
   const user = await requireAdminAction(locale);
   const projectId = text(formData, "projectId");
-  const sourceStore = await readStore();
+  const templateOverrides = await listTemplateOverrides();
   const template =
     getEffectiveConsultingTemplate(
       text(formData, "templateId"),
-      sourceStore.templateOverrides,
+      templateOverrides,
     ) ??
     matchConsultingTemplate(text(formData, "industry"));
 
@@ -3120,6 +3281,35 @@ export async function generateFinalReportAction(formData: FormData) {
   redirect(`${adminProjectPath(locale, projectId)}?saved=final-report`);
 }
 
+export async function runWebsiteCrawlAction(formData: FormData) {
+  const locale = safeLocale(formData.get("locale"));
+  const user = await requireAdminAction(locale);
+  const projectId = text(formData, "projectId");
+  const requestedWebsite = text(formData, "website");
+  const applyToIntelligence = checkbox(formData, "applyWebsiteIntelligence");
+  const sourceStore = await readStore();
+  const bundle = getProjectBundle(sourceStore, projectId);
+  const website = requestedWebsite || bundle?.organization.website || "";
+
+  if (!bundle || !website) {
+    redirect(`${adminProjectPath(locale, projectId)}?error=website`);
+  }
+
+  const saved = await crawlAndStoreWebsiteIntelligence({
+    projectId,
+    userId: user.id,
+    website,
+    applyToIntelligence,
+  });
+
+  revalidateProjectViews(locale, projectId);
+  redirect(
+    `${adminProjectPath(locale, projectId)}?view=guidance&${
+      saved ? "saved=website" : "error=website"
+    }`,
+  );
+}
+
 export async function runAiScanAction(formData: FormData) {
   const locale = safeLocale(formData.get("locale"));
   const user = await requireAdminAction(locale);
@@ -3127,10 +3317,12 @@ export async function runAiScanAction(formData: FormData) {
   const confirmed = checkbox(formData, "confirmExternalAi");
   const providers = [
     formData.get("provider_openai") === "on" ? "openai" : "",
+    formData.get("provider_claude") === "on" ? "claude" : "",
     formData.get("provider_gemini") === "on" ? "gemini" : "",
     formData.get("provider_grok") === "on" ? "grok" : "",
-  ].filter((provider): provider is "openai" | "gemini" | "grok" =>
-    Boolean(provider),
+  ].filter(
+    (provider): provider is "openai" | "claude" | "gemini" | "grok" =>
+      Boolean(provider),
   );
 
   const sourceStore = await readStore();

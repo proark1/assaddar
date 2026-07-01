@@ -39,7 +39,7 @@ import {
   buildWorkflowSnapshots,
   latestOrBuildOfferRecommendation,
 } from "./operations";
-import { listProjectBundlesForUser, readStore } from "./store";
+import { listProjectBundlesForUser, listTemplateOverrides } from "./store";
 import {
   effectiveConsultingTemplates,
   matchConsultingTemplate,
@@ -538,13 +538,11 @@ export const getAdminProjectViewModel = cache(
     projectId: string,
     activeView: AdminProjectView = "setup",
   ) => {
-    const [bundles, portalStore] = await Promise.all([
+    const [bundles, templateOverrides] = await Promise.all([
       listProjectBundlesForUser(user),
-      readStore(),
+      listTemplateOverrides(),
     ]);
-    const consultingTemplates = effectiveConsultingTemplates(
-      portalStore.templateOverrides,
-    );
+    const consultingTemplates = effectiveConsultingTemplates(templateOverrides);
     const bundle = bundles.find((entry) => entry.project.id === projectId);
     if (!bundle) return null;
 
@@ -609,13 +607,11 @@ export const getAdminDashboardViewModel = cache(
     const projectQuery = query.q?.trim().toLowerCase() ?? "";
     const statusFilter = query.status ?? "all";
     const healthFilter = query.health ?? "all";
-    const [allBundles, portalStore] = await Promise.all([
+    const [allBundles, templateOverrides] = await Promise.all([
       listProjectBundlesForUser(user),
-      readStore(),
+      listTemplateOverrides(),
     ]);
-    const consultingTemplates = effectiveConsultingTemplates(
-      portalStore.templateOverrides,
-    );
+    const consultingTemplates = effectiveConsultingTemplates(templateOverrides);
     const selectedTemplateId =
       consultingTemplates.some((template) => template.id === query.template)
         ? query.template

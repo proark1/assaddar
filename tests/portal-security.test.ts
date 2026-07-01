@@ -11,6 +11,11 @@ import { externalAiIdentifier, redactForExternalAi } from "../src/lib/portal/pri
 import { trustedRequestOrigin } from "../src/lib/portal/security";
 import type { PortalStore, ProjectBundle } from "../src/lib/portal/types";
 import { readPortalUpload } from "../src/lib/portal/uploads";
+import {
+  buildWebsiteIntelligence,
+  normalizeWebsiteUrl,
+  type ScrapedWebsitePage,
+} from "../src/lib/portal/website-scraper";
 
 function headers(values: Record<string, string>) {
   return {
@@ -105,12 +110,58 @@ test("external AI scan prompt uses redacted customer context", () => {
     files: [],
     invoices: [],
     aiInsights: [],
+    websiteCrawlRuns: [],
+    websiteCrawlPages: [],
   } satisfies ProjectBundle;
 
   const prompt = buildExternalAiScanPrompt(bundle);
   assert.doesNotMatch(prompt, /ACME GmbH|ACME Secret|max@example\.com|170 1234567|example\.com\/private/);
   assert.match(prompt, /Customer/);
   assert.match(prompt, /\[redacted-email\]/);
+});
+
+test("website intelligence normalizes URLs and builds ASDAR context", () => {
+  assert.equal(
+    normalizeWebsiteUrl("example.com/?utm_source=test#team"),
+    "https://example.com/",
+  );
+
+  const crawledAt = new Date().toISOString();
+  const pages: ScrapedWebsitePage[] = [
+    {
+      url: "https://example.com/",
+      title: "ACME Automation Consulting",
+      description: "AI automation for service teams.",
+      pageType: "home",
+      statusCode: 200,
+      depth: 0,
+      wordCount: 12,
+      textExcerpt:
+        "AI automation for service teams with contact forms, booking and customer portal.",
+      links: [],
+      signals: ["contact form or contact workflow", "appointment booking"],
+      crawledAt,
+    },
+    {
+      url: "https://example.com/services",
+      title: "Services",
+      description: "Workflow automation and reporting.",
+      pageType: "services",
+      statusCode: 200,
+      depth: 1,
+      wordCount: 8,
+      textExcerpt: "Workflow automation and reporting.",
+      links: [],
+      signals: ["integration/API signal"],
+      crawledAt,
+    },
+  ];
+
+  const intelligence = buildWebsiteIntelligence("https://example.com/", pages);
+  assert.match(intelligence.companyContext, /ACME Automation Consulting/);
+  assert.match(intelligence.currentTools, /appointment booking/);
+  assert.match(intelligence.opportunities, /lead-qualification/);
+  assert.equal(intelligence.sourcePages.length, 2);
 });
 
 test("trustedRequestOrigin rejects cross-site browser posts", () => {
@@ -252,6 +303,8 @@ test("CRM admin alerts include full ASDAR check details", async () => {
       invoices: [],
       paymentEvents: [],
       aiInsights: [],
+      websiteCrawlRuns: [],
+      websiteCrawlPages: [],
       authTokens: [],
       templateOverrides: [],
       rateLimitBuckets: [],
@@ -348,6 +401,8 @@ test("CRM admin alerts include next task and draft context", async () => {
       invoices: [],
       paymentEvents: [],
       aiInsights: [],
+      websiteCrawlRuns: [],
+      websiteCrawlPages: [],
       authTokens: [],
       templateOverrides: [],
       rateLimitBuckets: [],

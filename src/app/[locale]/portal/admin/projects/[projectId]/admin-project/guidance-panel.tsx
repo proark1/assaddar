@@ -47,6 +47,7 @@ import {
   inviteCustomerAction,
   addMeetingNoteAction,
   runAiScanAction,
+  runWebsiteCrawlAction,
   saveProjectKpiAction,
   saveProjectWorkflowAction,
   saveKnowledgeSnapshotAction,
@@ -512,6 +513,13 @@ export function GuidanceSidePanel({ ctx }: { ctx: AdminPanelContext }) {
     user,
   } = ctx;
 
+  const latestWebsiteCrawl = bundle.websiteCrawlRuns[0];
+  const latestWebsitePages = latestWebsiteCrawl
+    ? bundle.websiteCrawlPages
+        .filter((page: any) => page.runId === latestWebsiteCrawl.id)
+        .slice(0, 6)
+    : bundle.websiteCrawlPages.slice(0, 6);
+
   return (
     <>
             <PortalCard>
@@ -885,6 +893,109 @@ export function GuidanceSidePanel({ ctx }: { ctx: AdminPanelContext }) {
           </PortalCard>
             <PortalCard>
             <PortalSectionTitle
+              eyebrow="Website Intelligence"
+              title="Website als Business-Signal scannen"
+            >
+              Crawlt die Kundenseite, extrahiert Business-Kontext und speichert
+              die Quellen als interne Projektintelligenz.
+            </PortalSectionTitle>
+            <form action={runWebsiteCrawlAction} className="mt-5 space-y-4">
+              <HiddenProjectFields locale={safe} projectId={projectId} />
+              <div>
+                <label className="mb-1.5 block text-sm text-ink2">
+                  Website
+                </label>
+                <input
+                  name="website"
+                  defaultValue={bundle.organization.website ?? ""}
+                  placeholder="https://kunde.de"
+                  className={fieldClass}
+                />
+              </div>
+              <label className="flex items-start gap-2 rounded-lg border border-hairline bg-bg p-3 text-[12px] leading-relaxed text-muted">
+                <input
+                  name="applyWebsiteIntelligence"
+                  type="checkbox"
+                  defaultChecked
+                  className="mt-0.5 h-4 w-4 accent-[var(--color-copper)]"
+                />
+                Findings in Private Intelligence uebernehmen
+              </label>
+              <button
+                type="submit"
+                className="inline-flex w-full items-center justify-center gap-2 rounded-lg bg-copper px-4 py-2.5 text-sm font-medium text-oncopper transition-colors hover:bg-copper-hi"
+              >
+                <Eye className="h-4 w-4" />
+                Website scannen
+              </button>
+            </form>
+            {latestWebsiteCrawl && (
+              <div className="mt-5 rounded-lg border border-hairline bg-bg p-3">
+                <div className="flex flex-wrap items-center justify-between gap-2">
+                  <div className="text-sm font-medium text-ink">
+                    Letzter Scan
+                  </div>
+                  <Badge
+                    tone={
+                      latestWebsiteCrawl.status === "completed"
+                        ? "green"
+                        : latestWebsiteCrawl.status === "failed"
+                          ? "red"
+                          : "amber"
+                    }
+                  >
+                    {latestWebsiteCrawl.status}
+                  </Badge>
+                </div>
+                <p className="mt-2 text-[12px] leading-relaxed text-muted">
+                  {latestWebsiteCrawl.websiteUrl} Â·{" "}
+                  {latestWebsiteCrawl.pageCount} Seiten Â·{" "}
+                  {formatDate(
+                    latestWebsiteCrawl.completedAt ??
+                      latestWebsiteCrawl.createdAt,
+                  )}
+                </p>
+                {latestWebsiteCrawl.summary && (
+                  <p className="mt-3 whitespace-pre-line text-[12px] leading-relaxed text-ink2">
+                    {latestWebsiteCrawl.summary}
+                  </p>
+                )}
+                {latestWebsiteCrawl.error && (
+                  <p className="mt-3 text-[12px] leading-relaxed text-critical">
+                    {latestWebsiteCrawl.error}
+                  </p>
+                )}
+              </div>
+            )}
+            <div className="mt-4 space-y-2">
+              {latestWebsitePages.map((page: any) => (
+                <a
+                  key={page.id}
+                  href={page.url}
+                  target="_blank"
+                  rel="noreferrer"
+                  className="block rounded-lg border border-hairline bg-bg p-3 transition-colors hover:border-copper"
+                >
+                  <div className="flex flex-wrap items-center justify-between gap-2">
+                    <div className="line-clamp-1 text-sm font-medium text-ink">
+                      {page.title || page.url}
+                    </div>
+                    <Badge tone="neutral">{page.pageType}</Badge>
+                  </div>
+                  <p className="mt-1 line-clamp-2 text-[12px] leading-relaxed text-muted">
+                    {page.description || page.textExcerpt || page.error}
+                  </p>
+                </a>
+              ))}
+              {!latestWebsiteCrawl && (
+                <p className="text-sm leading-relaxed text-muted">
+                  Noch kein Website-Scan fuer dieses Projekt gespeichert.
+                </p>
+              )}
+            </div>
+          </PortalCard>
+            <PortalCard>
+            <PortalSectionTitle
               eyebrow="External AI"
               title="Multi-Provider Scan"
             >
@@ -902,6 +1013,14 @@ export function GuidanceSidePanel({ ctx }: { ctx: AdminPanelContext }) {
                     className="h-4 w-4 accent-[var(--color-copper)]"
                   />
                   OpenAI
+                </label>
+                <label className="flex items-center gap-2">
+                  <input
+                    name="provider_claude"
+                    type="checkbox"
+                    className="h-4 w-4 accent-[var(--color-copper)]"
+                  />
+                  Claude
                 </label>
                 <label className="flex items-center gap-2">
                   <input

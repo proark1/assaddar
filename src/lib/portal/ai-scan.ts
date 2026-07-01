@@ -1,12 +1,36 @@
 import type { ProjectBundle } from "./types";
-import { requestExternalAiInsight } from "./ai-providers";
+import {
+  requestExternalAiInsight,
+  type ExternalAiProvider,
+} from "./ai-providers";
 import { externalAiIdentifier, redactForExternalAi } from "./privacy";
 import { matchConsultingTemplate } from "./templates";
 
-type Provider = "openai" | "gemini" | "grok";
+type Provider = ExternalAiProvider;
 
 export function buildExternalAiScanPrompt(bundle: ProjectBundle) {
   const template = matchConsultingTemplate(bundle.organization.industry);
+  const latestWebsiteRun = bundle.websiteCrawlRuns[0];
+  const latestWebsitePages = latestWebsiteRun
+    ? bundle.websiteCrawlPages
+        .filter((page) => page.runId === latestWebsiteRun.id)
+        .slice(0, 6)
+    : [];
+  const websiteEvidence = latestWebsiteRun
+    ? [
+        `Website scan status: ${latestWebsiteRun.status}`,
+        `Website scan summary: ${redactForExternalAi(latestWebsiteRun.summary)}`,
+        `Website pages: ${latestWebsitePages
+          .map((page) =>
+            redactForExternalAi(
+              `${page.pageType}: ${page.title || page.url} - ${
+                page.description || page.textExcerpt.slice(0, 180)
+              }`,
+            ),
+          )
+          .join(" | ")}`,
+      ].join("\n")
+    : "Website scan: not available";
   const templatePrompt = [
     `Industry playbook: ${template.label}`,
     `Best for: ${template.bestFor}`,
@@ -29,6 +53,7 @@ export function buildExternalAiScanPrompt(bundle: ProjectBundle) {
     `Data situation: ${redactForExternalAi(bundle.intelligence.dataSituation)}`,
     `Constraints: ${redactForExternalAi(bundle.intelligence.constraints)}`,
     `Opportunities: ${redactForExternalAi(bundle.intelligence.opportunities)}`,
+    `Website evidence: ${websiteEvidence}`,
     "",
     templatePrompt,
     "",

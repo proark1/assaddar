@@ -13,7 +13,7 @@ import { saveTemplateOverrideAction } from "@/app/actions/portal";
 import { isLocale, type Locale } from "@/content";
 import { requireAdmin } from "@/lib/portal/auth";
 import { asdarStages } from "@/lib/portal/format";
-import { readStore } from "@/lib/portal/store";
+import { listTemplateOverrides } from "@/lib/portal/store";
 import { effectiveConsultingTemplates } from "@/lib/portal/templates";
 import {
   Badge,
@@ -41,8 +41,7 @@ export default async function AdminTemplatesPage({
   const safe: Locale = isLocale(locale) ? locale : "de";
   const user = await requireAdmin(safe);
   const query = await searchParams;
-  const store = await readStore();
-  const templateOverrides = store.templateOverrides ?? [];
+  const templateOverrides = await listTemplateOverrides();
   const effectiveTemplates = effectiveConsultingTemplates(templateOverrides);
   const q = query.q?.trim().toLowerCase() ?? "";
   const templates = effectiveTemplates.filter((template) =>
