@@ -22,7 +22,7 @@ export function contactFromEmail() {
 }
 
 export function contactToEmail() {
-  return process.env.CONTACT_TO_EMAIL || "assad.dar@gmail.com";
+  return process.env.CONTACT_TO_EMAIL || "hello@assad-dar.de";
 }
 
 export function crmFromEmail() {

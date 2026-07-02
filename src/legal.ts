@@ -13,7 +13,7 @@ Deutschland
 ## Kontakt
 
 Telefon: +49 173 8665472
-E-Mail: assad.dar@gmail.com
+E-Mail: hello@assad-dar.de
 
 ## Umsatzsteuer-Identifikationsnummer
 
@@ -47,7 +47,7 @@ Diese Datenschutzerklärung informiert Sie über Art, Umfang und Zweck der Verar
 
 Assad Dar
 Am Brückensteg 33, 41065 Mönchengladbach, Deutschland
-E-Mail: assad.dar@gmail.com
+E-Mail: hello@assad-dar.de
 
 ## 2. Hosting
 
@@ -109,7 +109,7 @@ Germany
 ## Contact
 
 Phone: +49 173 8665472
-E-mail: assad.dar@gmail.com
+E-mail: hello@assad-dar.de
 
 ## VAT identification number
 
@@ -139,7 +139,7 @@ This privacy policy informs you about the nature, scope and purpose of the proce
 
 Assad Dar
 Am Brückensteg 33, 41065 Mönchengladbach, Germany
-E-mail: assad.dar@gmail.com
+E-mail: hello@assad-dar.de
 
 ## 2. Hosting
 

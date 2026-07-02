@@ -30,10 +30,10 @@ export function Footer({ t, locale }: { t: Dict["footer"]; locale: Locale }) {
                 {t.linkedin}
               </a>
               <a
-                href="mailto:assad.dar@gmail.com"
+                href="mailto:hello@assad-dar.de"
                 className="text-ink2 transition-colors hover:text-ink"
               >
-                assad.dar@gmail.com
+                hello@assad-dar.de
               </a>
             </div>
             <div className="flex flex-col gap-2">

@@ -32,7 +32,7 @@ export default async function Home({
     name: "Assad Dar",
     description: t.meta.description,
     url: `${SITE_URL}/${safe}`,
-    email: "assad.dar@gmail.com",
+    email: "hello@assad-dar.de",
     knowsLanguage: ["de", "en"],
     address: {
       "@type": "PostalAddress",

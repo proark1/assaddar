@@ -51,9 +51,9 @@ test("login failure limiter uses isolated normalized keys", () => {
   assert.equal(
     loginFailureRateLimitKey(
       headers({ "x-forwarded-for": "203.0.113.7" }),
-      " Assad.Dar@Gmail.Com ",
+      " Hello@Assad-Dar.De ",
     ),
-    "login-failed:203.0.113.7:assad.dar@gmail.com",
+    "login-failed:203.0.113.7:hello@assad-dar.de",
   );
 });
 

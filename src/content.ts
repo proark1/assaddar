@@ -540,7 +540,7 @@ const de = {
     cta: "ASDAR Analyse anfragen",
     ctaHref: "/de/termin",
     or: "oder per E-Mail an",
-    email: "assad.dar@gmail.com",
+    email: "hello@assad-dar.de",
     reassure:
       "Antwort meist innerhalb eines Werktags — direkt von mir, nicht von einem Vertriebsteam.",
   },
@@ -1117,7 +1117,7 @@ const en: Dict = {
     cta: "Request an ASDAR analysis",
     ctaHref: "/en/termin",
     or: "or email",
-    email: "assad.dar@gmail.com",
+    email: "hello@assad-dar.de",
     reassure:
       "Usually a reply within one business day — directly from me, not a sales team.",
   },
